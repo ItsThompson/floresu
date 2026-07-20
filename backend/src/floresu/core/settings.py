@@ -46,6 +46,10 @@ class EnvSettings(BaseSettings):
     # Async SQLAlchemy URL (asyncpg driver). Dev default targets the Postgres in
     # docker-compose.yml published to localhost; prod injects the in-network form.
     database_url: str = "postgresql+asyncpg://floresu:floresu@localhost:5432/floresu"
+    # Shared secret gating the internal trust boundary. Empty by default so the
+    # internal boundary fails closed (denies) until a token is provisioned; prod
+    # injects a real secret and the MCP server presents the same value.
+    internal_api_token: str = ""
 
 
 class AppSettings(BaseModel):
@@ -57,6 +61,7 @@ class AppSettings(BaseModel):
     log_level: str
     host: str
     database_url: str
+    internal_api_token: str = ""
 
     @property
     def is_dev(self) -> bool:
@@ -73,4 +78,5 @@ def build_app_settings(*, service: str, port: int, env: EnvSettings | None = Non
         log_level=env.log_level,
         host=env.host,
         database_url=env.database_url,
+        internal_api_token=env.internal_api_token,
     )
