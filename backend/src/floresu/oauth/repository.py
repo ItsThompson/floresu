@@ -1,0 +1,292 @@
+"""OAuth AS persistence: the repository interface and its SQLAlchemy binding.
+
+The service depends on this interface and receives resolved identities, never
+building queries itself. Tests substitute an in-memory repository; production
+binds :class:`SqlAlchemyOAuthRepository` over a request-scoped ``AsyncSession``.
+As with accounts, ``get_session`` is yield-only, so the transaction boundary lives
+here: the service calls :meth:`commit` after a successful write.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Protocol
+
+from sqlalchemy import delete, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+from floresu.core.db import fetch_optional
+from floresu.oauth.models import (
+    OAuthAuthorizationCode,
+    OAuthAuthRequest,
+    OAuthClient,
+    OAuthGrant,
+    OAuthRefreshToken,
+)
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from datetime import datetime
+
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+
+class OAuthRepository(Protocol):
+    """Data access for the OAuth AS, scoped to the operations the service needs."""
+
+    async def add_client(self, client: OAuthClient) -> None: ...
+    async def get_client(self, client_id: str) -> OAuthClient | None: ...
+    async def get_clients(self, client_ids: Sequence[str]) -> dict[str, str]: ...
+    async def delete_stale_registrations(self, cutoff: datetime) -> list[str]: ...
+
+    async def add_auth_request(self, request: OAuthAuthRequest) -> None: ...
+    async def get_auth_request(self, request_id: str) -> OAuthAuthRequest | None: ...
+    async def delete_auth_request(self, request_id: str) -> None: ...
+
+    async def add_code(self, code: OAuthAuthorizationCode) -> None: ...
+    async def get_code(self, code: str) -> OAuthAuthorizationCode | None: ...
+    async def consume_code(self, code: str) -> bool: ...
+    async def delete_expired_codes(self, now: datetime) -> None: ...
+
+    async def add_refresh_token(self, token: OAuthRefreshToken, *, now: datetime) -> None: ...
+    async def get_refresh_token(self, token_hash: str) -> OAuthRefreshToken | None: ...
+    async def consume_refresh_token(self, token_hash: str) -> bool: ...
+    async def revoke_refresh_token(self, token_hash: str) -> None: ...
+    async def revoke_grant_refresh_tokens(self, grant_id: str) -> None: ...
+
+    async def upsert_grant(
+        self, *, user_id: str, client_id: str, scope: str, now: datetime, grant_id: str
+    ) -> str: ...
+    async def get_grant(self, user_id: str, client_id: str) -> OAuthGrant | None: ...
+    async def touch_grant_activity(self, grant_id: str, *, now: datetime) -> None: ...
+    async def list_active_grants(self, user_id: str) -> list[OAuthGrant]: ...
+    async def revoke_grant(
+        self, user_id: str, client_id: str, *, now: datetime
+    ) -> OAuthGrant | None: ...
+
+    async def commit(self) -> None: ...
+
+
+class SqlAlchemyOAuthRepository:
+    """The production repository over a request-scoped :class:`AsyncSession`."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    # --- clients ------------------------------------------------------------
+
+    async def add_client(self, client: OAuthClient) -> None:
+        self._session.add(client)
+        await self._session.flush()
+
+    async def get_client(self, client_id: str) -> OAuthClient | None:
+        return await fetch_optional(
+            self._session, select(OAuthClient).where(OAuthClient.client_id == client_id)
+        )
+
+    async def get_clients(self, client_ids: Sequence[str]) -> dict[str, str]:
+        """Batch-load ``client_id -> client_name`` for the connected-client list.
+
+        One query instead of N serial :meth:`get_client` awaits over the shared
+        session. A key missing from the returned map means the client was deleted
+        (the caller skips its orphaned grant); an empty input returns ``{}``
+        without a query.
+        """
+        if not client_ids:
+            return {}
+        result = await self._session.scalars(
+            select(OAuthClient).where(OAuthClient.client_id.in_(client_ids))
+        )
+        return {client.client_id: client.client_name for client in result}
+
+    async def delete_stale_registrations(self, cutoff: datetime) -> list[str]:
+        """Reap abandoned open-registration clients (periodic cleanup hook, P0).
+
+        Deletes clients registered before ``cutoff`` that have **no active
+        (non-revoked) grant**: never-consented DCR rows and clients whose grant was
+        revoked. An actively-granted client is never reaped, so a long-lived agent
+        that keeps refreshing is not disconnected. A revoked grant already has its
+        refresh chain revoked, so no live token survives the delete. Returns the
+        deleted ``client_id``s.
+        """
+        active_client_ids = select(OAuthGrant.client_id).where(OAuthGrant.revoked_at.is_(None))
+        result = await self._session.execute(
+            delete(OAuthClient)
+            .where(
+                OAuthClient.created_at < cutoff,
+                OAuthClient.client_id.not_in(active_client_ids),
+            )
+            .returning(OAuthClient.client_id)
+        )
+        return list(result.scalars().all())
+
+    # --- parked authorize requests ------------------------------------------
+
+    async def add_auth_request(self, request: OAuthAuthRequest) -> None:
+        self._session.add(request)
+        await self._session.flush()
+
+    async def get_auth_request(self, request_id: str) -> OAuthAuthRequest | None:
+        return await fetch_optional(
+            self._session, select(OAuthAuthRequest).where(OAuthAuthRequest.id == request_id)
+        )
+
+    async def delete_auth_request(self, request_id: str) -> None:
+        await self._session.execute(
+            delete(OAuthAuthRequest).where(OAuthAuthRequest.id == request_id)
+        )
+
+    # --- authorization codes ------------------------------------------------
+
+    async def add_code(self, code: OAuthAuthorizationCode) -> None:
+        self._session.add(code)
+        await self._session.flush()
+
+    async def get_code(self, code: str) -> OAuthAuthorizationCode | None:
+        return await fetch_optional(
+            self._session, select(OAuthAuthorizationCode).where(OAuthAuthorizationCode.code == code)
+        )
+
+    async def consume_code(self, code: str) -> bool:
+        """Atomically mark an unused code used; return whether this call consumed it.
+
+        A conditional ``UPDATE ... WHERE used = false RETURNING`` makes single-use
+        race-free: exactly one concurrent exchange flips the flag and gets a row
+        back (``True``); a replay (or the loser of a race) matches nothing
+        (``False``).
+        """
+        result = await self._session.execute(
+            update(OAuthAuthorizationCode)
+            .where(
+                OAuthAuthorizationCode.code == code,
+                OAuthAuthorizationCode.used.is_(False),
+            )
+            .values(used=True)
+            .returning(OAuthAuthorizationCode.code)
+        )
+        return result.scalar_one_or_none() is not None
+
+    async def delete_expired_codes(self, now: datetime) -> None:
+        """Reap authorization codes past their (short) TTL, used or not."""
+        await self._session.execute(
+            delete(OAuthAuthorizationCode).where(OAuthAuthorizationCode.expires_at < now)
+        )
+
+    # --- refresh tokens -----------------------------------------------------
+
+    async def add_refresh_token(self, token: OAuthRefreshToken, *, now: datetime) -> None:
+        # Stamp created_at from the resolved clock so a pinned clock governs the
+        # whole flow (the model's server_default would otherwise use DB time).
+        token.created_at = now
+        self._session.add(token)
+        await self._session.flush()
+
+    async def get_refresh_token(self, token_hash: str) -> OAuthRefreshToken | None:
+        return await fetch_optional(
+            self._session,
+            select(OAuthRefreshToken).where(OAuthRefreshToken.token_hash == token_hash),
+        )
+
+    async def consume_refresh_token(self, token_hash: str) -> bool:
+        """Atomically revoke an unrevoked refresh token; return whether this call did it.
+
+        The conditional ``UPDATE ... WHERE revoked = false RETURNING`` makes
+        rotation race-free: exactly one concurrent refresh consumes the token; a
+        replay or the loser of a race matches nothing and is treated as a chain
+        compromise.
+        """
+        result = await self._session.execute(
+            update(OAuthRefreshToken)
+            .where(
+                OAuthRefreshToken.token_hash == token_hash,
+                OAuthRefreshToken.revoked.is_(False),
+            )
+            .values(revoked=True)
+            .returning(OAuthRefreshToken.token_hash)
+        )
+        return result.scalar_one_or_none() is not None
+
+    async def revoke_refresh_token(self, token_hash: str) -> None:
+        await self._session.execute(
+            update(OAuthRefreshToken)
+            .where(OAuthRefreshToken.token_hash == token_hash)
+            .values(revoked=True)
+        )
+
+    async def revoke_grant_refresh_tokens(self, grant_id: str) -> None:
+        await self._session.execute(
+            update(OAuthRefreshToken)
+            .where(OAuthRefreshToken.grant_id == grant_id)
+            .values(revoked=True)
+        )
+
+    # --- grants (connected clients) -----------------------------------------
+
+    async def upsert_grant(
+        self, *, user_id: str, client_id: str, scope: str, now: datetime, grant_id: str
+    ) -> str:
+        """Insert or refresh the (user, client) grant; returns its ``grant_id``.
+
+        Re-consent refreshes ``authorized_at``/``last_active_at`` and clears any
+        prior revocation, so one active grant per (user, client) is the
+        connected-client record. The resolved ``now``/``grant_id`` are supplied by
+        the service so one pinned clock and id factory govern the flow (on conflict
+        the existing id is kept).
+        """
+        statement = (
+            pg_insert(OAuthGrant)
+            .values(
+                id=grant_id,
+                user_id=user_id,
+                client_id=client_id,
+                scope=scope,
+                authorized_at=now,
+                last_active_at=now,
+            )
+            .on_conflict_do_update(
+                index_elements=[OAuthGrant.user_id, OAuthGrant.client_id],
+                set_={
+                    "scope": scope,
+                    "authorized_at": now,
+                    "last_active_at": now,
+                    "revoked_at": None,
+                },
+            )
+            .returning(OAuthGrant.id)
+        )
+        result = await self._session.execute(statement)
+        return result.scalar_one()
+
+    async def get_grant(self, user_id: str, client_id: str) -> OAuthGrant | None:
+        return await fetch_optional(
+            self._session,
+            select(OAuthGrant).where(
+                OAuthGrant.user_id == user_id, OAuthGrant.client_id == client_id
+            ),
+        )
+
+    async def touch_grant_activity(self, grant_id: str, *, now: datetime) -> None:
+        """Stamp ``last_active_at`` on token issuance/refresh (the last-active time)."""
+        await self._session.execute(
+            update(OAuthGrant).where(OAuthGrant.id == grant_id).values(last_active_at=now)
+        )
+
+    async def list_active_grants(self, user_id: str) -> list[OAuthGrant]:
+        result = await self._session.execute(
+            select(OAuthGrant)
+            .where(OAuthGrant.user_id == user_id, OAuthGrant.revoked_at.is_(None))
+            .order_by(OAuthGrant.authorized_at.desc())
+        )
+        return list(result.scalars().all())
+
+    async def revoke_grant(
+        self, user_id: str, client_id: str, *, now: datetime
+    ) -> OAuthGrant | None:
+        grant = await self.get_grant(user_id, client_id)
+        if grant is None or grant.revoked_at is not None:
+            return None
+        grant.revoked_at = now
+        await self.revoke_grant_refresh_tokens(grant.id)
+        return grant
+
+    async def commit(self) -> None:
+        await self._session.commit()

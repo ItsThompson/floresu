@@ -20,6 +20,12 @@ dependencies = [
     "pyjwt>=2.9.0,<3",
     "bcrypt>=4.2.0,<5",
     "email-validator>=2.2.0,<3",
+    # Agent OAuth 2.1 AS crypto: joserfc mints/verifies RS256 access tokens and
+    # shapes the published JWKS (typed, ships py.typed; pulls cryptography). The
+    # HS256 human-session path stays on pyjwt. python-multipart backs the
+    # form-encoded /token + /revoke endpoints (FastAPI Form parsing).
+    "joserfc>=1.0.0,<2",
+    "python-multipart>=0.0.9,<1",
 ]
 
 [project.scripts]

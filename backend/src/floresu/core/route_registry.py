@@ -56,6 +56,20 @@ EXTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("POST", "/auth/refresh"): AccessLevel.PUBLIC,
     RouteKey("POST", "/auth/logout"): AccessLevel.PUBLIC,
     RouteKey("GET", "/me"): AccessLevel.EXTERNAL_COOKIE,
+    # Agent OAuth 2.1 Authorization Server (mounted on the external app only). The
+    # discovery + handshake endpoints are OAUTH (no human session; the client is
+    # PKCE/token-authenticated or the metadata is public discovery). The consent
+    # decision and connected-client management require the human session cookie.
+    RouteKey("GET", "/.well-known/oauth-authorization-server"): AccessLevel.OAUTH,
+    RouteKey("GET", "/oauth/jwks"): AccessLevel.OAUTH,
+    RouteKey("POST", "/oauth/register"): AccessLevel.OAUTH,
+    RouteKey("GET", "/oauth/authorize"): AccessLevel.OAUTH,
+    RouteKey("GET", "/oauth/authorize/context"): AccessLevel.OAUTH,
+    RouteKey("POST", "/oauth/authorize/decision"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("POST", "/oauth/token"): AccessLevel.OAUTH,
+    RouteKey("POST", "/oauth/revoke"): AccessLevel.OAUTH,
+    RouteKey("GET", "/me/clients"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("DELETE", "/me/clients/{client_id}"): AccessLevel.EXTERNAL_COOKIE,
 }
 INTERNAL_ROUTE_ACCESS: RouteRegistry = {}
 
