@@ -30,6 +30,28 @@ describe("ConnectAgentStep", () => {
     expect(await screen.findByRole("button", { name: "Copied" })).toBeInTheDocument();
   });
 
+  it("shows a manual-copy hint when the clipboard is unavailable", async () => {
+    Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
+
+    render(<ConnectAgentStep mcpUrl={MCP_URL} onContinue={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Copy" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(/copy it manually/i);
+    // The button does not falsely claim success.
+    expect(screen.queryByRole("button", { name: "Copied" })).not.toBeInTheDocument();
+  });
+
+  it("shows a manual-copy hint when the clipboard write is denied", async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error("denied"));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+
+    render(<ConnectAgentStep mcpUrl={MCP_URL} onContinue={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Copy" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(/copy it manually/i);
+    expect(screen.queryByRole("button", { name: "Copied" })).not.toBeInTheDocument();
+  });
+
   it("advances when Continue is pressed", async () => {
     const onContinue = vi.fn();
     render(<ConnectAgentStep mcpUrl={MCP_URL} onContinue={onContinue} />);
