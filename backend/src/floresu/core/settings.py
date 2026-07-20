@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pydantic import BaseModel
+from pydantic import BaseModel, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # EnvSettings must load the canonical repo-root .env regardless of the process
@@ -46,6 +46,19 @@ class EnvSettings(BaseSettings):
     # Async SQLAlchemy URL (asyncpg driver). Dev default targets the Postgres in
     # docker-compose.yml published to localhost; prod injects the in-network form.
     database_url: str = "postgresql+asyncpg://floresu:floresu@localhost:5432/floresu"
+    # HS256 secret for human session JWTs (external app), separate from the agent
+    # OAuth keypair (a later slice). Empty by default so an unconfigured external
+    # app fail-safe denies every session (no cookie resolves). SecretStr so an
+    # accidental settings dump/log masks it; read via .get_secret_value() only at
+    # JWT sign/verify.
+    session_jwt_secret: SecretStr = SecretStr("")
+    # Cookie Domain for the session cookie. Prod pins the apex so the SPA and API
+    # subdomains share it; empty in dev makes the cookie host-only (localhost).
+    cookie_domain: str = ""
+    # Allowed browser origin for the SPA's credentialed login/session XHRs (CORS).
+    # Empty in dev, where the SPA reaches the API same-origin via the Vite dev
+    # proxy; prod pins the SPA origin so the cross-subdomain cookie flow works.
+    cors_origin: str = ""
 
 
 class AppSettings(BaseModel):
@@ -57,10 +70,20 @@ class AppSettings(BaseModel):
     log_level: str
     host: str
     database_url: str
+    # Auth knobs, defaulted so the shared test settings factory and any non-auth
+    # caller need not supply them.
+    session_jwt_secret: SecretStr = SecretStr("")
+    cookie_domain: str = ""
+    cors_origin: str = ""
 
     @property
     def is_dev(self) -> bool:
         return self.environment.lower() == "development"
+
+    @property
+    def allowed_cors_origins(self) -> list[str]:
+        """Browser origins allowed to send credentialed XHRs; empty when unset."""
+        return [self.cors_origin] if self.cors_origin else []
 
 
 def build_app_settings(*, service: str, port: int, env: EnvSettings | None = None) -> AppSettings:
@@ -73,4 +96,7 @@ def build_app_settings(*, service: str, port: int, env: EnvSettings | None = Non
         log_level=env.log_level,
         host=env.host,
         database_url=env.database_url,
+        session_jwt_secret=env.session_jwt_secret,
+        cookie_domain=env.cookie_domain,
+        cors_origin=env.cors_origin,
     )
