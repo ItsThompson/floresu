@@ -49,6 +49,13 @@ SERVICE_METHOD_FAILURES = Counter(
     registry=FLORESU_REGISTRY,
 )
 
+OAUTH_TOKENS_ISSUED = Counter(
+    "oauth_tokens_issued_total",
+    "Agent OAuth access/refresh token pairs issued, by grant type.",
+    labelnames=("grant_type",),
+    registry=FLORESU_REGISTRY,
+)
+
 DB_QUERY_DURATION = Histogram(
     "db_query_duration_seconds",
     "Database statement execution latency in seconds by query name.",

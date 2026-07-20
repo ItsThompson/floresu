@@ -63,6 +63,30 @@ class EnvSettings(BaseSettings):
     # Empty in dev, where the SPA reaches the API same-origin via the Vite dev
     # proxy; prod pins the SPA origin so the cross-subdomain cookie flow works.
     cors_origin: str = ""
+    # Pinned public URLs the OAuth 2.1 AS derives every issuer/metadata/endpoint
+    # URL from (the "Site-URL gotcha": the tunnel reaches the origin as
+    # http://backend:8000, so a request-derived URL would break client issuer/
+    # audience validation). ``public_base_url`` is the AS origin and token ``iss``;
+    # ``app_public_url`` is the SPA that renders consent; ``mcp_public_url`` is the
+    # MCP resource agent access tokens are audience-bound to.
+    public_base_url: str = "http://localhost:8000"
+    app_public_url: str = "http://localhost:5173"
+    mcp_public_url: str = "http://localhost:9000"
+    # Agent OAuth 2.1 AS signing key: the AS holds a private RSA PEM and publishes
+    # the public key via JWKS; ``oauth_key_id`` is the active ``kid``. An empty
+    # path lets development generate an ephemeral in-memory keypair so the app
+    # boots without a mounted PEM; outside development a missing key fails fast.
+    oauth_private_key_path: str = ""
+    oauth_key_id: str = "floresu-oauth-dev"
+    # Agent token lifetimes: short-lived access token + long rotating refresh.
+    oauth_access_ttl_seconds: int = 900
+    oauth_refresh_ttl_seconds: int = 2_592_000
+    # Stale-client reaper (external app). Dynamic Client Registration is open at
+    # P0, so registration rows would grow unbounded; a periodic sweep reaps
+    # clients whose registration is older than the max age (cascade-revoking each
+    # reaped client's grant + refresh chain). A non-positive interval disables it.
+    oauth_client_cleanup_interval_seconds: int = 21_600
+    oauth_stale_client_max_age_seconds: int = 2_592_000
 
 
 class AppSettings(BaseModel):
@@ -80,6 +104,17 @@ class AppSettings(BaseModel):
     session_jwt_secret: SecretStr = SecretStr("")
     cookie_domain: str = ""
     cors_origin: str = ""
+    # OAuth AS knobs, defaulted so the shared test settings factory and any
+    # non-OAuth caller need not supply them.
+    public_base_url: str = "http://localhost:8000"
+    app_public_url: str = "http://localhost:5173"
+    mcp_public_url: str = "http://localhost:9000"
+    oauth_private_key_path: str = ""
+    oauth_key_id: str = "floresu-oauth-dev"
+    oauth_access_ttl_seconds: int = 900
+    oauth_refresh_ttl_seconds: int = 2_592_000
+    oauth_client_cleanup_interval_seconds: int = 21_600
+    oauth_stale_client_max_age_seconds: int = 2_592_000
 
     @property
     def is_dev(self) -> bool:
@@ -105,4 +140,13 @@ def build_app_settings(*, service: str, port: int, env: EnvSettings | None = Non
         session_jwt_secret=env.session_jwt_secret,
         cookie_domain=env.cookie_domain,
         cors_origin=env.cors_origin,
+        public_base_url=env.public_base_url,
+        app_public_url=env.app_public_url,
+        mcp_public_url=env.mcp_public_url,
+        oauth_private_key_path=env.oauth_private_key_path,
+        oauth_key_id=env.oauth_key_id,
+        oauth_access_ttl_seconds=env.oauth_access_ttl_seconds,
+        oauth_refresh_ttl_seconds=env.oauth_refresh_ttl_seconds,
+        oauth_client_cleanup_interval_seconds=env.oauth_client_cleanup_interval_seconds,
+        oauth_stale_client_max_age_seconds=env.oauth_stale_client_max_age_seconds,
     )
