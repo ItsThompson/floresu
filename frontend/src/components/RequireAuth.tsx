@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from "react-router";
+import { Navigate, Outlet, useLocation } from "react-router";
 
 import { useAuth } from "@/auth";
 import { RouteLoading } from "./RouteLoading";
@@ -9,13 +9,19 @@ import { RouteLoading } from "./RouteLoading";
  *
  * - `loading` → neutral full-screen loader (never misroute or flash a guarded
  *   view while the session resolves on mount)
- * - `anonymous` → redirect to `/signin` (`replace` keeps it out of history)
+ * - `anonymous` → redirect to `/signin`, carrying the attempted location as
+ *   `from` so sign-in returns the user here (e.g. a deep-linked consent URL);
+ *   `replace` keeps the guard out of history
  * - `authenticated` → render the route
  */
 export function RequireAuth() {
   const { status } = useAuth();
+  const location = useLocation();
 
   if (status === "loading") return <RouteLoading />;
-  if (status === "anonymous") return <Navigate to="/signin" replace />;
+  if (status === "anonymous") {
+    const from = `${location.pathname}${location.search}`;
+    return <Navigate to="/signin" state={{ from }} replace />;
+  }
   return <Outlet />;
 }
