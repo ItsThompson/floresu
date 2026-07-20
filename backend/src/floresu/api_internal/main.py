@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from floresu.audit.wiring import build_write_event_publisher
 from floresu.core.app_factory import create_app
 from floresu.core.db import create_database, create_db_lifespan, db_readiness_check
 from floresu.core.errors import build_exception_handlers
@@ -30,6 +31,9 @@ app: FastAPI = create_app(
     lifespan=create_db_lifespan(db.engine),
 )
 app.state.db = db
+# The write-event seam, composed with the audit consumer as the sole transactional
+# consumer. The internal app's domain slices publish agent writes through this.
+app.state.events = build_write_event_publisher()
 
 
 def main() -> None:  # pragma: no cover - process entrypoint
