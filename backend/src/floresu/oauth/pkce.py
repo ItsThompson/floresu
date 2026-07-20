@@ -13,6 +13,10 @@ import base64
 import hashlib
 import secrets
 
+# RFC 7636 §4.1: the code_verifier is 43-128 characters.
+_VERIFIER_MIN_LENGTH = 43
+_VERIFIER_MAX_LENGTH = 128
+
 
 def compute_s256_challenge(code_verifier: str) -> str:
     """The RFC 7636 S256 code challenge for ``code_verifier`` (base64url, unpadded)."""
@@ -23,6 +27,8 @@ def compute_s256_challenge(code_verifier: str) -> str:
 def is_valid_s256(code_verifier: str, code_challenge: str) -> bool:
     """True if ``code_verifier`` hashes (S256) to the stored ``code_challenge``."""
     if not code_verifier or not code_challenge:
+        return False
+    if not _VERIFIER_MIN_LENGTH <= len(code_verifier) <= _VERIFIER_MAX_LENGTH:
         return False
     computed = compute_s256_challenge(code_verifier)
     return secrets.compare_digest(computed, code_challenge)
