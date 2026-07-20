@@ -24,6 +24,7 @@ from alembic import context
 # ``DROP TABLE users`` / ``DROP TABLE revoked_sessions``. Add new domains here as
 # their slices land.
 from floresu.accounts import models as _accounts_models  # noqa: F401
+from floresu.audit import models as _audit_models  # noqa: F401
 from floresu.core.db import create_db_engine
 from floresu.core.orm import Base
 from floresu.core.settings import EnvSettings
