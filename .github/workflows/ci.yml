@@ -62,5 +62,47 @@ jobs:
       - name: Type-check (tsc)
         run: npm run typecheck
 
+      - name: Test (vitest, coverage gate)
+        run: npm run test:coverage
+
       - name: Build
         run: npm run build
+
+  codegen-drift:
+    name: codegen drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install backend deps
+        working-directory: backend
+        run: uv sync --frozen
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      # Regenerate the OpenAPI document from the live FastAPI app and the TS
+      # client from it, then fail if the committed client is stale. Mirrors
+      # `just codegen`.
+      - name: Regenerate the typed client
+        run: |
+          cd backend
+          LOG_LEVEL=critical uv run python -c "import json; from floresu.api.main import app; print(json.dumps(app.openapi(), indent=2))" > ../frontend/openapi.json
+          cd ../frontend
+          npm run codegen
+
+      - name: Fail on a stale committed client
+        run: git diff --exit-code -- frontend/openapi.json frontend/src/api/schema.d.ts
