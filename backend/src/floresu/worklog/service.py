@@ -29,6 +29,7 @@ from floresu.worklog.config import DEFAULT_LIST_LIMIT, ENTITY_TYPE, REEMBED_CONT
 from floresu.worklog.hashing import compute_content_hash
 from floresu.worklog.injection import Clock, utcnow
 from floresu.worklog.models import WorklogEntry
+from floresu.worklog.normalize import dedupe, normalize_labels
 from floresu.worklog.schemas import (
     TagRead,
     WorklogRecord,
@@ -39,8 +40,6 @@ from floresu.worklog.schemas import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from floresu.core.actor import Actor
@@ -69,9 +68,9 @@ class WorklogService:
     async def create(self, user_id: str, actor: Actor, write: WorklogWrite) -> WorklogRecord:
         """Create an entry, attach its sources, and reconcile its tags atomically."""
         pk = _require_user_pk(user_id)
-        source_ids = _dedupe(write.source_ids)
+        source_ids = dedupe(write.source_ids)
         await self._require_owned_sources(pk, source_ids)
-        labels = _normalize_labels(write.tags)
+        labels = normalize_labels(write.tags)
         content_hash = compute_content_hash(write.title, write.description)
         entry = WorklogEntry(
             user_id=pk,
@@ -128,9 +127,9 @@ class WorklogService:
         entry = await self._repo.get(pk, worklog_id)
         if entry is None:
             raise _not_found(worklog_id)
-        source_ids = _dedupe(write.source_ids)
+        source_ids = dedupe(write.source_ids)
         await self._require_owned_sources(pk, source_ids)
-        labels = _normalize_labels(write.tags)
+        labels = normalize_labels(write.tags)
         new_hash = compute_content_hash(write.title, write.description)
         content_changed = new_hash != entry.content_hash
         async with transaction(self._session):
@@ -260,29 +259,6 @@ def _not_found(worklog_id: int) -> NotFound:
     # 404-over-403: an entry another account owns is scoped out of the read, so a
     # miss is indistinguishable from "does not exist" (no existence leak).
     return NotFound(f"No worklog entry with id {worklog_id}.")
-
-
-def _normalize_labels(labels: Sequence[str]) -> list[str]:
-    """Trim, drop blanks, and de-duplicate labels, preserving first-seen order."""
-    seen: set[str] = set()
-    normalized: list[str] = []
-    for label in labels:
-        trimmed = label.strip()
-        if trimmed and trimmed not in seen:
-            seen.add(trimmed)
-            normalized.append(trimmed)
-    return normalized
-
-
-def _dedupe(source_ids: Sequence[int]) -> list[int]:
-    """De-duplicate source ids, preserving first-seen order."""
-    seen: set[int] = set()
-    unique: list[int] = []
-    for source_id in source_ids:
-        if source_id not in seen:
-            seen.add(source_id)
-            unique.append(source_id)
-    return unique
 
 
 def _created_summary(write: WorklogWrite) -> str:
