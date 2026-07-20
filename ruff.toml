@@ -22,5 +22,22 @@ select = [
 [lint.isort]
 known-first-party = ["floresu", "floresu_worker", "floresu_mcp"]
 
+[lint.flake8-bugbear]
+# FastAPI's dependency-injection markers are the idiomatic way to declare route
+# and dependency parameters; calling them in argument defaults is the framework
+# contract, not the B008 mutable-default hazard. Exempt the standard set so every
+# package's routers and dependencies lint cleanly.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Header",
+    "fastapi.Cookie",
+    "fastapi.Body",
+    "fastapi.Form",
+    "fastapi.File",
+    "fastapi.Security",
+]
+
 [format]
 docstring-code-format = true
