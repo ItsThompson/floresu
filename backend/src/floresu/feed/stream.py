@@ -42,6 +42,11 @@ async def feed_frames(
     On reconnect (``last_event_id`` set) the buffered gap is replayed in order
     before live streaming resumes. A replayed event may also arrive live; the
     client dedups by id, so the overlap is harmless.
+
+    Replay reads before the live subscription is established, so an event published
+    in that narrow window is not delivered live on this connection. It stays in the
+    bounded replay buffer, so the next reconnect or a page reload recovers it, and
+    the client dedups by id.
     """
     if last_event_id is not None:
         for buffered in await store.replay_since(user_id, last_event_id):

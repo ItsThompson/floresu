@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { MAX_RENDERED_EVENTS } from "../constants";
 import type {
   ActivityFeedState,
   FeedEvent,
@@ -36,15 +37,17 @@ export function useActivityFeed({
     loadHistory()
       .then((history) => {
         if (cancelled) return;
-        setEvents(history);
+        setEvents(history.slice(0, MAX_RENDERED_EVENTS));
         setStatus("ready");
         // Open the stream only once the initial rows are in, so the first live
-        // events merge against a rendered baseline (spec: connect after render).
+        // events merge against a rendered baseline.
         connection = createConnection();
         connection.onMessage((data) => {
           const incoming = parseEvent(data);
           if (incoming) setEvents((current) => mergeById(current, incoming));
         });
+        // The connection's error signal is intentionally not consumed: EventSource
+        // reconnects on its own and resends Last-Event-ID, so recovery is transparent.
       })
       .catch(() => {
         if (cancelled) return;
@@ -61,10 +64,10 @@ export function useActivityFeed({
   return { status, events, error };
 }
 
-/** Insert an event newest-first, skipping ids already present (dedup). */
+/** Insert an event newest-first, skipping ids already present (dedup), capped. */
 function mergeById(events: FeedEvent[], incoming: FeedEvent): FeedEvent[] {
   if (events.some((event) => event.id === incoming.id)) return events;
-  return [incoming, ...events].sort((a, b) => b.id - a.id);
+  return [incoming, ...events].sort((a, b) => b.id - a.id).slice(0, MAX_RENDERED_EVENTS);
 }
 
 /** Parse one SSE `data:` payload into an event, or null if it is malformed. */

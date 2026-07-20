@@ -121,4 +121,16 @@ describe("useActivityFeed", () => {
     unmount();
     expect(fake.close).toHaveBeenCalledTimes(1);
   });
+
+  it("caps the rendered events at the newest window as live events arrive", async () => {
+    const { result, fake } = renderFeed([buildFeedEvent({ id: 1 })]);
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+
+    // Push well past the cap; the feed keeps only the newest MAX_RENDERED_EVENTS.
+    for (let id = 2; id <= 150; id++) fake.emit(buildFeedEvent({ id }));
+
+    expect(result.current.events).toHaveLength(100);
+    expect(result.current.events[0].id).toBe(150); // newest first
+    expect(result.current.events.at(-1)?.id).toBe(51); // oldest retained
+  });
 });

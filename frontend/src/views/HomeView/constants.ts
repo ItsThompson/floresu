@@ -30,3 +30,10 @@ export function entityHref(event: FeedEvent): string {
 export function entityLabel(event: FeedEvent): string {
   return event.summary?.trim() || `${event.entity_type} #${event.entity_id}`;
 }
+
+/**
+ * Upper bound on rendered feed rows. A long-lived Home tab would otherwise grow
+ * the events array and DOM without limit; the feed shows the newest window and
+ * older rows are recoverable via a reload. Comfortably above the history page size.
+ */
+export const MAX_RENDERED_EVENTS = 100;
