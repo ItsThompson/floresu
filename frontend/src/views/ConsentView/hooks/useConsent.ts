@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router";
 import { useSessionClient } from "@/api";
 
 import { DECISION_FAILED_MESSAGE, INVALID_REQUEST_MESSAGE } from "../constants";
-import type { ConsentActions, ConsentPhase, ConsentState, UseConsentParams } from "../types";
+import type { ConsentActions, ConsentState, UseConsentParams } from "../types";
 
 interface UseConsent {
   state: ConsentState;
@@ -27,38 +27,31 @@ export function useConsent({ redirect }: UseConsentParams): UseConsent {
   const [searchParams] = useSearchParams();
   const authRequestId = searchParams.get("auth_request_id");
 
-  const [phase, setPhase] = useState<ConsentPhase>("loading");
-  const [agentName, setAgentName] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<ConsentState>({ phase: "loading" });
 
   useEffect(() => {
     if (!authRequestId) {
-      setError(INVALID_REQUEST_MESSAGE);
-      setPhase("error");
+      setState({ phase: "error", message: INVALID_REQUEST_MESSAGE });
       return;
     }
     // Guard against a resolved fetch writing state after the id changed/unmounted.
     let active = true;
-    setPhase("loading");
-    setError(null);
+    setState({ phase: "loading" });
     void client
       .GET("/oauth/authorize/context", {
         params: { query: { auth_request_id: authRequestId } },
       })
       .then(({ data }) => {
         if (!active) return;
-        if (data) {
-          setAgentName(data.client_name);
-          setPhase("ready");
-          return;
-        }
-        setError(INVALID_REQUEST_MESSAGE);
-        setPhase("error");
+        setState(
+          data
+            ? { phase: "ready", agentName: data.client_name }
+            : { phase: "error", message: INVALID_REQUEST_MESSAGE },
+        );
       })
       .catch(() => {
         if (!active) return;
-        setError(INVALID_REQUEST_MESSAGE);
-        setPhase("error");
+        setState({ phase: "error", message: INVALID_REQUEST_MESSAGE });
       });
     return () => {
       active = false;
@@ -68,8 +61,11 @@ export function useConsent({ redirect }: UseConsentParams): UseConsent {
   const decide = useCallback(
     (approve: boolean) => {
       if (!authRequestId) return;
-      setPhase("deciding");
-      setError(null);
+      // Only a shown card can decide; keep the agent name so the card stays put
+      // with its actions disabled while the decision is in flight.
+      setState((current) =>
+        current.phase === "ready" ? { phase: "deciding", agentName: current.agentName } : current,
+      );
       void client
         .POST("/oauth/authorize/decision", {
           body: { auth_request_id: authRequestId, approve },
@@ -79,12 +75,10 @@ export function useConsent({ redirect }: UseConsentParams): UseConsent {
             redirect(data.redirect_uri);
             return;
           }
-          setError(DECISION_FAILED_MESSAGE);
-          setPhase("error");
+          setState({ phase: "error", message: DECISION_FAILED_MESSAGE });
         })
         .catch(() => {
-          setError(DECISION_FAILED_MESSAGE);
-          setPhase("error");
+          setState({ phase: "error", message: DECISION_FAILED_MESSAGE });
         });
     },
     [authRequestId, client, redirect],
@@ -93,11 +87,6 @@ export function useConsent({ redirect }: UseConsentParams): UseConsent {
   const actions = useMemo<ConsentActions>(
     () => ({ approve: () => decide(true), deny: () => decide(false) }),
     [decide],
-  );
-
-  const state = useMemo<ConsentState>(
-    () => ({ phase, agentName, error }),
-    [phase, agentName, error],
   );
 
   return { state, actions };

@@ -1,6 +1,6 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { http, HttpResponse } from "msw";
+import { delay, http, HttpResponse } from "msw";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { assignLocation } from "@/lib/browserNavigation";
@@ -102,6 +102,26 @@ describe("ConsentView", () => {
 
     await waitFor(() => expect(mockAssign).toHaveBeenCalledWith(DENY_REDIRECT));
     expect(decisions).toEqual([{ approve: false }]);
+  });
+
+  it("disables both actions while a decision is in flight", async () => {
+    authenticateOnResume();
+    mockContext();
+    // Hold the decision open so the deciding state stays observable.
+    server.use(
+      http.post("*/oauth/authorize/decision", async () => {
+        await delay("infinite");
+        return HttpResponse.json({ redirect_uri: APPROVE_REDIRECT });
+      }),
+    );
+
+    renderApp([CONSENT_URL]);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Approve" }));
+
+    expect(screen.getByRole("button", { name: "Approve" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Deny" })).toBeDisabled();
+    expect(mockAssign).not.toHaveBeenCalled();
   });
 
   it("shows an error instead of an approve action for an invalid or expired request", async () => {

@@ -4,7 +4,6 @@ import { assignLocation } from "@/lib/browserNavigation";
 
 import { ConsentCard } from "./components/ConsentCard";
 import { ConsentError } from "./components/ConsentError";
-import { INVALID_REQUEST_MESSAGE } from "./constants";
 import { useConsent } from "./hooks/useConsent";
 
 /**
@@ -24,8 +23,8 @@ export function ConsentView() {
   if (state.phase === "loading") {
     return <RouteLoading />;
   }
-  if (state.phase === "error" || state.agentName === null) {
-    return <ConsentError message={state.error ?? INVALID_REQUEST_MESSAGE} />;
+  if (state.phase === "error") {
+    return <ConsentError message={state.message} />;
   }
   return (
     <ConsentCard
