@@ -22,5 +22,17 @@ select = [
 [lint.isort]
 known-first-party = ["floresu", "floresu_worker", "floresu_mcp"]
 
+[lint.flake8-bugbear]
+# FastAPI's dependency-injection idiom calls Depends()/Query()/... in argument
+# defaults by design; these are immutable markers, not mutable-default bugs (B008).
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Header",
+    "fastapi.Cookie",
+    "fastapi.Body",
+]
+
 [format]
 docstring-code-format = true
