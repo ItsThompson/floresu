@@ -19,8 +19,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol
 
 from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 
-from floresu.core.db import fetch_optional
+from floresu.core.db import fetch_optional, is_unique_violation
 from floresu.profile.models import Source
 from floresu.worklog.models import Tag, WorklogEntry, WorklogSource, WorklogTag
 
@@ -98,16 +99,33 @@ class SqlAlchemyWorklogRepository:
         return set(result.scalars().all())
 
     async def get_or_create_tag(self, user_id: int, label: str) -> Tag:
-        existing = await fetch_optional(
+        existing = await self._find_tag(user_id, label)
+        if existing is not None:
+            return existing
+        try:
+            # A SAVEPOINT so a concurrent same-label insert (worklog is written by
+            # both the human web app and the agent) breaches uq_tags_user_id on this
+            # nested insert alone, leaving the outer write transaction usable for the
+            # refetch below rather than aborting the whole write.
+            async with self._session.begin_nested():
+                tag = Tag(user_id=user_id, label=label)
+                self._session.add(tag)
+                await self._session.flush()
+            return tag
+        except IntegrityError as exc:
+            if not is_unique_violation(exc):
+                raise
+            # The concurrent writer's row is committed and now visible; reuse it.
+            refetched = await self._find_tag(user_id, label)
+            if refetched is None:  # pragma: no cover - the unique breach guarantees a row
+                raise
+            return refetched
+
+    async def _find_tag(self, user_id: int, label: str) -> Tag | None:
+        return await fetch_optional(
             self._session,
             select(Tag).where(Tag.user_id == user_id, Tag.label == label),
         )
-        if existing is not None:
-            return existing
-        tag = Tag(user_id=user_id, label=label)
-        self._session.add(tag)
-        await self._session.flush()
-        return tag
 
     async def list_tags(self, user_id: int) -> Sequence[Tag]:
         result = await self._session.execute(
