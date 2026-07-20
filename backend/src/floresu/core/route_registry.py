@@ -45,9 +45,18 @@ RouteRegistry = Mapping[RouteKey, AccessLevel]
 
 # Declarative per-app registries. Product routes are declared here by the module
 # that mounts them. The coverage test fails safe (deny) the moment a mounted
-# product route is missing an entry. Empty until the first domain slice adds
-# routes.
-EXTERNAL_ROUTE_ACCESS: RouteRegistry = {}
+# product route is missing an entry. The internal registry is empty until the
+# first internal-app domain slice adds routes.
+EXTERNAL_ROUTE_ACCESS: RouteRegistry = {
+    # Human web auth. The session-establishing endpoints are PUBLIC (they resolve
+    # identity from credentials or the refresh cookie, not a prior session);
+    # GET /me requires a resolved session cookie.
+    RouteKey("POST", "/auth/register"): AccessLevel.PUBLIC,
+    RouteKey("POST", "/auth/login"): AccessLevel.PUBLIC,
+    RouteKey("POST", "/auth/refresh"): AccessLevel.PUBLIC,
+    RouteKey("POST", "/auth/logout"): AccessLevel.PUBLIC,
+    RouteKey("GET", "/me"): AccessLevel.EXTERNAL_COOKIE,
+}
 INTERNAL_ROUTE_ACCESS: RouteRegistry = {}
 
 # OpenAPI operation keys that are HTTP methods (a path item also carries non-method
