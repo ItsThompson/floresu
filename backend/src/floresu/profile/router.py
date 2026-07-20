@@ -19,7 +19,6 @@ from typing import Any
 from fastapi import APIRouter, Depends
 
 from floresu.core.actor import Actor
-from floresu.profile.config import DEFAULT_LIST_LIMIT
 from floresu.profile.models import SourceKind
 from floresu.profile.schemas import (
     ReorderRequest,
@@ -63,9 +62,9 @@ def create_sources_router(
         kind: SourceKind | None = None,
         include_archived: bool = False,
     ) -> list[SourceSummary]:
-        return await service.list_sources(
-            user_id, kind=kind, include_archived=include_archived, limit=DEFAULT_LIST_LIMIT
-        )
+        # No pagination at P0 (~5 users, small sections); the service caps the read
+        # at its default limit. Add a limit/cursor param here when sections can grow.
+        return await service.list_sources(user_id, kind=kind, include_archived=include_archived)
 
     @router.post("/reorder")
     async def reorder_sources(

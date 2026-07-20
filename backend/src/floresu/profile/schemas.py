@@ -25,6 +25,7 @@ from floresu.profile.models import (
     Education,
     Project,
     Role,
+    Source,
     SourceKind,
     SourceSubtype,
 )
@@ -148,23 +149,17 @@ KIND_SPECS: dict[SourceKind, tuple[type[SourceSubtype], type[SourceDetail]]] = {
 }
 
 
-def to_summary(source: Any) -> SourceSummary:
+def to_summary(source: Source) -> SourceSummary:
     """Project a ``sources`` ORM row onto the common-column read shape."""
     return SourceSummary.model_validate(source)
 
 
-def to_record(source: Any, subtype: SourceSubtype) -> SourceRecord:
-    """Join a base row and its subtype row into the typed read shape."""
+def to_record(source: Source, subtype: SourceSubtype) -> SourceRecord:
+    """Join a base row and its subtype row into the typed read shape.
+
+    The base projection is single-sourced through :func:`to_summary`, so adding a
+    common column does not need a matching edit here.
+    """
     _, detail_model = KIND_SPECS[source.kind]
     detail = detail_model.model_validate(subtype, from_attributes=True)
-    return SourceRecord(
-        id=source.id,
-        kind=source.kind,
-        display_label=source.display_label,
-        date_start=source.date_start,
-        date_end=source.date_end,
-        summary=source.summary,
-        sort_order=source.sort_order,
-        archived_at=source.archived_at,
-        detail=detail,
-    )
+    return SourceRecord(**to_summary(source).model_dump(), detail=detail)
