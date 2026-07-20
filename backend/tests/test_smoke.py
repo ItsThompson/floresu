@@ -1,0 +1,48 @@
+"""Smoke test.
+
+Boots both real apps in one process and asserts /healthz and /metrics respond.
+Booting both together also proves the per-app metric registries do not collide.
+Readiness is dependency-gated, so this asserts the Postgres check is wired into
+both apps; its up/down state is covered by the DB readiness tests.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import pytest
+from fastapi.testclient import TestClient
+
+from floresu.api.main import app as external_app
+from floresu.api_internal.main import app as internal_app
+
+if TYPE_CHECKING:
+    from fastapi import FastAPI
+
+
+@pytest.mark.parametrize(
+    ("label", "app"),
+    [("external", external_app), ("internal", internal_app)],
+)
+def test_both_apps_serve_health_and_metrics(label: str, app: FastAPI) -> None:
+    # The context manager runs the lifespan (startup + pool disposal on exit).
+    with TestClient(app) as client:
+        assert client.get("/healthz").status_code == 200
+
+        readyz = client.get("/readyz")
+        # Readiness reflects live Postgres connectivity; assert the DB check is
+        # wired into both apps rather than a specific up/down outcome.
+        assert readyz.status_code in (200, 503)
+        assert "postgres" in readyz.json()["checks"]
+
+        metrics = client.get("/metrics")
+        assert metrics.status_code == 200
+        assert "http_requests_total" in metrics.text
+        assert "http_request_duration_seconds" in metrics.text
+
+
+def test_the_two_apps_bind_distinct_service_identities() -> None:
+    assert external_app.state.settings.service == "floresu-external"
+    assert external_app.state.settings.port == 8000
+    assert internal_app.state.settings.service == "floresu-internal"
+    assert internal_app.state.settings.port == 8001
