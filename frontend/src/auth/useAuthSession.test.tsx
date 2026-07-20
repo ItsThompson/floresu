@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { createApiClient } from "@/api";
 import { server } from "@/mocks/server";
-import { mockAuthUser } from "@/mocks/data";
+import { buildAuthUser, mockAuthUser } from "@/mocks/data";
 
 import { useAuthSession } from "./useAuthSession";
 
@@ -78,5 +78,25 @@ describe("useAuthSession", () => {
     });
     expect(result.current.status).toBe("anonymous");
     expect(result.current.user).toBeNull();
+  });
+
+  it("flips the onboarding flag on the session user when completing onboarding", async () => {
+    server.use(
+      http.post("*/auth/refresh", () =>
+        HttpResponse.json(buildAuthUser({ has_completed_onboarding: false })),
+      ),
+    );
+    const { result } = renderSession();
+    await waitFor(() => expect(result.current.status).toBe("authenticated"));
+    expect(result.current.user?.has_completed_onboarding).toBe(false);
+
+    let outcome;
+    await act(async () => {
+      outcome = await result.current.completeOnboarding();
+    });
+
+    expect(outcome).toEqual({ ok: true });
+    expect(result.current.user?.has_completed_onboarding).toBe(true);
+    expect(result.current.status).toBe("authenticated");
   });
 });

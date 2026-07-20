@@ -16,6 +16,7 @@ export interface UseAuthSession extends SessionState {
   register: (input: RegisterInput) => Promise<AuthResult>;
   login: (input: LoginInput) => Promise<AuthResult>;
   logout: () => Promise<void>;
+  completeOnboarding: () => Promise<AuthResult>;
 }
 
 /**
@@ -78,5 +79,21 @@ export function useAuthSession(client: SessionClient): UseAuthSession {
     setSession(ANONYMOUS);
   }, [client]);
 
-  return { ...session, register, login, logout };
+  const completeOnboarding = useCallback(async (): Promise<AuthResult> => {
+    // Flip the session's onboarding flag so the route guard sends the user into
+    // the app and never re-shows the wizard for the rest of this session. The
+    // backend persistence endpoint does not exist yet (a later ticket owns it),
+    // so this is client-side only: a full reload re-reads the server value via
+    // resume-on-mount. Returning an AuthResult (never throwing) matches the
+    // login/register contract, so the completion flow already handles the
+    // failure branch the backend call will introduce.
+    setSession((current) =>
+      current.status === "authenticated" && current.user
+        ? { status: "authenticated", user: { ...current.user, has_completed_onboarding: true } }
+        : current,
+    );
+    return { ok: true };
+  }, []);
+
+  return { ...session, register, login, logout, completeOnboarding };
 }
