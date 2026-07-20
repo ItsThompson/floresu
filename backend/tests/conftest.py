@@ -12,6 +12,9 @@ from floresu.core.settings import AppSettings
 # vector` migration applies.
 POSTGRES_IMAGE = "pgvector/pgvector:pg17"
 
+# The dev/prod Redis image (docker-compose.yml uses the same line).
+REDIS_IMAGE = "redis:7-alpine"
+
 MakeSettings = Callable[..., AppSettings]
 
 
@@ -31,6 +34,27 @@ def postgres_url() -> Iterator[str]:
     try:
         with PostgresContainer(POSTGRES_IMAGE, driver="asyncpg") as postgres:
             yield postgres.get_connection_url()
+    except Exception as exc:  # pragma: no cover - Docker daemon unavailable
+        pytest.skip(f"Docker unavailable for integration tests: {exc}")
+
+
+@pytest.fixture(scope="session")
+def redis_url() -> Iterator[str]:
+    """A live Redis connection URL for the feed pub/sub + replay integration tests.
+
+    Session-scoped so tests across files share one container. Skips automatically
+    when testcontainers or Docker is unavailable, mirroring :func:`postgres_url`.
+    """
+    try:
+        from testcontainers.redis import RedisContainer
+    except ImportError:  # pragma: no cover - env without testcontainers
+        pytest.skip("testcontainers not installed")
+
+    try:
+        with RedisContainer(REDIS_IMAGE) as container:
+            host = container.get_container_host_ip()
+            port = container.get_exposed_port(6379)
+            yield f"redis://{host}:{port}/0"
     except Exception as exc:  # pragma: no cover - Docker daemon unavailable
         pytest.skip(f"Docker unavailable for integration tests: {exc}")
 

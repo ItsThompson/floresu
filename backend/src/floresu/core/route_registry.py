@@ -70,6 +70,10 @@ EXTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("POST", "/oauth/revoke"): AccessLevel.OAUTH,
     RouteKey("GET", "/me/clients"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("DELETE", "/me/clients/{client_id}"): AccessLevel.EXTERNAL_COOKIE,
+    # Live activity feed (external app only): the SSE stream and the initial-load
+    # read both require the human session cookie.
+    RouteKey("GET", "/feed"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("GET", "/feed/history"): AccessLevel.EXTERNAL_COOKIE,
 }
 INTERNAL_ROUTE_ACCESS: RouteRegistry = {}
 

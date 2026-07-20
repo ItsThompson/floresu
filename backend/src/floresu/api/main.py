@@ -26,12 +26,16 @@ from floresu.accounts.passwords import BcryptPasswordHasher
 from floresu.accounts.session import build_revocation_lookup, create_session_verifier
 from floresu.accounts.tokens import SessionTokenCodec
 from floresu.accounts.wiring import build_account_service_provider
-from floresu.audit.wiring import build_write_event_publisher
+from floresu.audit.wiring import build_audit_service_provider, build_write_event_publisher
 from floresu.core.app_factory import create_app
 from floresu.core.db import create_database, create_db_lifespan, db_readiness_check
 from floresu.core.errors import build_exception_handlers
 from floresu.core.identity import StripInboundIdentityMiddleware, deny_all_sessions, require_user
+from floresu.core.redis import create_redis_client
 from floresu.core.settings import EXTERNAL_PORT, EXTERNAL_SERVICE, build_app_settings
+from floresu.feed.api import create_feed_router
+from floresu.feed.store import RedisFeedStore
+from floresu.feed.wiring import FEED_STORE_ATTR, build_sse_feed_consumer
 from floresu.oauth.api import create_oauth_router
 from floresu.oauth.cleanup import start_stale_client_cleanup, stop_stale_client_cleanup
 from floresu.oauth.config import build_oauth_config
@@ -50,6 +54,10 @@ if TYPE_CHECKING:
 
 settings = build_app_settings(service=EXTERNAL_SERVICE, port=EXTERNAL_PORT)
 db = create_database(settings.database_url)
+# One async Redis client for the app, shared by the feed store. The activity feed
+# is the first consumer; later slices reuse it for the queue and rate limits.
+redis_client = create_redis_client(settings.redis_url)
+feed_store = RedisFeedStore(redis_client)
 
 # Human session cookies: HS256 codec + bcrypt hasher wired into the /auth router
 # and the real cookie verifier behind require_user.
@@ -80,9 +88,17 @@ oauth_router = create_oauth_router(
 )
 
 
+# The live activity feed: GET /feed (SSE stream) + GET /feed/history (initial load).
+# The stream resolves the caller via require_user and reads the process-wide feed
+# store off app.state; history reads the audit activity-feed via its own service.
+feed_router = create_feed_router(
+    identity=require_user, audit_service_provider=build_audit_service_provider()
+)
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Dispose the DB pool on shutdown and run the stale-client reaper in between."""
+    """Dispose the DB pool and Redis on shutdown; run the stale-client reaper in between."""
     async with create_db_lifespan(db.engine)(app):
         # Reap stale open-registration OAuth clients on a background task so DCR
         # rows stay bounded; stopped on shutdown before the pool is disposed.
@@ -97,20 +113,23 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             yield
         finally:
             await stop_stale_client_cleanup(cleanup_task)
+            await redis_client.aclose()
 
 
 app: FastAPI = create_app(
     settings,
-    routers=[accounts_router, me_router, oauth_router],
+    routers=[accounts_router, me_router, oauth_router, feed_router],
     readiness_checks=[db_readiness_check(db.engine)],
     exception_handlers={**build_exception_handlers(), **build_oauth_exception_handlers()},
     lifespan=_lifespan,
 )
 app.state.db = db
 # The write-event seam, composed with the audit consumer as the sole transactional
-# consumer. Domain slices publish through this; later slices register the SSE and
-# embed side channels here as best-effort consumers.
-app.state.events = build_write_event_publisher()
+# consumer and the SSE feed publish as a post-commit side channel: a committed
+# write fans out to the user's Redis feed channel, and a rolled-back write does not.
+app.state.events = build_write_event_publisher(post_commit=[build_sse_feed_consumer(feed_store)])
+# The feed store the SSE endpoint streams from (resolved via get_feed_store).
+setattr(app.state, FEED_STORE_ATTR, feed_store)
 # Replace the deny-all default with the real signed-JWT + sid-blacklist verifier.
 # With no configured SESSION_JWT_SECRET the app fail-safe denies every session
 # rather than sign/verify with an empty key.

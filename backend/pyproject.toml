@@ -26,6 +26,10 @@ dependencies = [
     # form-encoded /token + /revoke endpoints (FastAPI Form parsing).
     "joserfc>=1.0.0,<2",
     "python-multipart>=0.0.9,<1",
+    # Async Redis client for the live activity feed: pub/sub fan-out per user and
+    # the bounded replay buffer the SSE endpoint reconnect-replays from. redis-py
+    # ships py.typed and an asyncio interface (redis.asyncio).
+    "redis>=5.0.0,<7",
 ]
 
 [project.scripts]
@@ -47,7 +51,7 @@ dev = [
     "pytest-asyncio>=0.24",
     "pytest-cov>=6.0",
     "httpx>=0.27",
-    "testcontainers[postgres]>=4.8,<5",
+    "testcontainers[postgres,redis]>=4.8,<5",
 ]
 
 [tool.ruff]
