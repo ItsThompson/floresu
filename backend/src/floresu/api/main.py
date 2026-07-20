@@ -24,6 +24,7 @@ from floresu.accounts.passwords import BcryptPasswordHasher
 from floresu.accounts.session import build_revocation_lookup, create_session_verifier
 from floresu.accounts.tokens import SessionTokenCodec
 from floresu.accounts.wiring import build_account_service_provider
+from floresu.audit.wiring import build_write_event_publisher
 from floresu.core.app_factory import create_app
 from floresu.core.db import create_database, create_db_lifespan, db_readiness_check
 from floresu.core.errors import build_exception_handlers
@@ -58,6 +59,10 @@ app: FastAPI = create_app(
     lifespan=create_db_lifespan(db.engine),
 )
 app.state.db = db
+# The write-event seam, composed with the audit consumer as the sole transactional
+# consumer. Domain slices publish through this; later slices register the SSE and
+# embed side channels here as best-effort consumers.
+app.state.events = build_write_event_publisher()
 # Replace the deny-all default with the real signed-JWT + sid-blacklist verifier.
 # With no configured SESSION_JWT_SECRET the app fail-safe denies every session
 # rather than sign/verify with an empty key.
