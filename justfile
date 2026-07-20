@@ -91,10 +91,20 @@ test:
         echo "== pytest $pkg =="
         (cd "$pkg" && uv run pytest)
     done
+    echo "== vitest frontend =="
+    (cd frontend && npm run test)
 
 # Build the frontend static bundle.
 build-frontend:
     cd frontend && npm run build
+
+# Regenerate the OpenAPI -> TypeScript client from the live FastAPI schema.
+# Exports the external app's OpenAPI document, then runs openapi-typescript. CI
+# runs this and `git diff --exit-code` to fail on a stale committed client. Run
+# after any change to the external REST surface.
+codegen:
+    cd backend && LOG_LEVEL=critical uv run python -c "import json; from floresu.api.main import app; print(json.dumps(app.openapi(), indent=2))" > ../frontend/openapi.json
+    cd frontend && npm run codegen
 
 # --- format ---
 
