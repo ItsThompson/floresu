@@ -35,6 +35,14 @@ describe("appRoutes", () => {
     expect(onboarding?.children).toBeUndefined();
   });
 
+  it("places the consent screen inside the session guard but outside the onboarding guard", () => {
+    // Session-gated (a direct child of the guard) yet chrome-free and not behind
+    // the onboarding guard, so a connect-time consent is never bounced to the wizard.
+    const consent = guardChildren.find((child) => child.path === "/authorize");
+    expect(consent).toBeDefined();
+    expect(consent?.children).toBeUndefined();
+  });
+
   it("gates the app shell and its index route behind the onboarding guard", () => {
     // The shell lives under a second pathless layout route (the onboarding guard),
     // not as a direct child of the session guard.
