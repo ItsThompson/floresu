@@ -84,15 +84,14 @@ class InMemorySourceRepository:
         rows.sort(key=lambda s: (_KIND_ORDER[s.kind], s.sort_order, s.id))
         return rows[:limit]
 
-    async def get_many(
-        self, user_id: int, kind: SourceKind, source_ids: Sequence[int]
-    ) -> Sequence[Source]:
-        wanted = set(source_ids)
-        return [
+    async def active_section(self, user_id: int, kind: SourceKind) -> Sequence[Source]:
+        rows = [
             s
             for s in self._sources.values()
-            if s.user_id == user_id and s.kind == kind and s.id in wanted
+            if s.user_id == user_id and s.kind == kind and s.archived_at is None
         ]
+        rows.sort(key=lambda s: (s.sort_order, s.id))
+        return rows
 
 
 def capturing_publisher() -> tuple[WriteEventPublisher, list[WriteEvent]]:

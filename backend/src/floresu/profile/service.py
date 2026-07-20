@@ -169,22 +169,27 @@ class SourceService:
     ) -> list[SourceSummary]:
         """Persist ``sort_order`` by submitted position within one kind.
 
-        Ordering is independent per kind because section lists filter by kind, so
-        each kind carries its own 0-based positions. Every submitted id must be one
-        of the caller's sources of that kind; the caller sends the section's full
-        order.
+        The submit must be a permutation of the kind's full active section: every
+        active source of that kind, listed exactly once. A partial submit is
+        rejected, so ``sort_order`` can never end up duplicated or partially
+        applied. Ordering is independent per kind because section lists filter by
+        kind, so each kind carries its own 0-based positions.
         """
         pk = _require_user_pk(user_id)
         ordered_ids = request.source_ids
         if len(set(ordered_ids)) != len(ordered_ids):
             raise Validation("The reorder contains duplicate source ids.")
-        rows = await self._repo.get_many(pk, request.kind, ordered_ids)
-        by_id = {row.id: row for row in rows}
-        unknown = [sid for sid in ordered_ids if sid not in by_id]
-        if unknown:
+        section = await self._repo.active_section(pk, request.kind)
+        by_id = {row.id: row for row in section}
+        if set(ordered_ids) != set(by_id):
             raise Validation(
-                "The reorder references sources that are not in this section.",
-                fields={"source_ids": f"Unknown ids: {unknown}."},
+                "A reorder must list every active source in the section exactly once.",
+                fields={
+                    "source_ids": (
+                        f"Expected the {len(by_id)} active {request.kind.value} "
+                        f"source(s); got {len(ordered_ids)}."
+                    )
+                },
             )
         async with transaction(self._session):
             for position, source_id in enumerate(ordered_ids):

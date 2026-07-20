@@ -258,6 +258,25 @@ async def test_reorder_rejects_unknown_ids() -> None:
         )
 
 
+async def test_reorder_rejects_a_partial_section() -> None:
+    from floresu.profile.schemas import ReorderRequest
+
+    service, _, _, captured = _service()
+    first = await service.create(_USER, _HUMAN, build_role_write(display_label="A"))
+    await service.create(_USER, _HUMAN, build_role_write(display_label="B"))
+    third = await service.create(_USER, _HUMAN, build_role_write(display_label="C"))
+    captured.clear()
+
+    # Submitting only two of the three active roles is rejected: a partial submit
+    # would leave the omitted row's sort_order stale (duplicate / partial order).
+    with pytest.raises(Validation):
+        await service.reorder(
+            _USER, _HUMAN, ReorderRequest(kind=SourceKind.ROLE, source_ids=[third.id, first.id])
+        )
+    # Nothing was published or reordered.
+    assert captured == []
+
+
 async def test_reorder_rejects_duplicate_ids() -> None:
     from floresu.profile.schemas import ReorderRequest
 

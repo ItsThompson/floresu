@@ -43,9 +43,7 @@ class SourceRepository(Protocol):
         self, user_id: int, *, kind: SourceKind | None, include_archived: bool, limit: int
     ) -> Sequence[Source]: ...
 
-    async def get_many(
-        self, user_id: int, kind: SourceKind, source_ids: Sequence[int]
-    ) -> Sequence[Source]: ...
+    async def active_section(self, user_id: int, kind: SourceKind) -> Sequence[Source]: ...
 
 
 class SqlAlchemySourceRepository:
@@ -94,13 +92,18 @@ class SqlAlchemySourceRepository:
         result = await self._session.execute(statement)
         return result.scalars().all()
 
-    async def get_many(
-        self, user_id: int, kind: SourceKind, source_ids: Sequence[int]
-    ) -> Sequence[Source]:
-        statement = select(Source).where(
-            Source.user_id == user_id,
-            Source.kind == kind,
-            Source.id.in_(source_ids),
+    async def active_section(self, user_id: int, kind: SourceKind) -> Sequence[Source]:
+        # The full active section for one kind, ordered. Reorder needs every active
+        # row (not a submitted subset) so it can enforce a complete-section submit;
+        # unbounded on purpose (a section is small at P0 scale).
+        statement = (
+            select(Source)
+            .where(
+                Source.user_id == user_id,
+                Source.kind == kind,
+                Source.archived_at.is_(None),
+            )
+            .order_by(Source.sort_order, Source.id)
         )
         result = await self._session.execute(statement)
         return result.scalars().all()
