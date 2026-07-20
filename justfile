@@ -18,6 +18,24 @@ up:
 down:
     docker compose down
 
+# --- backend apps ---
+
+# Run the external app (:8000) with autoreload for the host inner loop.
+dev-api:
+    cd backend && uv run uvicorn floresu.api.main:app --reload --port 8000
+
+# Run the internal app (:8001) with autoreload for the host inner loop.
+dev-api-internal:
+    cd backend && uv run uvicorn floresu.api_internal.main:app --reload --port 8001
+
+# Run both backend apps together (as the container does).
+serve-backend:
+    cd backend && uv run ../scripts/serve-backend.sh
+
+# Apply all migrations to the database in DATABASE_URL (defaults to dev compose).
+migrate:
+    cd backend && uv run alembic upgrade head
+
 # --- install ---
 
 # Install dependencies for every package.
