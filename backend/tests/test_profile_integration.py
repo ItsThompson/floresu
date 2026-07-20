@@ -25,6 +25,7 @@ from floresu.audit.models import AuditLog
 from floresu.audit.wiring import build_write_event_publisher
 from floresu.core.actor import Actor, ActorType
 from floresu.core.db import create_db_engine, create_sessionmaker, transaction
+from floresu.core.errors import NotFound
 from floresu.profile.models import Role, Source, SourceKind
 from floresu.profile.repository import SqlAlchemySourceRepository
 from floresu.profile.schemas import ReorderRequest
@@ -92,6 +93,40 @@ async def test_create_writes_base_subtype_and_audit_in_one_transaction(
     assert audit[0].action == "create"
     assert audit[0].entity_id == record.id
     assert audit[0].actor_type is ActorType.HUMAN
+    # The ``sort_order`` server default is read back on the returned record (the
+    # Identity PK forces INSERT...RETURNING and eager_defaults folds it in).
+    assert record.sort_order == 0
+
+
+async def test_create_reads_back_the_server_default_sort_order(migrated_url: str) -> None:
+    engine = create_db_engine(migrated_url)
+    sessionmaker = create_sessionmaker(engine)
+    try:
+        user_id = await _insert_user(sessionmaker, "sources-defaults@example.com")
+        # Two creates in the same section both return sort_order 0 (no max+1 probe);
+        # this locks in the async server-default read-back for the domain template.
+        async with sessionmaker() as session:
+            first = await _service(session).create(str(user_id), _HUMAN, build_role_write())
+        async with sessionmaker() as session:
+            second = await _service(session).create(str(user_id), _HUMAN, build_role_write())
+    finally:
+        await engine.dispose()
+
+    assert first.sort_order == 0
+    assert second.sort_order == 0
+
+
+async def test_get_of_a_missing_source_is_not_found(migrated_url: str) -> None:
+    engine = create_db_engine(migrated_url)
+    sessionmaker = create_sessionmaker(engine)
+    try:
+        user_id = await _insert_user(sessionmaker, "sources-missing@example.com")
+        # Exercises the real SQLAlchemy get_detail "no such row" branch end to end.
+        with pytest.raises(NotFound):
+            async with sessionmaker() as session:
+                await _service(session).get(str(user_id), 9_999_999)
+    finally:
+        await engine.dispose()
 
 
 async def test_a_subtype_row_cannot_disagree_with_its_base_kind(migrated_url: str) -> None:
