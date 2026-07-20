@@ -74,6 +74,7 @@ def upgrade() -> None:
         sa.Column("code_challenge", sa.String(length=128), nullable=False),
         sa.Column("code_challenge_method", sa.String(length=8), nullable=False),
         sa.Column("resource", sa.String(length=500), nullable=False),
+        sa.Column("used", sa.Boolean(), server_default=sa.false(), nullable=False),
         _created_at(),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("code", name="pk_oauth_authorization_codes"),

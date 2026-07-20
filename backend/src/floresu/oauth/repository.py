@@ -36,7 +36,7 @@ class OAuthRepository(Protocol):
     async def add_client(self, client: OAuthClient) -> None: ...
     async def get_client(self, client_id: str) -> OAuthClient | None: ...
     async def get_clients(self, client_ids: Sequence[str]) -> dict[str, str]: ...
-    async def delete_clients_created_before(self, cutoff: datetime) -> list[str]: ...
+    async def delete_stale_registrations(self, cutoff: datetime) -> list[str]: ...
 
     async def add_auth_request(self, request: OAuthAuthRequest) -> None: ...
     async def get_auth_request(self, request_id: str) -> OAuthAuthRequest | None: ...
@@ -44,10 +44,12 @@ class OAuthRepository(Protocol):
 
     async def add_code(self, code: OAuthAuthorizationCode) -> None: ...
     async def get_code(self, code: str) -> OAuthAuthorizationCode | None: ...
-    async def delete_code(self, code: str) -> None: ...
+    async def consume_code(self, code: str) -> bool: ...
+    async def delete_expired_codes(self, now: datetime) -> None: ...
 
     async def add_refresh_token(self, token: OAuthRefreshToken, *, now: datetime) -> None: ...
     async def get_refresh_token(self, token_hash: str) -> OAuthRefreshToken | None: ...
+    async def consume_refresh_token(self, token_hash: str) -> bool: ...
     async def revoke_refresh_token(self, token_hash: str) -> None: ...
     async def revoke_grant_refresh_tokens(self, grant_id: str) -> None: ...
 
@@ -57,7 +59,6 @@ class OAuthRepository(Protocol):
     async def get_grant(self, user_id: str, client_id: str) -> OAuthGrant | None: ...
     async def touch_grant_activity(self, grant_id: str, *, now: datetime) -> None: ...
     async def list_active_grants(self, user_id: str) -> list[OAuthGrant]: ...
-    async def list_grants_for_clients(self, client_ids: Sequence[str]) -> list[OAuthGrant]: ...
     async def revoke_grant(
         self, user_id: str, client_id: str, *, now: datetime
     ) -> OAuthGrant | None: ...
@@ -97,16 +98,23 @@ class SqlAlchemyOAuthRepository:
         )
         return {client.client_id: client.client_name for client in result}
 
-    async def delete_clients_created_before(self, cutoff: datetime) -> list[str]:
-        """Delete stale open-registration clients (periodic cleanup hook, P0).
+    async def delete_stale_registrations(self, cutoff: datetime) -> list[str]:
+        """Reap abandoned open-registration clients (periodic cleanup hook, P0).
 
-        Returns the deleted ``client_id``s so the caller can cascade-revoke their
-        grants + refresh chains in the same transaction, leaving no grant that is
-        invisible to ``/me/clients`` yet whose refresh token still rotates.
+        Deletes clients registered before ``cutoff`` that have **no active
+        (non-revoked) grant**: never-consented DCR rows and clients whose grant was
+        revoked. An actively-granted client is never reaped, so a long-lived agent
+        that keeps refreshing is not disconnected. A revoked grant already has its
+        refresh chain revoked, so no live token survives the delete. Returns the
+        deleted ``client_id``s.
         """
+        active_client_ids = select(OAuthGrant.client_id).where(OAuthGrant.revoked_at.is_(None))
         result = await self._session.execute(
             delete(OAuthClient)
-            .where(OAuthClient.created_at < cutoff)
+            .where(
+                OAuthClient.created_at < cutoff,
+                OAuthClient.client_id.not_in(active_client_ids),
+            )
             .returning(OAuthClient.client_id)
         )
         return list(result.scalars().all())
@@ -138,9 +146,29 @@ class SqlAlchemyOAuthRepository:
             self._session, select(OAuthAuthorizationCode).where(OAuthAuthorizationCode.code == code)
         )
 
-    async def delete_code(self, code: str) -> None:
+    async def consume_code(self, code: str) -> bool:
+        """Atomically mark an unused code used; return whether this call consumed it.
+
+        A conditional ``UPDATE ... WHERE used = false RETURNING`` makes single-use
+        race-free: exactly one concurrent exchange flips the flag and gets a row
+        back (``True``); a replay (or the loser of a race) matches nothing
+        (``False``).
+        """
+        result = await self._session.execute(
+            update(OAuthAuthorizationCode)
+            .where(
+                OAuthAuthorizationCode.code == code,
+                OAuthAuthorizationCode.used.is_(False),
+            )
+            .values(used=True)
+            .returning(OAuthAuthorizationCode.code)
+        )
+        return result.scalar_one_or_none() is not None
+
+    async def delete_expired_codes(self, now: datetime) -> None:
+        """Reap authorization codes past their (short) TTL, used or not."""
         await self._session.execute(
-            delete(OAuthAuthorizationCode).where(OAuthAuthorizationCode.code == code)
+            delete(OAuthAuthorizationCode).where(OAuthAuthorizationCode.expires_at < now)
         )
 
     # --- refresh tokens -----------------------------------------------------
@@ -157,6 +185,25 @@ class SqlAlchemyOAuthRepository:
             self._session,
             select(OAuthRefreshToken).where(OAuthRefreshToken.token_hash == token_hash),
         )
+
+    async def consume_refresh_token(self, token_hash: str) -> bool:
+        """Atomically revoke an unrevoked refresh token; return whether this call did it.
+
+        The conditional ``UPDATE ... WHERE revoked = false RETURNING`` makes
+        rotation race-free: exactly one concurrent refresh consumes the token; a
+        replay or the loser of a race matches nothing and is treated as a chain
+        compromise.
+        """
+        result = await self._session.execute(
+            update(OAuthRefreshToken)
+            .where(
+                OAuthRefreshToken.token_hash == token_hash,
+                OAuthRefreshToken.revoked.is_(False),
+            )
+            .values(revoked=True)
+            .returning(OAuthRefreshToken.token_hash)
+        )
+        return result.scalar_one_or_none() is not None
 
     async def revoke_refresh_token(self, token_hash: str) -> None:
         await self._session.execute(
@@ -230,20 +277,6 @@ class SqlAlchemyOAuthRepository:
             .order_by(OAuthGrant.authorized_at.desc())
         )
         return list(result.scalars().all())
-
-    async def list_grants_for_clients(self, client_ids: Sequence[str]) -> list[OAuthGrant]:
-        """Batch-load the grants belonging to the given clients (cascade-revoke on
-        client cleanup).
-
-        An empty input returns ``[]`` without a query; otherwise one ``.in_()``
-        read replaces N serial lookups.
-        """
-        if not client_ids:
-            return []
-        result = await self._session.scalars(
-            select(OAuthGrant).where(OAuthGrant.client_id.in_(client_ids))
-        )
-        return list(result)
 
     async def revoke_grant(
         self, user_id: str, client_id: str, *, now: datetime

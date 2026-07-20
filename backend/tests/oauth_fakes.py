@@ -111,8 +111,13 @@ class InMemoryOAuthRepository:
         """Test-support: drop a client row, orphaning any grant that referenced it."""
         self._clients.pop(client_id, None)
 
-    async def delete_clients_created_before(self, cutoff: datetime) -> list[str]:
-        stale = [cid for cid, client in self._clients.items() if client.created_at < cutoff]
+    async def delete_stale_registrations(self, cutoff: datetime) -> list[str]:
+        active = {grant.client_id for grant in self._grants.values() if grant.revoked_at is None}
+        stale = [
+            cid
+            for cid, client in self._clients.items()
+            if client.created_at < cutoff and cid not in active
+        ]
         for cid in stale:
             del self._clients[cid]
         return stale
@@ -131,13 +136,24 @@ class InMemoryOAuthRepository:
     # --- authorization codes ------------------------------------------------
 
     async def add_code(self, code: OAuthAuthorizationCode) -> None:
+        if code.used is None:
+            code.used = False
         self._codes[code.code] = code
 
     async def get_code(self, code: str) -> OAuthAuthorizationCode | None:
         return self._codes.get(code)
 
-    async def delete_code(self, code: str) -> None:
-        self._codes.pop(code, None)
+    async def consume_code(self, code: str) -> bool:
+        stored = self._codes.get(code)
+        if stored is None or stored.used:
+            return False
+        stored.used = True
+        return True
+
+    async def delete_expired_codes(self, now: datetime) -> None:
+        expired = [key for key, code in self._codes.items() if code.expires_at < now]
+        for key in expired:
+            del self._codes[key]
 
     # --- refresh tokens -----------------------------------------------------
 
@@ -149,6 +165,13 @@ class InMemoryOAuthRepository:
 
     async def get_refresh_token(self, token_hash: str) -> OAuthRefreshToken | None:
         return self._refresh.get(token_hash)
+
+    async def consume_refresh_token(self, token_hash: str) -> bool:
+        token = self._refresh.get(token_hash)
+        if token is None or token.revoked:
+            return False
+        token.revoked = True
+        return True
 
     async def revoke_refresh_token(self, token_hash: str) -> None:
         token = self._refresh.get(token_hash)
@@ -200,10 +223,6 @@ class InMemoryOAuthRepository:
             if uid == user_id and grant.revoked_at is None
         ]
         return sorted(active, key=lambda grant: grant.authorized_at, reverse=True)
-
-    async def list_grants_for_clients(self, client_ids: Sequence[str]) -> list[OAuthGrant]:
-        ids = set(client_ids)
-        return [grant for (_, cid), grant in self._grants.items() if cid in ids]
 
     async def revoke_grant(
         self, user_id: str, client_id: str, *, now: datetime

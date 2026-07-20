@@ -129,7 +129,7 @@ def test_autogenerate_emits_no_structural_diff(migrated_postgres_url: str) -> No
     assert structural == [], f"autogenerate would change the schema: {structural}"
 
 
-async def test_oauth_flow_persists_and_rotation_replay_is_rejected(
+async def test_oauth_flow_persists_rotation_revocation_end_to_end(
     migrated_postgres_url: str,
 ) -> None:
     database = create_database(migrated_postgres_url)
@@ -145,6 +145,11 @@ async def test_oauth_flow_persists_and_rotation_replay_is_rejected(
     async def tokens() -> AsyncIterator[TokenService]:
         async with database.sessionmaker() as session:
             yield TokenService(SqlAlchemyOAuthRepository(session), config, codec)
+
+    def _refresh_request(refresh_token: str) -> TokenRequest:
+        return TokenRequest(
+            grant_type="refresh_token", client_id=client_id, refresh_token=refresh_token
+        )
 
     try:
         async with auth() as auth_service:
@@ -187,28 +192,6 @@ async def test_oauth_flow_persists_and_rotation_replay_is_rejected(
         verified = codec.verify(issued.access_token)
         assert verified is not None and verified.audience == config.resource
 
-        # Rotate the refresh token; the old one is now persisted as revoked.
-        async with tokens() as token_service:
-            rotated = await token_service.exchange(
-                TokenRequest(
-                    grant_type="refresh_token",
-                    client_id=client_id,
-                    refresh_token=issued.refresh_token,
-                )
-            )
-        assert rotated.refresh_token != issued.refresh_token
-
-        # Replaying the rotated-out refresh token is rejected by the real DB state.
-        async with tokens() as token_service:
-            with pytest.raises(OAuthError):
-                await token_service.exchange(
-                    TokenRequest(
-                        grant_type="refresh_token",
-                        client_id=client_id,
-                        refresh_token=issued.refresh_token,
-                    )
-                )
-
         # The connected-client list reflects the persisted grant with both times.
         async with tokens() as token_service:
             connected = await token_service.list_connected_clients(_USER)
@@ -216,31 +199,37 @@ async def test_oauth_flow_persists_and_rotation_replay_is_rejected(
         assert connected[0].connected_at is not None
         assert connected[0].last_active_at is not None
 
-        # Revoking the connected client empties the list and kills the chain.
+        # Rotate the refresh token; the old one is now persisted as revoked.
+        async with tokens() as token_service:
+            rotated = await token_service.exchange(_refresh_request(issued.refresh_token))
+        assert rotated.refresh_token != issued.refresh_token
+
+        # Explicitly revoking the connected client (while the grant is still
+        # active) persists the grant + chain revocation, so the list empties.
         async with tokens() as token_service:
             await token_service.revoke_connected_client(_USER, client_id)
         async with tokens() as token_service:
             assert await token_service.list_connected_clients(_USER) == []
+        # Revoking an already-revoked grant is a 404 against the real DB.
         async with tokens() as token_service:
             with pytest.raises(NotFound):
                 await token_service.revoke_connected_client(_USER, client_id)
+        # Both the rotated and the rotated-out refresh tokens are now dead.
         async with tokens() as token_service:
             with pytest.raises(OAuthError):
-                await token_service.exchange(
-                    TokenRequest(
-                        grant_type="refresh_token",
-                        client_id=client_id,
-                        refresh_token=rotated.refresh_token,
-                    )
-                )
+                await token_service.exchange(_refresh_request(rotated.refresh_token))
+        async with tokens() as token_service:
+            with pytest.raises(OAuthError):
+                await token_service.exchange(_refresh_request(issued.refresh_token))
     finally:
         await database.engine.dispose()
 
 
-async def test_cleanup_cascade_revokes_via_the_sessionmaker(migrated_postgres_url: str) -> None:
-    # The background reaper's one-shot sweep opens its own session from the app's
-    # session factory (no request scope) and cascade-revokes a stale client's
-    # grant + refresh chain end to end.
+async def test_cleanup_reaps_grantless_clients_but_keeps_active_ones(
+    migrated_postgres_url: str,
+) -> None:
+    # The reaper reaps abandoned (no-active-grant) registrations by age but must
+    # never reap an actively-granted client, which would disconnect a live agent.
     database = create_database(migrated_postgres_url)
     config = build_test_config()
     codec = build_test_codec(config, build_test_keyset(config))
@@ -256,17 +245,25 @@ async def test_cleanup_cascade_revokes_via_the_sessionmaker(migrated_postgres_ur
             yield TokenService(SqlAlchemyOAuthRepository(session), config, codec)
 
     try:
+        # A never-consented client and an actively-granted client.
         async with auth() as auth_service:
-            registration = await auth_service.register_client(
-                ClientRegistrationRequest(redirect_uris=[_REDIRECT], client_name="Stale Agent")
-            )
-        client_id = registration.client_id
+            grantless = (
+                await auth_service.register_client(
+                    ClientRegistrationRequest(redirect_uris=[_REDIRECT], client_name="Abandoned")
+                )
+            ).client_id
+        async with auth() as auth_service:
+            active = (
+                await auth_service.register_client(
+                    ClientRegistrationRequest(redirect_uris=[_REDIRECT], client_name="Active")
+                )
+            ).client_id
 
         verifier, challenge = make_pkce_pair()
         async with auth() as auth_service:
             consent_url = await auth_service.start_authorization(
                 AuthorizeParams(
-                    client_id=client_id,
+                    client_id=active,
                     redirect_uri=_REDIRECT,
                     response_type="code",
                     code_challenge=challenge,
@@ -283,29 +280,32 @@ async def test_cleanup_cascade_revokes_via_the_sessionmaker(migrated_postgres_ur
             issued = await token_service.exchange(
                 TokenRequest(
                     grant_type="authorization_code",
-                    client_id=client_id,
+                    client_id=active,
                     code=code,
                     code_verifier=verifier,
                     redirect_uri=_REDIRECT,
                 )
             )
 
-        # A one-shot sweep reaping everything cascade-revokes the active grant.
+        # Sweep everything old: the grantless client is reaped; the active one stays.
         sweep = build_stale_client_sweep(
             database.sessionmaker, config, codec, max_age=timedelta(seconds=-1)
         )
         assert await sweep() >= 1
-
         async with database.sessionmaker() as session:
-            assert await SqlAlchemyOAuthRepository(session).get_client(client_id) is None
+            repo = SqlAlchemyOAuthRepository(session)
+            assert await repo.get_client(grantless) is None
+            assert await repo.get_client(active) is not None
+
+        # The active client's refresh still rotates: it was not disconnected.
         async with tokens() as token_service:
-            with pytest.raises(OAuthError):
-                await token_service.exchange(
-                    TokenRequest(
-                        grant_type="refresh_token",
-                        client_id=client_id,
-                        refresh_token=issued.refresh_token,
-                    )
+            rotated = await token_service.exchange(
+                TokenRequest(
+                    grant_type="refresh_token",
+                    client_id=active,
+                    refresh_token=issued.refresh_token,
                 )
+            )
+        assert rotated.refresh_token
     finally:
         await database.engine.dispose()

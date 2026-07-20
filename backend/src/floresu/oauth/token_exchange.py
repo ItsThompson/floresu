@@ -91,15 +91,25 @@ class TokenService:
             raise OAuthError.invalid_grant("Authorization code is invalid or expired.")
         if code.client_id != request.client_id:
             raise OAuthError.invalid_grant("Authorization code was issued to another client.")
-        if request.redirect_uri is not None and request.redirect_uri != code.redirect_uri:
-            raise OAuthError.invalid_grant("redirect_uri does not match the authorization request.")
+        # OAuth 2.1 §4.1.3: the authorization request always carried a redirect_uri,
+        # so it is required at the token endpoint and must match.
+        if request.redirect_uri is None or request.redirect_uri != code.redirect_uri:
+            raise OAuthError.invalid_grant(
+                "redirect_uri is required and must match the authorization request."
+            )
         if not is_valid_s256(request.code_verifier, code.code_challenge):
             raise OAuthError.invalid_grant("PKCE verification failed.")
         if self._config.canonical_resource(request.resource) != code.resource:
             raise OAuthError.invalid_target("resource does not match the authorization request.")
 
-        # One-time use: consume the code before minting so it cannot be replayed.
-        await self._repo.delete_code(code.code)
+        # Single-use, race-free: only one exchange flips used=false->true. PKCE has
+        # already proven possession, so a caller reaching a False result is a
+        # verifier-holding replay -> revoke the tokens issued from this code
+        # (OAuth 2.1 §4.1.3) rather than silently reject.
+        if not await self._repo.consume_code(code.code):
+            await self._repo.revoke_grant(code.user_id, code.client_id, now=self._clock())
+            await self._repo.commit()
+            raise OAuthError.invalid_grant("Authorization code has already been used.")
         grant = await self._repo.get_grant(code.user_id, code.client_id)
         if grant is None:  # pragma: no cover - decision always upserts the grant
             raise OAuthError.invalid_grant("No active grant for this authorization.")
@@ -126,9 +136,10 @@ class TokenService:
         if existing is None:
             raise OAuthError.invalid_grant("Refresh token is invalid.")
         if existing.revoked:
-            # A rotated/revoked refresh being reused: treat as a compromised chain
-            # and revoke every refresh token for the grant (replay defense).
-            await self._repo.revoke_grant_refresh_tokens(existing.grant_id)
+            # Replay of a rotated refresh token: revoke the whole grant (its refresh
+            # chain and revoked_at) so the chain dies and the client also drops off
+            # /me/clients (OAuth 2.1 replay defense).
+            await self._repo.revoke_grant(existing.user_id, existing.client_id, now=self._clock())
             await self._repo.commit()
             raise OAuthError.invalid_grant("Refresh token has already been used.")
         if self._is_expired(existing.expires_at):
@@ -137,11 +148,18 @@ class TokenService:
             raise OAuthError.invalid_grant("Refresh token was issued to another client.")
         if await self._repo.get_client(existing.client_id) is None:
             # Defense in depth: a deleted client's refresh fails closed even if its
-            # grant were somehow left un-revoked (cleanup cascade-revokes it first).
+            # grant were somehow left un-revoked (cleanup only reaps grantless ones).
             raise OAuthError.invalid_grant("Refresh token's client no longer exists.")
 
-        # Rotate: revoke the presented refresh, then issue a fresh pair.
-        await self._repo.revoke_refresh_token(existing.token_hash)
+        # Rotate atomically: exactly one concurrent exchange consumes the presented
+        # refresh. Losing the race means the token was already used -> treat as a
+        # chain compromise and revoke the grant.
+        if not await self._repo.consume_refresh_token(
+            existing.token_hash
+        ):  # pragma: no cover - race-only; a sequential replay is caught by the revoked check
+            await self._repo.revoke_grant(existing.user_id, existing.client_id, now=self._clock())
+            await self._repo.commit()
+            raise OAuthError.invalid_grant("Refresh token has already been used.")
         tokens = await self._issue_pair(
             grant_id=existing.grant_id,
             user_id=existing.user_id,
@@ -204,20 +222,21 @@ class TokenService:
         _log.info("oauth_client_revoked", client_id=client_id, user_id=user_id)
 
     async def cleanup_stale_clients(self, older_than: timedelta) -> int:
-        """Periodic P0 hook: drop open-registration clients older than ``older_than``.
+        """Periodic P0 hook: reap abandoned registrations and expired codes.
 
-        Cascade-revokes each doomed client's grant + refresh chain in the same
-        transaction, so cleanup can never leave a grant that is hidden from
-        ``/me/clients`` (which skips clientless grants) yet whose refresh token
-        still rotates.
+        Reaps open-registration clients registered more than ``older_than`` ago
+        that have **no active grant** (never-consented DCR rows or clients whose
+        grant was revoked), plus expired authorization codes. An actively-granted
+        client is never reaped, so a long-lived agent that keeps refreshing stays
+        connected; a revoked grant already has its refresh chain dead, so the
+        delete leaves no live token. Returns the number of clients reaped.
         """
-        cutoff = self._clock() - older_than
         now = self._clock()
-        deleted_client_ids = await self._repo.delete_clients_created_before(cutoff)
-        for grant in await self._repo.list_grants_for_clients(deleted_client_ids):
-            await self._repo.revoke_grant(grant.user_id, grant.client_id, now=now)
+        cutoff = now - older_than
+        deleted = await self._repo.delete_stale_registrations(cutoff)
+        await self._repo.delete_expired_codes(now)
         await self._repo.commit()
-        return len(deleted_client_ids)
+        return len(deleted)
 
     async def _issue_pair(
         self,

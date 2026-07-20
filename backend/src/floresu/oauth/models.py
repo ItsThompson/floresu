@@ -71,7 +71,13 @@ class OAuthAuthRequest(Base):
 
 
 class OAuthAuthorizationCode(Base):
-    """A one-time authorization code bound to a user, client, and PKCE challenge."""
+    """A one-time authorization code bound to a user, client, and PKCE challenge.
+
+    The row is retained (``used`` flips true on first exchange) rather than deleted
+    so a replay of an already-consumed code is distinguishable from an unknown
+    code and can revoke the tokens it issued (OAuth 2.1 replay defense). Expired
+    rows are reaped by the periodic sweep.
+    """
 
     __tablename__ = "oauth_authorization_codes"
 
@@ -83,6 +89,7 @@ class OAuthAuthorizationCode(Base):
     code_challenge: Mapped[str] = mapped_column(String(128))
     code_challenge_method: Mapped[str] = mapped_column(String(8))
     resource: Mapped[str] = mapped_column(String(500))
+    used: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 

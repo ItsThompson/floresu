@@ -86,13 +86,15 @@ class AuthorizationService:
         """Open Dynamic Client Registration (RFC 7591): mint a public ``client_id``."""
         self._reject_invalid_redirect_uris(request.redirect_uris)
         scope = self._resolve_registration_scope(request.scope)
+        grant_types = self._resolve_registration_grant_types(request.grant_types)
+        response_types = self._resolve_registration_response_types(request.response_types)
         now = self._clock()
         client = OAuthClient(
             client_id=self._new_id(),
             client_name=request.client_name or "Unnamed agent",
             redirect_uris=request.redirect_uris,
-            grant_types=request.grant_types or _DEFAULT_GRANT_TYPES,
-            response_types=request.response_types or _DEFAULT_RESPONSE_TYPES,
+            grant_types=grant_types,
+            response_types=response_types,
             scope=scope,
             token_endpoint_auth_method=TOKEN_ENDPOINT_AUTH_NONE,
             created_at=now,
@@ -239,12 +241,32 @@ class AuthorizationService:
             return _DEFAULT_SCOPE
         return self._require_supported_scopes(requested)
 
+    @staticmethod
+    def _resolve_registration_grant_types(requested: list[str] | None) -> list[str]:
+        if requested is None:
+            return _DEFAULT_GRANT_TYPES
+        for grant_type in requested:
+            if grant_type not in _DEFAULT_GRANT_TYPES:
+                raise OAuthError.invalid_client_metadata(f"Unsupported grant_type: {grant_type}")
+        return requested
+
+    @staticmethod
+    def _resolve_registration_response_types(requested: list[str] | None) -> list[str]:
+        if requested is None:
+            return _DEFAULT_RESPONSE_TYPES
+        for response_type in requested:
+            if response_type not in _DEFAULT_RESPONSE_TYPES:
+                raise OAuthError.invalid_client_metadata(
+                    f"Unsupported response_type: {response_type}"
+                )
+        return requested
+
     def _resolve_requested_scope(self, requested: str | None, client_scope: str) -> str:
         if requested is None:
             return client_scope
         granted = set(client_scope.split())
         for scope in self._require_supported_scopes(requested).split():
-            if scope not in granted:
+            if scope not in granted:  # pragma: no cover - unreachable while a single scope exists
                 raise OAuthError.invalid_scope(f"scope '{scope}' was not granted to this client.")
         return requested
 

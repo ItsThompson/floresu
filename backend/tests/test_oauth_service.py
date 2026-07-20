@@ -180,6 +180,19 @@ async def test_register_accepts_https_and_loopback_http_redirects() -> None:
     assert response.client_id
 
 
+async def test_register_accepts_explicit_supported_grant_and_response_types() -> None:
+    h = _harness()
+    response = await h.auth.register_client(
+        ClientRegistrationRequest(
+            redirect_uris=[_REDIRECT],
+            grant_types=["authorization_code", "refresh_token"],
+            response_types=["code"],
+        )
+    )
+    assert response.grant_types == ["authorization_code", "refresh_token"]
+    assert response.response_types == ["code"]
+
+
 async def test_register_rejects_an_unsupported_scope() -> None:
     h = _harness()
     with pytest.raises(OAuthError) as exc:
@@ -187,6 +200,24 @@ async def test_register_rejects_an_unsupported_scope() -> None:
             ClientRegistrationRequest(redirect_uris=[_REDIRECT], scope="admin:everything")
         )
     assert exc.value.error == OAuthErrorCode.INVALID_SCOPE
+
+
+async def test_register_rejects_an_unsupported_grant_type() -> None:
+    h = _harness()
+    with pytest.raises(OAuthError) as exc:
+        await h.auth.register_client(
+            ClientRegistrationRequest(redirect_uris=[_REDIRECT], grant_types=["client_credentials"])
+        )
+    assert exc.value.error == OAuthErrorCode.INVALID_CLIENT_METADATA
+
+
+async def test_register_rejects_an_unsupported_response_type() -> None:
+    h = _harness()
+    with pytest.raises(OAuthError) as exc:
+        await h.auth.register_client(
+            ClientRegistrationRequest(redirect_uris=[_REDIRECT], response_types=["token"])
+        )
+    assert exc.value.error == OAuthErrorCode.INVALID_CLIENT_METADATA
 
 
 # --- authorize (validation + parking) ---------------------------------------
@@ -259,6 +290,24 @@ async def test_authorize_rejects_foreign_resource() -> None:
     with pytest.raises(OAuthError) as exc:
         await _park(h.auth, client_id, challenge, resource="https://evil.example")
     assert exc.value.error == OAuthErrorCode.INVALID_TARGET
+
+
+async def test_authorize_accepts_an_explicit_valid_scope() -> None:
+    h = _harness()
+    client_id = await _register(h.auth)  # granted the single full scope
+    _verifier, challenge = make_pkce_pair()
+    request_id = await _park(h.auth, client_id, challenge, scope=SCOPE_FULL)
+    parked = await h.repo.get_auth_request(request_id)
+    assert parked is not None and parked.scope == SCOPE_FULL
+
+
+async def test_authorize_rejects_an_unsupported_scope() -> None:
+    h = _harness()
+    client_id = await _register(h.auth)
+    _verifier, challenge = make_pkce_pair()
+    with pytest.raises(OAuthError) as exc:
+        await _park(h.auth, client_id, challenge, scope="admin:everything")
+    assert exc.value.error == OAuthErrorCode.INVALID_SCOPE
 
 
 # --- consent context + decision ---------------------------------------------
@@ -458,6 +507,71 @@ async def test_code_exchange_rejects_redirect_uri_mismatch() -> None:
         )
 
 
+async def test_code_exchange_requires_redirect_uri() -> None:
+    # OAuth 2.1 §4.1.3: the authorization request always carried redirect_uri, so
+    # omitting it at the token endpoint is rejected (not silently skipped).
+    h = _harness()
+    client_id = await _register(h.auth)
+    verifier, challenge = make_pkce_pair()
+    code = await _authorize_to_code(h, client_id, challenge)
+    with pytest.raises(OAuthError) as exc:
+        await h.tokens.exchange(
+            TokenRequest(
+                grant_type="authorization_code",
+                client_id=client_id,
+                code=code,
+                code_verifier=verifier,
+            )
+        )
+    assert exc.value.error == OAuthErrorCode.INVALID_GRANT
+
+
+async def test_code_replay_revokes_tokens_issued_from_that_code() -> None:
+    # OAuth 2.1 §4.1.3: a replayed code is rejected AND the tokens issued from it
+    # are revoked (chain dead, client dropped from /me/clients).
+    h = _harness()
+    client_id = await _register(h.auth)
+    verifier, challenge = make_pkce_pair()
+    code = await _authorize_to_code(h, client_id, challenge)
+    request = TokenRequest(
+        grant_type="authorization_code",
+        client_id=client_id,
+        code=code,
+        code_verifier=verifier,
+        redirect_uri=_REDIRECT,
+    )
+    issued = await h.tokens.exchange(request)
+    with pytest.raises(OAuthError) as exc:
+        await h.tokens.exchange(request)
+    assert exc.value.error == OAuthErrorCode.INVALID_GRANT
+    with pytest.raises(OAuthError):
+        await h.tokens.exchange(
+            TokenRequest(
+                grant_type="refresh_token", client_id=client_id, refresh_token=issued.refresh_token
+            )
+        )
+    assert await h.tokens.list_connected_clients(_USER) == []
+
+
+async def test_code_exchange_rejects_foreign_resource() -> None:
+    h = _harness()
+    client_id = await _register(h.auth)
+    verifier, challenge = make_pkce_pair()
+    code = await _authorize_to_code(h, client_id, challenge)
+    with pytest.raises(OAuthError) as exc:
+        await h.tokens.exchange(
+            TokenRequest(
+                grant_type="authorization_code",
+                client_id=client_id,
+                code=code,
+                code_verifier=verifier,
+                redirect_uri=_REDIRECT,
+                resource="https://evil.example",
+            )
+        )
+    assert exc.value.error == OAuthErrorCode.INVALID_TARGET
+
+
 async def test_expired_code_is_rejected() -> None:
     clock = MutableClock(datetime(2024, 1, 1, tzinfo=UTC))
     h = _harness(clock=clock, code_ttl=timedelta(minutes=1))
@@ -534,6 +648,9 @@ async def test_rotated_refresh_token_replay_is_rejected_and_revokes_chain() -> N
                 grant_type="refresh_token", client_id=client_id, refresh_token=rotated.refresh_token
             )
         )
+    # The replay is treated as a compromise: the grant is revoked, so the client
+    # also drops off the connected-clients list.
+    assert await h.tokens.list_connected_clients(_USER) == []
 
 
 async def test_refresh_rejects_client_mismatch() -> None:
@@ -698,24 +815,36 @@ async def test_list_connected_clients_skips_a_deleted_client() -> None:
 # --- cleanup + counter + pinned-clock lifecycle -----------------------------
 
 
-async def test_cleanup_stale_clients_cascade_revokes_orphaned_grants() -> None:
+async def test_cleanup_keeps_an_actively_granted_client() -> None:
+    # An agent that consented and keeps a live grant must NOT be reaped by age,
+    # even long after registration, or an active integration would be disconnected.
     clock = MutableClock(datetime(2024, 1, 1, tzinfo=UTC))
     h = _harness(clock=clock)
     client_id = await _register(h.auth)
     tokens = await _issue_tokens(h, client_id)
-    clock.advance(timedelta(days=1))
-    deleted = await h.tokens.cleanup_stale_clients(older_than=timedelta(hours=1))
-    assert deleted == 1
-    # The previously-valid refresh token no longer rotates (chain revoked).
-    with pytest.raises(OAuthError):
-        await h.tokens.exchange(
-            TokenRequest(
-                grant_type="refresh_token", client_id=client_id, refresh_token=tokens.refresh_token
-            )
+    clock.advance(timedelta(days=2))
+    assert await h.tokens.cleanup_stale_clients(older_than=timedelta(hours=1)) == 0
+    assert await h.repo.get_client(client_id) is not None
+    # The refresh token (well within its TTL) still rotates: the client stayed
+    # connected despite being registered longer ago than the reaper's max age.
+    rotated = await h.tokens.exchange(
+        TokenRequest(
+            grant_type="refresh_token", client_id=client_id, refresh_token=tokens.refresh_token
         )
-    grant = await h.repo.get_grant(_USER, client_id)
-    assert grant is not None and grant.revoked_at is not None
-    assert await h.tokens.list_connected_clients(_USER) == []
+    )
+    assert rotated.refresh_token
+
+
+async def test_cleanup_reaps_a_client_whose_grant_was_revoked() -> None:
+    clock = MutableClock(datetime(2024, 1, 1, tzinfo=UTC))
+    h = _harness(clock=clock)
+    client_id = await _register(h.auth)
+    await _issue_tokens(h, client_id)
+    await h.tokens.revoke_connected_client(_USER, client_id)
+    clock.advance(timedelta(days=1))
+    # No active grant remains -> the abandoned registration is reaped.
+    assert await h.tokens.cleanup_stale_clients(older_than=timedelta(hours=1)) == 1
+    assert await h.repo.get_client(client_id) is None
 
 
 async def test_cleanup_without_grants_is_a_plain_delete() -> None:
