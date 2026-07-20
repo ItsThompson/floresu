@@ -81,7 +81,7 @@ def test_alembic_upgrade_head_creates_users_and_enables_pgvector(
             await engine.dispose()
 
     result = asyncio.run(_inspect())
-    assert result["version"] == "0002_users"
+    assert result["version"] == "0003_accounts_sessions"
     assert result["has_vector"] == 1
     # Deterministic constraint-naming convention (ix_/uq_/ck_/fk_/pk_).
     assert result["constraints"] == ["pk_users", "uq_users_email"]

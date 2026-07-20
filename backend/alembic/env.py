@@ -18,6 +18,12 @@ from typing import TYPE_CHECKING
 
 from alembic import context
 
+# Import every domain's ORM models so their tables attach to ``Base.metadata``
+# and ``--autogenerate`` diffs the real schema. Without this import the accounts
+# tables would be absent from the metadata and autogenerate would emit a spurious
+# ``DROP TABLE users`` / ``DROP TABLE revoked_sessions``. Add new domains here as
+# their slices land.
+from floresu.accounts import models as _accounts_models  # noqa: F401
 from floresu.core.db import create_db_engine
 from floresu.core.orm import Base
 from floresu.core.settings import EnvSettings
@@ -31,7 +37,8 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # The shared schema Alembic diffs. All ORM models subclass floresu.core.orm.Base,
-# so their tables live on this one metadata once their modules are imported.
+# so their tables live on this one metadata once their modules are imported
+# (see the domain-model imports above).
 target_metadata = Base.metadata
 
 
