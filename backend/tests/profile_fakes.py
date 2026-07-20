@@ -30,11 +30,16 @@ _KIND_ORDER = {kind: index for index, kind in enumerate(SourceKind)}
 
 
 class FakeSession:
-    """A no-op stand-in for ``AsyncSession`` recording the transaction boundary."""
+    """A no-op stand-in for ``AsyncSession`` recording the transaction boundary.
+
+    Carries ``info`` because the ``transaction`` boundary drains the session's
+    post-commit queue (see :mod:`floresu.core.post_commit`) on a clean exit.
+    """
 
     def __init__(self) -> None:
         self.commits = 0
         self.rollbacks = 0
+        self.info: dict[str, Any] = {}
 
     async def commit(self) -> None:
         self.commits += 1
