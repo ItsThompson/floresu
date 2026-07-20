@@ -21,6 +21,8 @@ from floresu.core.identity import require_internal_user
 from floresu.core.settings import INTERNAL_PORT, INTERNAL_SERVICE, build_app_settings
 from floresu.profile.router import create_sources_router
 from floresu.profile.wiring import build_source_service_provider
+from floresu.worklog.router import create_worklog_router
+from floresu.worklog.wiring import build_worklog_service_provider
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
@@ -36,10 +38,15 @@ sources_router = create_sources_router(
     identity=require_internal_user,
     actor=resolve_internal_actor,
 )
+worklog_router = create_worklog_router(
+    build_worklog_service_provider(),
+    identity=require_internal_user,
+    actor=resolve_internal_actor,
+)
 
 app: FastAPI = create_app(
     settings,
-    routers=[sources_router],
+    routers=[sources_router, worklog_router],
     readiness_checks=[db_readiness_check(db.engine)],
     exception_handlers=build_exception_handlers(),
     lifespan=create_db_lifespan(db.engine),

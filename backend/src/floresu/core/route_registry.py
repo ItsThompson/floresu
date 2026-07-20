@@ -80,6 +80,15 @@ EXTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("PUT", "/sources/{source_id}"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("POST", "/sources/{source_id}/archive"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("POST", "/sources/{source_id}/restore"): AccessLevel.EXTERNAL_COOKIE,
+    # Worklog entries, tags, and source attachment. The web boundary resolves the
+    # human session cookie; the same routes mount on the internal app (below).
+    RouteKey("POST", "/worklog"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("GET", "/worklog"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("GET", "/worklog/tags"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("GET", "/worklog/{worklog_id}"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("PUT", "/worklog/{worklog_id}"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("POST", "/worklog/{worklog_id}/archive"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("POST", "/worklog/{worklog_id}/restore"): AccessLevel.EXTERNAL_COOKIE,
     # Live activity feed (external app only): the SSE stream and the initial-load
     # read both require the human session cookie.
     RouteKey("GET", "/feed"): AccessLevel.EXTERNAL_COOKIE,
@@ -94,6 +103,14 @@ INTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("PUT", "/sources/{source_id}"): AccessLevel.INTERNAL_TRUSTED,
     RouteKey("POST", "/sources/{source_id}/archive"): AccessLevel.INTERNAL_TRUSTED,
     RouteKey("POST", "/sources/{source_id}/restore"): AccessLevel.INTERNAL_TRUSTED,
+    # Worklog on the agent-facing internal app: trusted-header identity.
+    RouteKey("POST", "/worklog"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("GET", "/worklog"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("GET", "/worklog/tags"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("GET", "/worklog/{worklog_id}"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("PUT", "/worklog/{worklog_id}"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("POST", "/worklog/{worklog_id}/archive"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("POST", "/worklog/{worklog_id}/restore"): AccessLevel.INTERNAL_TRUSTED,
 }
 
 

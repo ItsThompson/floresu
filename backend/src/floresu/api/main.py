@@ -49,6 +49,8 @@ from floresu.oauth.wiring import (
 )
 from floresu.profile.router import create_sources_router
 from floresu.profile.wiring import build_source_service_provider
+from floresu.worklog.router import create_worklog_router
+from floresu.worklog.wiring import build_worklog_service_provider
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -100,6 +102,15 @@ sources_router = create_sources_router(
     actor=resolve_web_actor,
 )
 
+# Worklog entries, tags, and source attachment, mounted with the human session
+# identity and a human actor. The internal app mounts the same router with the
+# trusted-header identity and the named-agent actor.
+worklog_router = create_worklog_router(
+    build_worklog_service_provider(),
+    identity=require_user,
+    actor=resolve_web_actor,
+)
+
 
 # The live activity feed: GET /feed (SSE stream) + GET /feed/history (initial load).
 # The stream resolves the caller via require_user and reads the process-wide feed
@@ -131,7 +142,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app: FastAPI = create_app(
     settings,
-    routers=[accounts_router, me_router, oauth_router, sources_router, feed_router],
+    routers=[accounts_router, me_router, oauth_router, sources_router, worklog_router, feed_router],
     readiness_checks=[db_readiness_check(db.engine)],
     exception_handlers={**build_exception_handlers(), **build_oauth_exception_handlers()},
     lifespan=_lifespan,
