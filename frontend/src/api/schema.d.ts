@@ -259,10 +259,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/feed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stream Feed */
+        get: operations["stream_feed_feed_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/feed/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Feed History */
+        get: operations["feed_history_feed_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * ActorType
+         * @description Who performed a write.
+         * @enum {string}
+         */
+        ActorType: "human" | "agent";
+        /**
+         * AuditEntry
+         * @description One audit-log row, projected for the feed and item-history reads.
+         */
+        AuditEntry: {
+            /** Id */
+            id: number;
+            actor_type: components["schemas"]["ActorType"];
+            /** Actor Label */
+            actor_label: string | null;
+            /** Entity Type */
+            entity_type: string;
+            /** Entity Id */
+            entity_id: number;
+            /** Action */
+            action: string;
+            /** Summary */
+            summary: string | null;
+            /** Metadata */
+            metadata: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /**
          * AuthenticatedUser
          * @description The authenticated user's own view, returned by register/login/refresh/me.
@@ -871,6 +939,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stream_feed_feed_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    feed_history_feed_history_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEntry"][];
                 };
             };
         };

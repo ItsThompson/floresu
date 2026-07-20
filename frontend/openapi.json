@@ -570,10 +570,139 @@
           }
         }
       }
+    },
+    "/feed": {
+      "get": {
+        "tags": [
+          "feed"
+        ],
+        "summary": "Stream Feed",
+        "operationId": "stream_feed_feed_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/feed/history": {
+      "get": {
+        "tags": [
+          "feed"
+        ],
+        "summary": "Feed History",
+        "operationId": "feed_history_feed_history_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AuditEntry"
+                  },
+                  "type": "array",
+                  "title": "Response Feed History Feed History Get"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "ActorType": {
+        "type": "string",
+        "enum": [
+          "human",
+          "agent"
+        ],
+        "title": "ActorType",
+        "description": "Who performed a write."
+      },
+      "AuditEntry": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "actor_type": {
+            "$ref": "#/components/schemas/ActorType"
+          },
+          "actor_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Label"
+          },
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type"
+          },
+          "entity_id": {
+            "type": "integer",
+            "title": "Entity Id"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "actor_type",
+          "actor_label",
+          "entity_type",
+          "entity_id",
+          "action",
+          "summary",
+          "metadata",
+          "created_at"
+        ],
+        "title": "AuditEntry",
+        "description": "One audit-log row, projected for the feed and item-history reads."
+      },
       "AuthenticatedUser": {
         "properties": {
           "id": {
