@@ -81,9 +81,9 @@ def test_alembic_upgrade_head_creates_users_and_enables_pgvector(
             await engine.dispose()
 
     result = asyncio.run(_inspect())
-    # Migration head after wave integration: the audit_log slice is 0004 and the
-    # OAuth slice is linearized onto it as 0005 (both chain off 0003).
-    assert result["version"] == "0005_oauth"
+    # Migration head after this slice: the sources supertable is 0006, chained
+    # onto the wave-integrated audit (0004) and OAuth (0005) slices.
+    assert result["version"] == "0006_sources"
     assert result["has_vector"] == 1
     # Deterministic constraint-naming convention (ix_/uq_/ck_/fk_/pk_).
     assert result["constraints"] == ["pk_users", "uq_users_email"]
