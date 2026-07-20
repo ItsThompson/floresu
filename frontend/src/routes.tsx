@@ -4,6 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RequireOnboarded } from "@/components/RequireOnboarded";
 import { AuthView } from "@/views/AuthView";
+import { ConsentView } from "@/views/ConsentView";
 import { HomeView } from "@/views/HomeView";
 import { OnboardingView } from "@/views/OnboardingView";
 
@@ -26,6 +27,11 @@ export const appRoutes: RouteObject[] = [
     children: [
       // The onboarding wizard: chrome-free, so it sits outside the app shell.
       { path: "/onboarding", element: <OnboardingView /> },
+
+      // The OAuth consent screen: chrome-free and session-gated, but outside the
+      // onboarding guard so a connect-time consent is never bounced to the
+      // wizard. The AS 302s the browser here (`/authorize?auth_request_id=...`).
+      { path: "/authorize", element: <ConsentView /> },
 
       // In-app routes: reached only once onboarding is complete; a non-onboarded
       // user is redirected to the wizard before the shell mounts.

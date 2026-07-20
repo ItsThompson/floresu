@@ -1,4 +1,4 @@
-import { Link, Navigate } from "react-router";
+import { Link, Navigate, useLocation } from "react-router";
 
 import { useAuth } from "@/auth";
 import { LoginForm } from "./components/LoginForm";
@@ -11,15 +11,19 @@ interface AuthViewProps {
 
 /**
  * Sign-in / sign-up screen (chrome-free, mounted outside the AppShell). Once the
- * session resolves to authenticated it redirects Home, so signing in or
- * registering lands the user in the app. The mode is fixed by the route
- * (`/signin` vs `/signup`); the toggle is a real link to the other route.
+ * session resolves to authenticated it redirects to `from` (the location the
+ * session guard bounced the user off, e.g. a deep-linked consent URL) or Home,
+ * so signing in or registering lands the user where they were headed. The mode
+ * is fixed by the route (`/signin` vs `/signup`); the toggle is a real link to
+ * the other route.
  */
 export function AuthView({ mode }: AuthViewProps) {
   const { status } = useAuth();
+  const location = useLocation();
 
   if (status === "authenticated") {
-    return <Navigate to="/" replace />;
+    const from = (location.state as { from?: string } | null)?.from;
+    return <Navigate to={from ?? "/"} replace />;
   }
 
   const isLogin = mode === "login";
