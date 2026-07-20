@@ -9,6 +9,8 @@ inbound-identity strip, and (when configured) credentialed CORS for the SPA.
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,8 +31,20 @@ from floresu.core.db import create_database, create_db_lifespan, db_readiness_ch
 from floresu.core.errors import build_exception_handlers
 from floresu.core.identity import StripInboundIdentityMiddleware, deny_all_sessions, require_user
 from floresu.core.settings import EXTERNAL_PORT, EXTERNAL_SERVICE, build_app_settings
+from floresu.oauth.api import create_oauth_router
+from floresu.oauth.cleanup import start_stale_client_cleanup, stop_stale_client_cleanup
+from floresu.oauth.config import build_oauth_config
+from floresu.oauth.errors import build_oauth_exception_handlers
+from floresu.oauth.keys import load_signing_key_set
+from floresu.oauth.tokens import AccessTokenCodec
+from floresu.oauth.wiring import (
+    build_authorization_service_provider,
+    build_token_service_provider,
+)
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     from fastapi import FastAPI
 
 settings = build_app_settings(service=EXTERNAL_SERVICE, port=EXTERNAL_PORT)
@@ -50,12 +64,46 @@ accounts_router = create_accounts_router(service_provider, cookie_config=cookie_
 # provider. External app only.
 me_router = create_me_router(service_provider, identity=require_user)
 
+# Agent OAuth 2.1 Authorization Server. All issuer/metadata/endpoint URLs are
+# built from pinned config (the Site-URL gotcha); the signing key is loaded from
+# the mounted PEM (or an ephemeral dev keypair). Fails fast outside development
+# when no key is configured, like the session secret.
+oauth_config = build_oauth_config(settings)
+oauth_keyset = load_signing_key_set(oauth_config, is_dev=settings.is_dev)
+oauth_codec = AccessTokenCodec(oauth_keyset, oauth_config)
+oauth_router = create_oauth_router(
+    config=oauth_config,
+    keyset=oauth_keyset,
+    authorization_provider=build_authorization_service_provider(oauth_config),
+    token_provider=build_token_service_provider(oauth_config, oauth_codec),
+)
+
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Dispose the DB pool on shutdown and run the stale-client reaper in between."""
+    async with create_db_lifespan(db.engine)(app):
+        # Reap stale open-registration OAuth clients on a background task so DCR
+        # rows stay bounded; stopped on shutdown before the pool is disposed.
+        cleanup_task = start_stale_client_cleanup(
+            db.sessionmaker,
+            oauth_config,
+            oauth_codec,
+            interval=timedelta(seconds=settings.oauth_client_cleanup_interval_seconds),
+            max_age=timedelta(seconds=settings.oauth_stale_client_max_age_seconds),
+        )
+        try:
+            yield
+        finally:
+            await stop_stale_client_cleanup(cleanup_task)
+
+
 app: FastAPI = create_app(
     settings,
-    routers=[accounts_router, me_router],
+    routers=[accounts_router, me_router, oauth_router],
     readiness_checks=[db_readiness_check(db.engine)],
-    exception_handlers=build_exception_handlers(),
-    lifespan=create_db_lifespan(db.engine),
+    exception_handlers={**build_exception_handlers(), **build_oauth_exception_handlers()},
+    lifespan=_lifespan,
 )
 app.state.db = db
 # Replace the deny-all default with the real signed-JWT + sid-blacklist verifier.
