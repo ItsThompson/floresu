@@ -81,7 +81,10 @@ def test_alembic_upgrade_head_creates_users_and_enables_pgvector(
             await engine.dispose()
 
     result = asyncio.run(_inspect())
-    assert result["version"] == "0003_accounts_sessions"
+    # Head advances as slices add migrations; the OAuth slice (0004) is the current
+    # head. The orchestrator reconciles the linear ordering if a sibling slice also
+    # appends a migration at wave-end merge.
+    assert result["version"] == "0004_oauth"
     assert result["has_vector"] == 1
     # Deterministic constraint-naming convention (ix_/uq_/ck_/fk_/pk_).
     assert result["constraints"] == ["pk_users", "uq_users_email"]
