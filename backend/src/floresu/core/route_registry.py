@@ -45,8 +45,8 @@ RouteRegistry = Mapping[RouteKey, AccessLevel]
 
 # Declarative per-app registries. Product routes are declared here by the module
 # that mounts them. The coverage test fails safe (deny) the moment a mounted
-# product route is missing an entry. The internal registry is empty until the
-# first internal-app domain slice adds routes.
+# product route is missing an entry. The sources domain is the first slice mounted
+# on the internal app, so its routes populate the internal registry too.
 EXTERNAL_ROUTE_ACCESS: RouteRegistry = {
     # Human web auth. The session-establishing endpoints are PUBLIC (they resolve
     # identity from credentials or the refresh cookie, not a prior session);
@@ -70,8 +70,27 @@ EXTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("POST", "/oauth/revoke"): AccessLevel.OAUTH,
     RouteKey("GET", "/me/clients"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("DELETE", "/me/clients/{client_id}"): AccessLevel.EXTERNAL_COOKIE,
+    # Profile sources (roles/projects/certs/education). The web boundary resolves
+    # the human session cookie; the same routes are mounted on the internal app
+    # for the agent path (below).
+    RouteKey("POST", "/sources"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("GET", "/sources"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("POST", "/sources/reorder"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("GET", "/sources/{source_id}"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("PUT", "/sources/{source_id}"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("POST", "/sources/{source_id}/archive"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("POST", "/sources/{source_id}/restore"): AccessLevel.EXTERNAL_COOKIE,
 }
-INTERNAL_ROUTE_ACCESS: RouteRegistry = {}
+INTERNAL_ROUTE_ACCESS: RouteRegistry = {
+    # Profile sources on the agent-facing internal app: trusted-header identity.
+    RouteKey("POST", "/sources"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("GET", "/sources"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("POST", "/sources/reorder"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("GET", "/sources/{source_id}"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("PUT", "/sources/{source_id}"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("POST", "/sources/{source_id}/archive"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("POST", "/sources/{source_id}/restore"): AccessLevel.INTERNAL_TRUSTED,
+}
 
 # OpenAPI operation keys that are HTTP methods (a path item also carries non-method
 # keys such as "parameters").

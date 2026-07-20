@@ -27,6 +27,7 @@ from floresu.accounts.session import build_revocation_lookup, create_session_ver
 from floresu.accounts.tokens import SessionTokenCodec
 from floresu.accounts.wiring import build_account_service_provider
 from floresu.audit.wiring import build_write_event_publisher
+from floresu.core.actor import resolve_web_actor
 from floresu.core.app_factory import create_app
 from floresu.core.db import create_database, create_db_lifespan, db_readiness_check
 from floresu.core.errors import build_exception_handlers
@@ -42,6 +43,8 @@ from floresu.oauth.wiring import (
     build_authorization_service_provider,
     build_token_service_provider,
 )
+from floresu.profile.router import create_sources_router
+from floresu.profile.wiring import build_source_service_provider
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -79,6 +82,16 @@ oauth_router = create_oauth_router(
     token_provider=build_token_service_provider(oauth_config, oauth_codec),
 )
 
+# Profile sources, mounted with the human session identity and a human actor. The
+# internal app mounts the same router with the trusted-header identity and the
+# named-agent actor; the service, transaction, and write-event publish live once
+# in the domain layer.
+sources_router = create_sources_router(
+    build_source_service_provider(),
+    identity=require_user,
+    actor=resolve_web_actor,
+)
+
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -101,7 +114,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app: FastAPI = create_app(
     settings,
-    routers=[accounts_router, me_router, oauth_router],
+    routers=[accounts_router, me_router, oauth_router, sources_router],
     readiness_checks=[db_readiness_check(db.engine)],
     exception_handlers={**build_exception_handlers(), **build_oauth_exception_handlers()},
     lifespan=_lifespan,

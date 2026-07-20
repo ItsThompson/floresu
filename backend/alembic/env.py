@@ -29,6 +29,7 @@ from floresu.core.db import create_db_engine
 from floresu.core.orm import Base
 from floresu.core.settings import EnvSettings
 from floresu.oauth import models as _oauth_models  # noqa: F401
+from floresu.profile import models as _profile_models  # noqa: F401
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import Connection
