@@ -9,6 +9,10 @@ interface ApiClients {
   session: SessionClient;
   /** Credential-free client for public reads. */
   public: ApiClient;
+  /** The API origin the clients target (empty string = same-origin). Exposed so
+   *  non-fetch transports (the activity-feed SSE `EventSource`) reach the same
+   *  origin as the typed clients. */
+  baseUrl: string;
 }
 
 const ApiClientContext = createContext<ApiClients | null>(null);
@@ -26,7 +30,11 @@ interface ApiClientProviderProps {
  */
 export function ApiClientProvider({ baseUrl, children }: ApiClientProviderProps) {
   const clients = useMemo<ApiClients>(
-    () => ({ session: createSessionClient(baseUrl), public: createApiClient(baseUrl) }),
+    () => ({
+      session: createSessionClient(baseUrl),
+      public: createApiClient(baseUrl),
+      baseUrl,
+    }),
     [baseUrl],
   );
   return <ApiClientContext.Provider value={clients}>{children}</ApiClientContext.Provider>;
@@ -48,4 +56,13 @@ export function usePublicClient(): ApiClient {
     throw new Error("usePublicClient must be used within an ApiClientProvider");
   }
   return clients.public;
+}
+
+/** Access the API base URL the clients target. Throws outside an `ApiClientProvider`. */
+export function useApiBaseUrl(): string {
+  const clients = useContext(ApiClientContext);
+  if (clients === null) {
+    throw new Error("useApiBaseUrl must be used within an ApiClientProvider");
+  }
+  return clients.baseUrl;
 }

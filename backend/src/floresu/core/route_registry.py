@@ -80,6 +80,10 @@ EXTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("PUT", "/sources/{source_id}"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("POST", "/sources/{source_id}/archive"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("POST", "/sources/{source_id}/restore"): AccessLevel.EXTERNAL_COOKIE,
+    # Live activity feed (external app only): the SSE stream and the initial-load
+    # read both require the human session cookie.
+    RouteKey("GET", "/feed"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("GET", "/feed/history"): AccessLevel.EXTERNAL_COOKIE,
 }
 INTERNAL_ROUTE_ACCESS: RouteRegistry = {
     # Profile sources on the agent-facing internal app: trusted-header identity.
@@ -91,6 +95,7 @@ INTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("POST", "/sources/{source_id}/archive"): AccessLevel.INTERNAL_TRUSTED,
     RouteKey("POST", "/sources/{source_id}/restore"): AccessLevel.INTERNAL_TRUSTED,
 }
+
 
 # OpenAPI operation keys that are HTTP methods (a path item also carries non-method
 # keys such as "parameters").

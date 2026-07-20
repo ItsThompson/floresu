@@ -46,6 +46,10 @@ class EnvSettings(BaseSettings):
     # Async SQLAlchemy URL (asyncpg driver). Dev default targets the Postgres in
     # docker-compose.yml published to localhost; prod injects the in-network form.
     database_url: str = "postgresql+asyncpg://floresu:floresu@localhost:5432/floresu"
+    # Redis URL. Backs the SSE activity feed (per-user pub/sub channel + bounded
+    # replay buffer); later slices also use it for the arq queue and rate-limit
+    # counters. Dev default targets the Redis in docker-compose.yml on localhost.
+    redis_url: str = "redis://localhost:6379/0"
     # Shared secret gating the internal trust boundary. Empty by default so the
     # internal boundary fails closed (denies) until a token is provisioned; prod
     # injects a real secret and the MCP server presents the same value.
@@ -98,6 +102,7 @@ class AppSettings(BaseModel):
     log_level: str
     host: str
     database_url: str
+    redis_url: str = "redis://localhost:6379/0"
     internal_api_token: str = ""
     # Auth knobs, defaulted so the shared test settings factory and any non-auth
     # caller need not supply them.
@@ -136,6 +141,7 @@ def build_app_settings(*, service: str, port: int, env: EnvSettings | None = Non
         log_level=env.log_level,
         host=env.host,
         database_url=env.database_url,
+        redis_url=env.redis_url,
         internal_api_token=env.internal_api_token,
         session_jwt_secret=env.session_jwt_secret,
         cookie_domain=env.cookie_domain,

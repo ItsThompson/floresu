@@ -36,6 +36,7 @@ from starlette.requests import Request
 
 from floresu.core.health import CheckResult, ReadinessCheck
 from floresu.core.observability import ACTIVE_CONNECTIONS, DB_QUERY_DURATION
+from floresu.core.post_commit import discard_post_commit, run_post_commit
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -180,13 +181,21 @@ async def transaction(session: AsyncSession) -> AsyncIterator[None]:
     the block raised. Because :func:`get_session` yields without a transaction, this
     is the one place a write is committed, so the ``try/commit/except/rollback``
     idiom is not re-decided at every write site.
+
+    After a successful commit it drains the session's post-commit queue (see
+    :mod:`floresu.core.post_commit`): the deferred side channels a write publishes
+    (SSE feed, embed enqueue) run here, so they observe a committed write and never
+    fire for one that rolled back. On any error the queue is discarded before the
+    rollback, so those side channels never emit.
     """
     try:
         yield
         await session.commit()
     except Exception:
+        discard_post_commit(session)
         await session.rollback()
         raise
+    await run_post_commit(session)
 
 
 def create_db_lifespan(engine: AsyncEngine) -> Lifespan[FastAPI]:

@@ -7,7 +7,7 @@ import { defineConfig } from "vitest/config";
 // The external backend app. The dev server proxies the API paths to it so the
 // SPA calls the backend same-origin (no CORS, and the session cookie flows).
 const BACKEND_ORIGIN = "http://localhost:8000";
-const PROXIED_PATHS = ["/auth", "/me"];
+const PROXIED_PATHS = ["/auth", "/me", "/feed"];
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
