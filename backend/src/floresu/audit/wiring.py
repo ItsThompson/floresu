@@ -7,37 +7,60 @@ SSE and embed side channels as ``best_effort`` from the app entrypoint, without
 editing the seam or any service.
 
 The transactional consumer builds a request-scoped audit service over the caller's
-session, so the audit row enlists in the content write's transaction.
+session, so the audit row enlists in the content write's transaction, and returns
+the :class:`RecordedWrite` it minted so post-commit side channels can publish the
+durable record's id.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from fastapi import Depends
+
 from floresu.audit.repository import SqlAlchemyAuditRepository
 from floresu.audit.service import AuditService
-from floresu.core.events import TransactionalConsumer, WriteEventPublisher
+from floresu.core.db import get_session
+from floresu.core.events import RecordedWrite, TransactionalConsumer, WriteEventPublisher
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    from floresu.core.events import BestEffortConsumer, WriteEvent
+    from floresu.core.events import PostCommitConsumer, WriteEvent
 
 
 def build_audit_consumer() -> TransactionalConsumer:
-    """The transactional consumer that appends one audit row per write."""
+    """The transactional consumer that appends one audit row per write.
 
-    async def consume(session: AsyncSession, event: WriteEvent) -> None:
+    Returns the :class:`RecordedWrite` carrying the row's minted monotonic id, so
+    the publisher can hand it to the post-commit side channels (the SSE feed).
+    """
+
+    async def consume(session: AsyncSession, event: WriteEvent) -> RecordedWrite:
         service = AuditService(SqlAlchemyAuditRepository(session))
-        await service.append(event)
+        entry = await service.append(event)
+        return RecordedWrite(event=event, audit_id=entry.id, created_at=entry.created_at)
 
     return consume
 
 
 def build_write_event_publisher(
-    *, best_effort: Sequence[BestEffortConsumer] = ()
+    *, post_commit: Sequence[PostCommitConsumer] = ()
 ) -> WriteEventPublisher:
-    """Compose the publisher: audit as the transactional consumer, side channels best-effort."""
-    return WriteEventPublisher(transactional=[build_audit_consumer()], best_effort=best_effort)
+    """Compose the publisher: audit as the transactional consumer, side channels post-commit."""
+    return WriteEventPublisher(transactional=[build_audit_consumer()], post_commit=post_commit)
+
+
+def build_audit_service_provider() -> Callable[..., AuditService]:
+    """A FastAPI dependency that builds a request-scoped :class:`AuditService`.
+
+    Backs the read endpoints (the activity-feed initial load; the future item
+    history) over a per-request session, mirroring the accounts service provider.
+    """
+
+    def provider(session: AsyncSession = Depends(get_session)) -> AuditService:
+        return AuditService(SqlAlchemyAuditRepository(session))
+
+    return provider

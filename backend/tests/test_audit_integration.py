@@ -5,8 +5,8 @@ Exercises the whole write path with real collaborators: the composed
 :class:`WriteEventPublisher` (audit as its transactional consumer), the SQLAlchemy
 repository, and the ``transaction`` boundary. This is where the seam's failure
 contract is proven for real: a failing audit append rolls the content write back,
-while a failing best-effort side channel leaves the committed write and its audit
-row intact.
+while a failing post-commit side channel leaves the committed write and its audit
+row intact, and a rolled-back write never runs the side channel.
 """
 
 from __future__ import annotations
@@ -145,19 +145,21 @@ async def test_a_failing_audit_append_rolls_back_the_content_write(migrated_url:
     assert user_present is False
 
 
-async def test_a_failing_best_effort_side_channel_leaves_the_write_committed(
+async def test_a_failing_post_commit_side_channel_leaves_the_write_committed(
     migrated_url: str,
 ) -> None:
-    async def failing_side_channel(_event: WriteEvent) -> None:
+    async def failing_side_channel(_recorded: object) -> None:
         raise RuntimeError("sse publish is down")
 
     engine = create_db_engine(migrated_url)
     sessionmaker = create_sessionmaker(engine)
-    publisher = build_write_event_publisher(best_effort=[failing_side_channel])
+    publisher = build_write_event_publisher(post_commit=[failing_side_channel])
     try:
-        user_id = await _insert_user(sessionmaker, "best-effort@example.com")
+        user_id = await _insert_user(sessionmaker, "post-commit@example.com")
 
-        # publish must not raise despite the down side channel; the write commits.
+        # publish + commit must not raise despite the down side channel; the write
+        # commits and is audited. The side channel runs post-commit and its failure
+        # is swallowed by the transaction boundary.
         async with sessionmaker() as session, transaction(session):
             await publisher.publish(
                 session,
@@ -179,6 +181,48 @@ async def test_a_failing_best_effort_side_channel_leaves_the_write_committed(
 
     assert len(feed) == 1
     assert feed[0].entity_type == "bullet"
+
+
+async def test_a_rolled_back_write_never_runs_the_post_commit_side_channel(
+    migrated_url: str,
+) -> None:
+    published: list[object] = []
+
+    async def recording_side_channel(recorded: object) -> None:
+        published.append(recorded)
+
+    engine = create_db_engine(migrated_url)
+    sessionmaker = create_sessionmaker(engine)
+    publisher = build_write_event_publisher(post_commit=[recording_side_channel])
+    try:
+        user_id = await _insert_user(sessionmaker, "rollback@example.com")
+
+        # The content write publishes, then the block raises so the transaction
+        # rolls back. The post-commit side channel must never fire: no phantom event.
+        with pytest.raises(RuntimeError, match="boom"):
+            async with sessionmaker() as session, transaction(session):
+                await publisher.publish(
+                    session,
+                    WriteEvent(
+                        user_id=user_id,
+                        actor=Actor(type=ActorType.HUMAN),
+                        entity_type="bullet",
+                        entity_id=3,
+                        action=Action.CREATE,
+                    ),
+                )
+                raise RuntimeError("boom")
+
+        async with sessionmaker() as session:
+            feed = await AuditService(SqlAlchemyAuditRepository(session)).activity_feed(
+                str(user_id)
+            )
+    finally:
+        await engine.dispose()
+
+    # The side channel never ran and the audit row rolled back with the write.
+    assert published == []
+    assert feed == []
 
 
 async def test_item_history_filters_to_one_item_newest_first(migrated_url: str) -> None:

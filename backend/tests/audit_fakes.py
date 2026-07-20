@@ -14,8 +14,9 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from floresu.audit.models import AuditLog
+from floresu.audit.schemas import AuditEntry
 from floresu.core.actor import Actor, ActorType
-from floresu.core.events import Action, WriteEvent
+from floresu.core.events import Action, RecordedWrite, WriteEvent
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -75,3 +76,31 @@ def build_write_event(**overrides: Any) -> WriteEvent:
     }
     base.update(overrides)
     return WriteEvent(**base)
+
+
+def build_recorded_write(
+    *, audit_id: int = 1, created_at: datetime | None = None, **event_overrides: Any
+) -> RecordedWrite:
+    """A :class:`RecordedWrite`: a write event plus the audit id/time it minted."""
+    return RecordedWrite(
+        event=build_write_event(**event_overrides),
+        audit_id=audit_id,
+        created_at=created_at or datetime.now(UTC),
+    )
+
+
+def build_audit_entry(**overrides: Any) -> AuditEntry:
+    """An :class:`AuditEntry` (the feed/history wire shape) with test defaults."""
+    base: dict[str, Any] = {
+        "id": 1,
+        "actor_type": ActorType.HUMAN,
+        "actor_label": None,
+        "entity_type": "worklog",
+        "entity_id": 100,
+        "action": Action.CREATE.value,
+        "summary": None,
+        "metadata": None,
+        "created_at": datetime.now(UTC),
+    }
+    base.update(overrides)
+    return AuditEntry(**base)

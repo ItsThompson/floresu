@@ -24,16 +24,23 @@ from floresu.core.db import (
     is_unique_violation,
     transaction,
 )
+from floresu.core.post_commit import enqueue_post_commit
 
 _DSN = "postgresql+asyncpg://floresu:floresu@localhost:5432/floresu"
 
 
 class _SpySession:
-    """Records commit/rollback so the transaction boundary is verifiable offline."""
+    """Records commit/rollback so the transaction boundary is verifiable offline.
+
+    Carries an ``info`` dict like a real session, so the transaction boundary's
+    post-commit queue drain/discard (:mod:`floresu.core.post_commit`) has somewhere
+    to read from.
+    """
 
     def __init__(self) -> None:
         self.committed = False
         self.rolled_back = False
+        self.info: dict[str, object] = {}
 
     async def commit(self) -> None:
         self.committed = True
@@ -57,6 +64,35 @@ async def test_transaction_rolls_back_and_reraises_on_error() -> None:
             raise ValueError("boom")
     assert session.rolled_back is True
     assert session.committed is False
+
+
+async def test_transaction_runs_queued_post_commit_tasks_after_a_clean_commit() -> None:
+    session = _SpySession()
+    ran: list[str] = []
+
+    async def task() -> None:
+        ran.append("ran")
+
+    async with transaction(session):  # type: ignore[arg-type]
+        enqueue_post_commit(session, task)  # type: ignore[arg-type]
+        assert ran == []  # deferred: not run inside the block
+    assert session.committed is True
+    assert ran == ["ran"]  # run once the commit succeeded
+
+
+async def test_transaction_discards_post_commit_tasks_on_rollback() -> None:
+    session = _SpySession()
+    ran: list[str] = []
+
+    async def task() -> None:
+        ran.append("ran")
+
+    with pytest.raises(ValueError, match="boom"):
+        async with transaction(session):  # type: ignore[arg-type]
+            enqueue_post_commit(session, task)  # type: ignore[arg-type]
+            raise ValueError("boom")
+    assert session.rolled_back is True
+    assert ran == []  # a rolled-back write never runs its side channels
 
 
 def test_is_unique_violation_matches_only_the_unique_sqlstate() -> None:
