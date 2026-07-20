@@ -29,4 +29,5 @@ export interface AuthContextValue {
   register: (input: RegisterInput) => Promise<AuthResult>;
   login: (input: LoginInput) => Promise<AuthResult>;
   logout: () => Promise<void>;
+  completeOnboarding: () => Promise<AuthResult>;
 }
