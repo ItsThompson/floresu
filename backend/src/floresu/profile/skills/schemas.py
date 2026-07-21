@@ -34,7 +34,7 @@ class SkillReorderRequest(BaseModel):
 class SkillRead(BaseModel):
     """A skill with its derived usage count (computed from tag matches, not stored)."""
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(extra="forbid")
 
     id: int
     name: str

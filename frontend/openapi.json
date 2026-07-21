@@ -2926,6 +2926,7 @@
             "title": "Archived At"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "id",
