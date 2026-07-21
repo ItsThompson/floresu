@@ -19,6 +19,7 @@ from floresu.core.errors import NotFound, Unauthorized, Validation
 from floresu.core.events import Action
 from floresu.embedding.config import EMBEDDING_MODEL, EmbedItemKind
 from floresu.lifecycle.service import LifecycleService
+from floresu.profile.models import Source, SourceKind
 from tests.embedding_fakes import InMemoryEmbeddingRepository
 from tests.lifecycle_fakes import (
     FakeSession,
@@ -204,6 +205,20 @@ async def test_export_of_a_missing_account_is_a_stale_session() -> None:
     service, _, _, _ = _service(export_repo=export_repo)
     with pytest.raises(Unauthorized):
         await service.export_data(_USER)
+
+
+async def test_export_omits_a_source_missing_its_subtype_detail() -> None:
+    # A base source with no resolved subtype detail is unreachable in production
+    # (composite FK), but the export must omit it rather than export it half-formed.
+    export_repo = InMemoryExportRepository(account=build_account(_PK))
+    source = Source(user_id=_PK, kind=SourceKind.ROLE, display_label="Orphan", sort_order=0)
+    source.id = 42
+    export_repo.source_rows = [source]  # no matching source_detail_map entry
+    service, _, _, _ = _service(export_repo=export_repo)
+
+    archive = await service.export_data(_USER)
+
+    assert archive["sources"] == []
 
 
 async def test_a_non_numeric_identity_is_rejected() -> None:

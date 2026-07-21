@@ -153,13 +153,21 @@ class LifecycleService:
         account = await self._export_repo.account(pk)
         if account is None:
             raise Unauthorized(_STALE_SESSION)
+        sources = list(await self._export_repo.sources(pk))
+        source_details = await self._export_repo.source_details(pk)
+        # A base source with no resolved subtype detail is unreachable in production
+        # (the composite FK guarantees one) and is omitted from the archive rather
+        # than exported half-formed. Log it so a silent omission is observable.
+        missing_detail = [source.id for source in sources if source.id not in source_details]
+        if missing_detail:
+            _log.warning("export_source_missing_subtype", user_id=pk, source_ids=missing_detail)
         data = ExportInput(
             account=account,
             worklog=list(await self._export_repo.worklog(pk)),
             worklog_tags=await self._export_repo.worklog_tags(pk),
             worklog_sources=await self._export_repo.worklog_sources(pk),
-            sources=list(await self._export_repo.sources(pk)),
-            source_details=await self._export_repo.source_details(pk),
+            sources=sources,
+            source_details=source_details,
             bullets=list(await self._export_repo.bullets(pk)),
             bullet_sources=await self._export_repo.bullet_sources(pk),
             bullet_worklogs=await self._export_repo.bullet_worklogs(pk),
