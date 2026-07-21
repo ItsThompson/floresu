@@ -89,6 +89,24 @@ EXTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("PUT", "/worklog/{worklog_id}"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("POST", "/worklog/{worklog_id}/archive"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("POST", "/worklog/{worklog_id}/restore"): AccessLevel.EXTERNAL_COOKIE,
+    # Curated skills (name + derived usage count). The web boundary resolves the
+    # human session cookie; the same routes mount on the internal app (below).
+    RouteKey("POST", "/skills"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("GET", "/skills"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("POST", "/skills/reorder"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("GET", "/skills/{skill_id}"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("PUT", "/skills/{skill_id}"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("POST", "/skills/{skill_id}/archive"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("POST", "/skills/{skill_id}/restore"): AccessLevel.EXTERNAL_COOKIE,
+    # Identity variants (labeled contact sets with a named default). No reorder:
+    # variants are unordered; the default is set via PUT. The same routes mount on
+    # the internal app (below).
+    RouteKey("POST", "/identity-variants"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("GET", "/identity-variants"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("GET", "/identity-variants/{variant_id}"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("PUT", "/identity-variants/{variant_id}"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("POST", "/identity-variants/{variant_id}/archive"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("POST", "/identity-variants/{variant_id}/restore"): AccessLevel.EXTERNAL_COOKIE,
     # Live activity feed (external app only): the SSE stream and the initial-load
     # read both require the human session cookie.
     RouteKey("GET", "/feed"): AccessLevel.EXTERNAL_COOKIE,
@@ -111,6 +129,21 @@ INTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("PUT", "/worklog/{worklog_id}"): AccessLevel.INTERNAL_TRUSTED,
     RouteKey("POST", "/worklog/{worklog_id}/archive"): AccessLevel.INTERNAL_TRUSTED,
     RouteKey("POST", "/worklog/{worklog_id}/restore"): AccessLevel.INTERNAL_TRUSTED,
+    # Curated skills on the agent-facing internal app: trusted-header identity.
+    RouteKey("POST", "/skills"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("GET", "/skills"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("POST", "/skills/reorder"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("GET", "/skills/{skill_id}"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("PUT", "/skills/{skill_id}"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("POST", "/skills/{skill_id}/archive"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("POST", "/skills/{skill_id}/restore"): AccessLevel.INTERNAL_TRUSTED,
+    # Identity variants on the agent-facing internal app: trusted-header identity.
+    RouteKey("POST", "/identity-variants"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("GET", "/identity-variants"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("GET", "/identity-variants/{variant_id}"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("PUT", "/identity-variants/{variant_id}"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("POST", "/identity-variants/{variant_id}/archive"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("POST", "/identity-variants/{variant_id}/restore"): AccessLevel.INTERNAL_TRUSTED,
 }
 
 
