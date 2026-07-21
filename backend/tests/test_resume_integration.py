@@ -317,6 +317,50 @@ async def test_stale_if_match_is_rejected(migrated_url: str) -> None:
     assert reread.revision == 2
 
 
+async def test_a_concurrent_snapshot_collision_is_a_recoverable_conflict(migrated_url: str) -> None:
+    engine = create_db_engine(migrated_url)
+    sessionmaker = create_sessionmaker(engine)
+    try:
+        user_id = await _insert_user(sessionmaker, "res-race@example.com")
+        async with sessionmaker() as session:
+            created = await _resumes(session).create(
+                str(user_id),
+                _HUMAN,
+                ResumeCreateRequest.model_validate({"kind": "living", "source": {"mode": "blank"}}),
+            )
+        # Simulate a genuinely simultaneous writer: it already committed revision 2,
+        # so our own write (which also read revision 1 and passed the guard) collides
+        # on the resume_revisions primary key.
+        async with sessionmaker() as session, transaction(session):
+            session.add(
+                ResumeRevision(
+                    resume_id=created.id,
+                    revision_no=2,
+                    document={"schema_version": 1, "template_id": "default", "sections": []},
+                    schema_version=1,
+                )
+            )
+        with pytest.raises(Conflict):
+            async with sessionmaker() as session:
+                await _resumes(session).update(
+                    str(user_id),
+                    created.id,
+                    _HUMAN,
+                    created.revision,
+                    ResumeUpdate.model_validate(
+                        {"title": "Racing", "template_id": "default", "header": {}, "sections": []}
+                    ),
+                )
+        async with sessionmaker() as session:
+            reread = await _resumes(session).get(str(user_id), created.id)
+    finally:
+        await engine.dispose()
+
+    # The losing write rolled back cleanly: the row is still at revision 1.
+    assert reread.revision == 1
+    assert reread.title != "Racing"
+
+
 async def test_application_resume_links_a_job_application_one_to_one(migrated_url: str) -> None:
     engine = create_db_engine(migrated_url)
     sessionmaker = create_sessionmaker(engine)

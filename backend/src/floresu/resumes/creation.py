@@ -24,6 +24,11 @@ from floresu.resumes.upcast import CURRENT_SCHEMA_VERSION, load_document
 if TYPE_CHECKING:
     from floresu.resumes.repository import ResumeRepository
 
+# The recoverable message when a job application already has an application resume.
+# Shared by the pre-check and the create-time unique-violation backstop so a
+# check-then-insert race and the common case read identically.
+JOB_APPLICATION_TAKEN_MESSAGE = "This job application already has an application resume."
+
 
 def validate_creation_contract(request: ResumeCreateRequest) -> None:
     """Enforce the job-application rule: required for application, forbidden for living."""
@@ -83,4 +88,4 @@ async def require_free_job_application(
             fields={"job_application_id": f"Unknown id {job_application_id}."},
         )
     if await repo.job_application_link_exists(job_application_id):
-        raise Conflict("This job application already has an application resume.")
+        raise Conflict(JOB_APPLICATION_TAKEN_MESSAGE)

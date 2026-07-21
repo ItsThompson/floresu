@@ -27,12 +27,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from floresu.core.conflicts import conflict_on_duplicate
 from floresu.core.db import transaction
 from floresu.core.errors import Validation
 from floresu.core.events import Action, WriteEvent
 from floresu.core.observability import track_failures
 from floresu.resumes.config import DEFAULT_LIST_LIMIT, ENTITY_TYPE
 from floresu.resumes.creation import (
+    JOB_APPLICATION_TAKEN_MESSAGE,
     require_free_job_application,
     seed_document,
     validate_creation_contract,
@@ -67,6 +69,14 @@ from floresu.resumes.schemas import (
     to_summary,
 )
 from floresu.resumes.upcast import CURRENT_SCHEMA_VERSION, load_document
+
+# Recoverable message for a genuine simultaneous write that the optimistic revision
+# guard passed (both writers read the same revision) and the ``resume_revisions``
+# primary key then serialized: the loser's snapshot insert breaches the PK. Remapped
+# to a Conflict so a real race reads as "re-read and retry", not a 500.
+_CONCURRENT_WRITE_CONFLICT = (
+    "This resume was modified concurrently; re-read the latest revision and retry."
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -124,7 +134,8 @@ class ResumeService:
             updated_at=now,
         )
         async with transaction(self._session):
-            await self._repo.add(resume)
+            async with conflict_on_duplicate(JOB_APPLICATION_TAKEN_MESSAGE):
+                await self._repo.add(resume)
             await self._snapshot_and_index(
                 pk, resume, document, actor, Action.CREATE, summary=created_summary(resume)
             )
@@ -306,14 +317,15 @@ class ResumeService:
             )
         resolved = resolve_document(document, texts)
         await self._repo.set_bullet_refs(resume.id, sorted(ref_ids))
-        await self._repo.add_revision(
-            ResumeRevision(
-                resume_id=resume.id,
-                revision_no=resume.revision,
-                document=resolved.model_dump(mode="json"),
-                schema_version=CURRENT_SCHEMA_VERSION,
+        async with conflict_on_duplicate(_CONCURRENT_WRITE_CONFLICT):
+            await self._repo.add_revision(
+                ResumeRevision(
+                    resume_id=resume.id,
+                    revision_no=resume.revision,
+                    document=resolved.model_dump(mode="json"),
+                    schema_version=CURRENT_SCHEMA_VERSION,
+                )
             )
-        )
         await self._publish(
             pk,
             actor,
