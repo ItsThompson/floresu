@@ -70,6 +70,16 @@ class InMemoryResumeRepository:
     def revision_count(self, resume_id: int) -> int:
         return sum(1 for resume_id_, _ in self._revisions if resume_id_ == resume_id)
 
+    def seed(self, resume: Resume) -> Resume:
+        """Insert a resume directly (sync test setup), minting an id if it has none."""
+        if resume.id is None:
+            resume.id = self._next_id
+            self._next_id += 1
+        if resume.revision is None:
+            resume.revision = 1
+        self._resumes[resume.id] = resume
+        return resume
+
     async def add(self, resume: Resume) -> None:
         resume.id = self._next_id
         self._next_id += 1

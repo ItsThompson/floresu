@@ -393,13 +393,21 @@ async def test_permanent_delete_resume_removes_revisions_but_keeps_the_finalize_
                 session,
                 select(func.count())
                 .select_from(AuditLog)
-                .where(AuditLog.entity_id == graph.resume_id, AuditLog.action == "finalize"),
+                .where(
+                    AuditLog.user_id == user_id,
+                    AuditLog.entity_id == graph.resume_id,
+                    AuditLog.action == "finalize",
+                ),
             )
             delete_audit = await _count(
                 session,
                 select(func.count())
                 .select_from(AuditLog)
-                .where(AuditLog.entity_id == graph.resume_id, AuditLog.action == "delete"),
+                .where(
+                    AuditLog.user_id == user_id,
+                    AuditLog.entity_id == graph.resume_id,
+                    AuditLog.action == "delete",
+                ),
             )
     finally:
         await engine.dispose()
