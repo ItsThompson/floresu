@@ -21,7 +21,7 @@ from floresu.accounts.session import create_session_verifier
 from floresu.accounts.tokens import SessionTokenCodec
 from floresu.api_internal.main import app as internal_app
 from floresu.core.app_factory import create_app
-from floresu.core.errors import build_exception_handlers
+from floresu.core.errors import Unauthorized, build_exception_handlers
 from floresu.core.headers import INTERNAL_API_TOKEN_HEADER, USER_ID_HEADER
 from floresu.core.identity import (
     SESSION_COOKIE_NAME,
@@ -29,6 +29,7 @@ from floresu.core.identity import (
     _token_is_valid,
     require_internal_user,
     require_user,
+    resolve_user_pk,
 )
 from floresu.core.route_registry import mounted_product_routes
 from floresu.core.settings import INTERNAL_PORT, INTERNAL_SERVICE, AppSettings
@@ -221,3 +222,12 @@ def test_cookie_wins_over_a_spoofed_header() -> None:
         headers={USER_ID_HEADER: "999"},
     )
     assert response.json() == {"user_id": "42"}
+
+
+def test_resolve_user_pk_casts_a_numeric_identity() -> None:
+    assert resolve_user_pk("42") == 42
+
+
+def test_resolve_user_pk_rejects_a_non_numeric_identity() -> None:
+    with pytest.raises(Unauthorized):
+        resolve_user_pk("not-a-pk")

@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from floresu.core.errors import Unauthorized
+from floresu.core.identity import resolve_user_pk
 from floresu.core.logging import get_logger
 from floresu.core.observability import track_failures
 from floresu.embedding.config import EmbedItemKind
@@ -56,7 +56,7 @@ class SearchService:
 
     async def search(self, user_id: str, query: SearchQuery) -> SearchResult:
         """Retrieve, fuse, and assemble the scored provenance DAG for one query."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         terms = query.query.strip()
         eligible = eligible_kinds(query.filters)
         # Search, not list-all: a blank query returns nothing; a filter set that
@@ -114,11 +114,3 @@ class SearchService:
             bullet_source_edges=inputs.bullet_source_edges,
             worklog_source_edges=inputs.worklog_source_edges,
         )
-
-
-def _require_user_pk(user_id: str) -> int:
-    """Cast the resolved string identity to the bigint PK, or reject as stale."""
-    try:
-        return int(user_id)
-    except ValueError as exc:
-        raise Unauthorized("Session is invalid or expired.") from exc
