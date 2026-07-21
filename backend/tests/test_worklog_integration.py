@@ -24,9 +24,9 @@ from floresu.audit.wiring import build_write_event_publisher
 from floresu.core.actor import Actor, ActorType
 from floresu.core.db import create_db_engine, create_sessionmaker, transaction
 from floresu.core.errors import Validation
+from floresu.core.events import REEMBED_CONTENT_HASH_KEY
 from floresu.profile.repository import SqlAlchemySourceRepository
 from floresu.profile.service import SourceService
-from floresu.worklog.config import REEMBED_CONTENT_HASH_KEY
 from floresu.worklog.hashing import compute_content_hash
 from floresu.worklog.models import Tag, WorklogEntry
 from floresu.worklog.repository import SqlAlchemyWorklogRepository

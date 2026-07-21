@@ -89,6 +89,15 @@ EXTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("PUT", "/worklog/{worklog_id}"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("POST", "/worklog/{worklog_id}/archive"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("POST", "/worklog/{worklog_id}/restore"): AccessLevel.EXTERNAL_COOKIE,
+    # Canonical library bulletpoints and the provenance DAG. The web boundary
+    # resolves the human session cookie; the same routes mount on the internal app
+    # for the agent path (below).
+    RouteKey("POST", "/bullets"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("GET", "/bullets"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("GET", "/bullets/{bullet_id}"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("PUT", "/bullets/{bullet_id}"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("POST", "/bullets/{bullet_id}/archive"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("POST", "/bullets/{bullet_id}/restore"): AccessLevel.EXTERNAL_COOKIE,
     # Live activity feed (external app only): the SSE stream and the initial-load
     # read both require the human session cookie.
     RouteKey("GET", "/feed"): AccessLevel.EXTERNAL_COOKIE,
@@ -111,6 +120,13 @@ INTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("PUT", "/worklog/{worklog_id}"): AccessLevel.INTERNAL_TRUSTED,
     RouteKey("POST", "/worklog/{worklog_id}/archive"): AccessLevel.INTERNAL_TRUSTED,
     RouteKey("POST", "/worklog/{worklog_id}/restore"): AccessLevel.INTERNAL_TRUSTED,
+    # Canonical library bulletpoints on the agent-facing internal app: trusted-header identity.
+    RouteKey("POST", "/bullets"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("GET", "/bullets"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("GET", "/bullets/{bullet_id}"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("PUT", "/bullets/{bullet_id}"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("POST", "/bullets/{bullet_id}/archive"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("POST", "/bullets/{bullet_id}/restore"): AccessLevel.INTERNAL_TRUSTED,
 }
 
 

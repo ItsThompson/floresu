@@ -23,9 +23,9 @@ from typing import TYPE_CHECKING, Any
 
 from floresu.core.db import transaction
 from floresu.core.errors import Conflict, NotFound, Unauthorized, Validation
-from floresu.core.events import Action, WriteEvent
+from floresu.core.events import REEMBED_CONTENT_HASH_KEY, Action, WriteEvent
 from floresu.core.observability import track_failures
-from floresu.worklog.config import DEFAULT_LIST_LIMIT, ENTITY_TYPE, REEMBED_CONTENT_HASH_KEY
+from floresu.worklog.config import DEFAULT_LIST_LIMIT, ENTITY_TYPE
 from floresu.worklog.hashing import compute_content_hash
 from floresu.worklog.injection import Clock, utcnow
 from floresu.worklog.models import WorklogEntry

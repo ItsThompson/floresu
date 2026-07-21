@@ -45,6 +45,16 @@ if TYPE_CHECKING:
 
 _log = get_logger("floresu-events")
 
+# The write-event ``metadata`` key that carries the re-embed trigger. A write that
+# warrants (re)embedding (a create, or an edit that changes the content hash)
+# carries the new content hash under this key; the embed consumer (a post-commit
+# side channel a later slice registers) keys on its presence and compares the hash
+# to gate embedding. An edit that leaves the hash unchanged omits it, so no
+# re-embed is signalled. It is the shared writer-to-embed-consumer contract, so it
+# lives with the write-event contract rather than in one domain: worklog and
+# bullets publish it today, and any other embeddable domain uses this same key.
+REEMBED_CONTENT_HASH_KEY = "content_hash"
+
 
 class Action(StrEnum):
     """The closed set of content-write actions an audit row records.

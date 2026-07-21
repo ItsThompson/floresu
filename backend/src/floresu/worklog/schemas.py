@@ -9,9 +9,9 @@ content hash are server-owned and never accepted on a write.
 
 Reads come in two shapes. A :class:`WorklogSummary` carries an entry with its tag
 labels and attached source ids for the timeline; a :class:`WorklogRecord` adds the
-``bullet_ids`` that frame the entry (the provenance edges resolve once the Library
-exists; the list is empty until then). Tag color is never carried: it is derived
-from the label by the shared ``colorForName`` utility wherever a tag is rendered.
+``bullet_ids`` of the canonical bulletpoints that frame the entry. Tag color is
+never carried: it is derived from the label by the shared ``colorForName`` utility
+wherever a tag is rendered.
 """
 
 from __future__ import annotations
@@ -56,8 +56,8 @@ class WorklogSummary(BaseModel):
 class WorklogRecord(WorklogSummary):
     """A single entry, adding the bulletpoints that frame it (provenance)."""
 
-    # The canonical bulletpoints whose ``bullet_worklog`` edges point at this entry.
-    # The edges do not exist until the Library lands, so this is empty until then.
+    # The canonical bulletpoints whose ``bullet_worklog`` edges point at this entry
+    # (archived bullets excluded); empty for an entry no bullet frames.
     bullet_ids: list[int]
 
 

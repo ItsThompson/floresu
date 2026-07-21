@@ -37,6 +37,8 @@ from floresu.core.settings import EXTERNAL_PORT, EXTERNAL_SERVICE, build_app_set
 from floresu.feed.api import create_feed_router
 from floresu.feed.store import RedisFeedStore
 from floresu.feed.wiring import FEED_STORE_ATTR, build_sse_feed_consumer
+from floresu.library.router import create_bullets_router
+from floresu.library.wiring import build_bullet_service_provider
 from floresu.oauth.api import create_oauth_router
 from floresu.oauth.cleanup import start_stale_client_cleanup, stop_stale_client_cleanup
 from floresu.oauth.config import build_oauth_config
@@ -111,6 +113,15 @@ worklog_router = create_worklog_router(
     actor=resolve_web_actor,
 )
 
+# Canonical library bulletpoints and the provenance DAG, mounted with the human
+# session identity and a human actor. The internal app mounts the same router with
+# the trusted-header identity and the named-agent actor.
+bullets_router = create_bullets_router(
+    build_bullet_service_provider(),
+    identity=require_user,
+    actor=resolve_web_actor,
+)
+
 
 # The live activity feed: GET /feed (SSE stream) + GET /feed/history (initial load).
 # The stream resolves the caller via require_user and reads the process-wide feed
@@ -142,7 +153,15 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app: FastAPI = create_app(
     settings,
-    routers=[accounts_router, me_router, oauth_router, sources_router, worklog_router, feed_router],
+    routers=[
+        accounts_router,
+        me_router,
+        oauth_router,
+        sources_router,
+        worklog_router,
+        bullets_router,
+        feed_router,
+    ],
     readiness_checks=[db_readiness_check(db.engine)],
     exception_handlers={**build_exception_handlers(), **build_oauth_exception_handlers()},
     lifespan=_lifespan,
