@@ -55,6 +55,8 @@ from floresu.profile.skills.wiring import build_skill_service_provider
 from floresu.profile.variants.router import create_variants_router
 from floresu.profile.variants.wiring import build_variant_service_provider
 from floresu.profile.wiring import build_source_service_provider
+from floresu.resumes.router import create_resumes_router
+from floresu.resumes.wiring import build_resume_service_provider
 from floresu.worklog.router import create_worklog_router
 from floresu.worklog.wiring import build_worklog_service_provider
 
@@ -140,6 +142,15 @@ variants_router = create_variants_router(
     actor=resolve_web_actor,
 )
 
+# Resumes: the JSONB-authoritative Output layer. Mounted with the human session
+# identity and a human actor; the internal app mounts the same router with the
+# trusted-header identity and the named-agent actor.
+resumes_router = create_resumes_router(
+    build_resume_service_provider(),
+    identity=require_user,
+    actor=resolve_web_actor,
+)
+
 
 # The live activity feed: GET /feed (SSE stream) + GET /feed/history (initial load).
 # The stream resolves the caller via require_user and reads the process-wide feed
@@ -181,6 +192,7 @@ app: FastAPI = create_app(
         skills_router,
         variants_router,
         feed_router,
+        resumes_router,
     ],
     readiness_checks=[db_readiness_check(db.engine)],
     exception_handlers={**build_exception_handlers(), **build_oauth_exception_handlers()},

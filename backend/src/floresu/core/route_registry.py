@@ -116,6 +116,15 @@ EXTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("PUT", "/identity-variants/{variant_id}"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("POST", "/identity-variants/{variant_id}/archive"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("POST", "/identity-variants/{variant_id}/restore"): AccessLevel.EXTERNAL_COOKIE,
+    # Resumes: the JSONB-authoritative Output layer. The web boundary resolves the
+    # human session cookie; the same routes mount on the internal app (below).
+    RouteKey("POST", "/resumes"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("GET", "/resumes"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("GET", "/resumes/{resume_id}"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("PUT", "/resumes/{resume_id}"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("POST", "/resumes/{resume_id}/items"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("POST", "/resumes/{resume_id}/items/{item_id}/remove"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("POST", "/resumes/{resume_id}/reorder"): AccessLevel.EXTERNAL_COOKIE,
     # Live activity feed (external app only): the SSE stream and the initial-load
     # read both require the human session cookie.
     RouteKey("GET", "/feed"): AccessLevel.EXTERNAL_COOKIE,
@@ -160,6 +169,14 @@ INTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("PUT", "/identity-variants/{variant_id}"): AccessLevel.INTERNAL_TRUSTED,
     RouteKey("POST", "/identity-variants/{variant_id}/archive"): AccessLevel.INTERNAL_TRUSTED,
     RouteKey("POST", "/identity-variants/{variant_id}/restore"): AccessLevel.INTERNAL_TRUSTED,
+    # Resumes on the agent-facing internal app: trusted-header identity.
+    RouteKey("POST", "/resumes"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("GET", "/resumes"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("GET", "/resumes/{resume_id}"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("PUT", "/resumes/{resume_id}"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("POST", "/resumes/{resume_id}/items"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("POST", "/resumes/{resume_id}/items/{item_id}/remove"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("POST", "/resumes/{resume_id}/reorder"): AccessLevel.INTERNAL_TRUSTED,
 }
 
 
