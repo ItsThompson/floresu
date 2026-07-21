@@ -1,0 +1,1 @@
+export { ProfileHubView } from "./ProfileHubView";
