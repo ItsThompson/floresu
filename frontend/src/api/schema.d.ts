@@ -433,6 +433,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/bullets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Bullets */
+        get: operations["list_bullets_bullets_get"];
+        put?: never;
+        /** Create Bullet */
+        post: operations["create_bullet_bullets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bullets/{bullet_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Bullet */
+        get: operations["get_bullet_bullets__bullet_id__get"];
+        /** Update Bullet */
+        put: operations["update_bullet_bullets__bullet_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bullets/{bullet_id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive Bullet */
+        post: operations["archive_bullet_bullets__bullet_id__archive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bullets/{bullet_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore Bullet */
+        post: operations["restore_bullet_bullets__bullet_id__restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/feed": {
         parameters: {
             query?: never;
@@ -565,6 +635,38 @@ export interface components {
             refresh_token?: string | null;
             /** Resource */
             resource?: string | null;
+        };
+        /**
+         * BulletpointRecord
+         * @description A canonical bulletpoint with its resolved provenance edges and usage count.
+         */
+        BulletpointRecord: {
+            /** Id */
+            id: number;
+            /** Text */
+            text: string;
+            /** Source Ids */
+            source_ids: number[];
+            /** Worklog Ids */
+            worklog_ids: number[];
+            /** Used In Count */
+            used_in_count: number;
+            /** Revision */
+            revision: number;
+            /** Archived At */
+            archived_at: string | null;
+        };
+        /**
+         * BulletpointWrite
+         * @description The create/update body: required text plus the full provenance-edge lists.
+         */
+        BulletpointWrite: {
+            /** Text */
+            text: string;
+            /** Source Ids */
+            source_ids?: number[];
+            /** Worklog Ids */
+            worklog_ids?: number[];
         };
         /** CertificationDetail */
         CertificationDetail: {
@@ -1794,6 +1896,198 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorklogRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_bullets_bullets_get: {
+        parameters: {
+            query?: {
+                include_archived?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulletpointRecord"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_bullet_bullets_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulletpointWrite"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulletpointRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_bullet_bullets__bullet_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bullet_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulletpointRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_bullet_bullets__bullet_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bullet_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulletpointWrite"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulletpointRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    archive_bullet_bullets__bullet_id__archive_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bullet_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulletpointRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_bullet_bullets__bullet_id__restore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bullet_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulletpointRecord"];
                 };
             };
             /** @description Validation Error */

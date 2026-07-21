@@ -1227,6 +1227,268 @@
         }
       }
     },
+    "/bullets": {
+      "post": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Create Bullet",
+        "operationId": "create_bullet_bullets_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulletpointWrite"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulletpointRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "library"
+        ],
+        "summary": "List Bullets",
+        "operationId": "list_bullets_bullets_get",
+        "parameters": [
+          {
+            "name": "include_archived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Archived"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BulletpointRecord"
+                  },
+                  "title": "Response List Bullets Bullets Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bullets/{bullet_id}": {
+      "get": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Get Bullet",
+        "operationId": "get_bullet_bullets__bullet_id__get",
+        "parameters": [
+          {
+            "name": "bullet_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Bullet Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulletpointRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Update Bullet",
+        "operationId": "update_bullet_bullets__bullet_id__put",
+        "parameters": [
+          {
+            "name": "bullet_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Bullet Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulletpointWrite"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulletpointRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bullets/{bullet_id}/archive": {
+      "post": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Archive Bullet",
+        "operationId": "archive_bullet_bullets__bullet_id__archive_post",
+        "parameters": [
+          {
+            "name": "bullet_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Bullet Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulletpointRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bullets/{bullet_id}/restore": {
+      "post": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Restore Bullet",
+        "operationId": "restore_bullet_bullets__bullet_id__restore_post",
+        "parameters": [
+          {
+            "name": "bullet_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Bullet Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulletpointRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/feed": {
       "get": {
         "tags": [
@@ -1527,6 +1789,94 @@
         },
         "type": "object",
         "title": "Body_token_oauth_token_post"
+      },
+      "BulletpointRecord": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "source_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Source Ids"
+          },
+          "worklog_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Worklog Ids"
+          },
+          "used_in_count": {
+            "type": "integer",
+            "title": "Used In Count"
+          },
+          "revision": {
+            "type": "integer",
+            "title": "Revision"
+          },
+          "archived_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "text",
+          "source_ids",
+          "worklog_ids",
+          "used_in_count",
+          "revision",
+          "archived_at"
+        ],
+        "title": "BulletpointRecord",
+        "description": "A canonical bulletpoint with its resolved provenance edges and usage count."
+      },
+      "BulletpointWrite": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text"
+          },
+          "source_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Source Ids"
+          },
+          "worklog_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Worklog Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "BulletpointWrite",
+        "description": "The create/update body: required text plus the full provenance-edge lists."
       },
       "CertificationDetail": {
         "properties": {
