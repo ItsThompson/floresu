@@ -50,6 +50,10 @@ from floresu.oauth.wiring import (
     build_token_service_provider,
 )
 from floresu.profile.router import create_sources_router
+from floresu.profile.skills.router import create_skills_router
+from floresu.profile.skills.wiring import build_skill_service_provider
+from floresu.profile.variants.router import create_variants_router
+from floresu.profile.variants.wiring import build_variant_service_provider
 from floresu.profile.wiring import build_source_service_provider
 from floresu.worklog.router import create_worklog_router
 from floresu.worklog.wiring import build_worklog_service_provider
@@ -122,6 +126,20 @@ bullets_router = create_bullets_router(
     actor=resolve_web_actor,
 )
 
+# Curated skills and identity variants: the non-source profile family. Mounted with
+# the human session identity and a human actor; the internal app mounts the same
+# routers with the trusted-header identity and the named-agent actor.
+skills_router = create_skills_router(
+    build_skill_service_provider(),
+    identity=require_user,
+    actor=resolve_web_actor,
+)
+variants_router = create_variants_router(
+    build_variant_service_provider(),
+    identity=require_user,
+    actor=resolve_web_actor,
+)
+
 
 # The live activity feed: GET /feed (SSE stream) + GET /feed/history (initial load).
 # The stream resolves the caller via require_user and reads the process-wide feed
@@ -160,6 +178,8 @@ app: FastAPI = create_app(
         sources_router,
         worklog_router,
         bullets_router,
+        skills_router,
+        variants_router,
         feed_router,
     ],
     readiness_checks=[db_readiness_check(db.engine)],

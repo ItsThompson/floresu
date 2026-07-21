@@ -31,6 +31,8 @@ from floresu.core.settings import EnvSettings
 from floresu.library import models as _library_models  # noqa: F401
 from floresu.oauth import models as _oauth_models  # noqa: F401
 from floresu.profile import models as _profile_models  # noqa: F401
+from floresu.profile.skills import models as _skill_models  # noqa: F401
+from floresu.profile.variants import models as _variant_models  # noqa: F401
 from floresu.worklog import models as _worklog_models  # noqa: F401
 
 if TYPE_CHECKING:

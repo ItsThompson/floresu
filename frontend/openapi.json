@@ -1489,6 +1489,575 @@
         }
       }
     },
+    "/skills": {
+      "post": {
+        "tags": [
+          "skills"
+        ],
+        "summary": "Create Skill",
+        "operationId": "create_skill_skills_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillWrite"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "skills"
+        ],
+        "summary": "List Skills",
+        "operationId": "list_skills_skills_get",
+        "parameters": [
+          {
+            "name": "include_archived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Archived"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SkillRead"
+                  },
+                  "title": "Response List Skills Skills Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/skills/reorder": {
+      "post": {
+        "tags": [
+          "skills"
+        ],
+        "summary": "Reorder Skills",
+        "operationId": "reorder_skills_skills_reorder_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillReorderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SkillRead"
+                  },
+                  "type": "array",
+                  "title": "Response Reorder Skills Skills Reorder Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/skills/{skill_id}": {
+      "get": {
+        "tags": [
+          "skills"
+        ],
+        "summary": "Get Skill",
+        "operationId": "get_skill_skills__skill_id__get",
+        "parameters": [
+          {
+            "name": "skill_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Skill Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "skills"
+        ],
+        "summary": "Update Skill",
+        "operationId": "update_skill_skills__skill_id__put",
+        "parameters": [
+          {
+            "name": "skill_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Skill Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillWrite"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/skills/{skill_id}/archive": {
+      "post": {
+        "tags": [
+          "skills"
+        ],
+        "summary": "Archive Skill",
+        "operationId": "archive_skill_skills__skill_id__archive_post",
+        "parameters": [
+          {
+            "name": "skill_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Skill Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/skills/{skill_id}/restore": {
+      "post": {
+        "tags": [
+          "skills"
+        ],
+        "summary": "Restore Skill",
+        "operationId": "restore_skill_skills__skill_id__restore_post",
+        "parameters": [
+          {
+            "name": "skill_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Skill Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/identity-variants": {
+      "post": {
+        "tags": [
+          "identity-variants"
+        ],
+        "summary": "Create Variant",
+        "operationId": "create_variant_identity_variants_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IdentityVariantWrite"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityVariantRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "identity-variants"
+        ],
+        "summary": "List Variants",
+        "operationId": "list_variants_identity_variants_get",
+        "parameters": [
+          {
+            "name": "include_archived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Archived"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IdentityVariantRead"
+                  },
+                  "title": "Response List Variants Identity Variants Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/identity-variants/{variant_id}": {
+      "get": {
+        "tags": [
+          "identity-variants"
+        ],
+        "summary": "Get Variant",
+        "operationId": "get_variant_identity_variants__variant_id__get",
+        "parameters": [
+          {
+            "name": "variant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Variant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityVariantRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "identity-variants"
+        ],
+        "summary": "Update Variant",
+        "operationId": "update_variant_identity_variants__variant_id__put",
+        "parameters": [
+          {
+            "name": "variant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Variant Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IdentityVariantWrite"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityVariantRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/identity-variants/{variant_id}/archive": {
+      "post": {
+        "tags": [
+          "identity-variants"
+        ],
+        "summary": "Archive Variant",
+        "operationId": "archive_variant_identity_variants__variant_id__archive_post",
+        "parameters": [
+          {
+            "name": "variant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Variant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityVariantRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/identity-variants/{variant_id}/restore": {
+      "post": {
+        "tags": [
+          "identity-variants"
+        ],
+        "summary": "Restore Variant",
+        "operationId": "restore_variant_identity_variants__variant_id__restore_post",
+        "parameters": [
+          {
+            "name": "variant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Variant Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityVariantRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/feed": {
       "get": {
         "tags": [
@@ -2319,6 +2888,98 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "IdentityVariantRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "contact": {
+            "$ref": "#/components/schemas/VariantContact"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/VariantLink"
+            },
+            "type": "array",
+            "title": "Links"
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default"
+          },
+          "archived_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "full_name",
+          "contact",
+          "links",
+          "is_default",
+          "archived_at"
+        ],
+        "title": "IdentityVariantRead",
+        "description": "A variant with its default flag and archive state."
+      },
+      "IdentityVariantWrite": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Label"
+          },
+          "full_name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Full Name"
+          },
+          "contact": {
+            "$ref": "#/components/schemas/VariantContact"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/VariantLink"
+            },
+            "type": "array",
+            "title": "Links"
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "label",
+          "full_name"
+        ],
+        "title": "IdentityVariantWrite",
+        "description": "The create/update body: label, name, optional contact, links, default flag."
+      },
       "LoginRequest": {
         "properties": {
           "email": {
@@ -2584,6 +3245,84 @@
         ],
         "title": "RoleWrite"
       },
+      "SkillRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "usage_count": {
+            "type": "integer",
+            "title": "Usage Count"
+          },
+          "sort_order": {
+            "type": "integer",
+            "title": "Sort Order"
+          },
+          "archived_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "usage_count",
+          "sort_order",
+          "archived_at"
+        ],
+        "title": "SkillRead",
+        "description": "A skill with its derived usage count (computed from tag matches, not stored)."
+      },
+      "SkillReorderRequest": {
+        "properties": {
+          "skill_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Skill Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "skill_ids"
+        ],
+        "title": "SkillReorderRequest",
+        "description": "A reorder: the full ordered id list for the user's active skills."
+      },
+      "SkillWrite": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "SkillWrite",
+        "description": "The create/rename body: a skill is defined by its curated ``name``."
+      },
       "SourceKind": {
         "type": "string",
         "enum": [
@@ -2829,6 +3568,69 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VariantContact": {
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "VariantContact",
+        "description": "A variant's contact fields; each is optional (a variant may omit any)."
+      },
+      "VariantLink": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Label"
+          },
+          "url": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Url"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "label",
+          "url"
+        ],
+        "title": "VariantLink",
+        "description": "A labeled link (e.g. a portfolio or profile URL)."
       },
       "WorklogRecord": {
         "properties": {

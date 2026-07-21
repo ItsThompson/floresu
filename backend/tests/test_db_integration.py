@@ -81,10 +81,10 @@ def test_alembic_upgrade_head_creates_users_and_enables_pgvector(
             await engine.dispose()
 
     result = asyncio.run(_inspect())
-    # Migration head after this slice: the library domain is 0008, chained onto the
-    # worklog domain (0007), the sources supertable (0006), and the wave-integrated
-    # audit (0004)/OAuth (0005).
-    assert result["version"] == "0008_library"
+    # Migration head after the wave integration: skills + identity_variants (0009)
+    # chained onto the library domain (0008), the worklog domain (0007), the sources
+    # supertable (0006), and the wave-integrated audit (0004)/OAuth (0005).
+    assert result["version"] == "0009_skills_identity_variants"
     assert result["has_vector"] == 1
     # Deterministic constraint-naming convention (ix_/uq_/ck_/fk_/pk_).
     assert result["constraints"] == ["pk_users", "uq_users_email"]
