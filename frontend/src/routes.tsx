@@ -6,6 +6,7 @@ import { RequireOnboarded } from "@/components/RequireOnboarded";
 import { AuthView } from "@/views/AuthView";
 import { ConsentView } from "@/views/ConsentView";
 import { HomeView } from "@/views/HomeView";
+import { LibraryView } from "@/views/LibraryView";
 import { OnboardingView } from "@/views/OnboardingView";
 
 /**
@@ -41,7 +42,10 @@ export const appRoutes: RouteObject[] = [
           {
             path: "/",
             element: <AppShell />,
-            children: [{ index: true, element: <HomeView /> }],
+            children: [
+              { index: true, element: <HomeView /> },
+              { path: "library", element: <LibraryView /> },
+            ],
           },
         ],
       },

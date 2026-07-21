@@ -3,7 +3,10 @@ import { NavLink } from "react-router";
 import { useAuth } from "@/auth";
 import { Button } from "@/components/ui/button";
 
-const NAV_ITEMS = [{ to: "/", label: "Home", end: true }] as const;
+const NAV_ITEMS = [
+  { to: "/", label: "Home", end: true },
+  { to: "/library", label: "Library", end: false },
+] as const;
 
 /**
  * Left sidebar: brand, primary nav, and the signed-in identity with sign-out.
