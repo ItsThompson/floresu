@@ -19,6 +19,8 @@ from floresu.core.db import create_database, create_db_lifespan, db_readiness_ch
 from floresu.core.errors import build_exception_handlers
 from floresu.core.identity import require_internal_user
 from floresu.core.settings import INTERNAL_PORT, INTERNAL_SERVICE, build_app_settings
+from floresu.library.router import create_bullets_router
+from floresu.library.wiring import build_bullet_service_provider
 from floresu.profile.router import create_sources_router
 from floresu.profile.wiring import build_source_service_provider
 from floresu.worklog.router import create_worklog_router
@@ -43,10 +45,15 @@ worklog_router = create_worklog_router(
     identity=require_internal_user,
     actor=resolve_internal_actor,
 )
+bullets_router = create_bullets_router(
+    build_bullet_service_provider(),
+    identity=require_internal_user,
+    actor=resolve_internal_actor,
+)
 
 app: FastAPI = create_app(
     settings,
-    routers=[sources_router, worklog_router],
+    routers=[sources_router, worklog_router, bullets_router],
     readiness_checks=[db_readiness_check(db.engine)],
     exception_handlers=build_exception_handlers(),
     lifespan=create_db_lifespan(db.engine),
