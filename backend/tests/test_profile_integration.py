@@ -76,17 +76,31 @@ async def test_create_writes_base_subtype_and_audit_in_one_transaction(
             record = await _service(session).create(str(user_id), _HUMAN, build_role_write())
 
         async with sessionmaker() as session:
-            sources = await session.scalar(select(func.count()).select_from(Source))
-            roles = await session.scalar(select(func.count()).select_from(Role))
+            sources = await session.scalar(
+                select(func.count()).select_from(Source).where(Source.user_id == user_id)
+            )
+            roles = await session.scalar(
+                select(func.count())
+                .select_from(Role)
+                .join(Source, Source.id == Role.source_id)
+                .where(Source.user_id == user_id)
+            )
             audit = (
-                (await session.execute(select(AuditLog).where(AuditLog.entity_type == "source")))
+                (
+                    await session.execute(
+                        select(AuditLog).where(
+                            AuditLog.entity_type == "source", AuditLog.user_id == user_id
+                        )
+                    )
+                )
                 .scalars()
                 .all()
             )
     finally:
         await engine.dispose()
 
-    # One base row, one subtype row, and one audit row for the create.
+    # One base row, one subtype row, and one audit row for this user's create
+    # (counts are scoped to the user because integration tests share one database).
     assert sources == 1
     assert roles == 1
     assert len(audit) == 1
