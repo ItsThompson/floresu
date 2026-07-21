@@ -8,9 +8,19 @@ import { defineConfig } from "vitest/config";
 // SPA calls the backend same-origin (no CORS, and the session cookie flows).
 // `/auth/` keeps the trailing slash so it proxies the auth endpoints without
 // swallowing the `/authorize` SPA consent route; `/oauth` reaches the OAuth AS
-// (the consent context/decision XHRs).
+// (the consent context/decision XHRs). The domain paths carry the worklog,
+// source, bullet, and account routes the in-app views read and write.
 const BACKEND_ORIGIN = "http://localhost:8000";
-const PROXIED_PATHS = ["/auth/", "/me", "/feed", "/oauth"];
+const PROXIED_PATHS = [
+  "/auth/",
+  "/me",
+  "/feed",
+  "/oauth",
+  "/account",
+  "/worklog",
+  "/sources",
+  "/bullets",
+];
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
