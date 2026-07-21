@@ -59,6 +59,9 @@ async def test_first_variant_is_forced_default_and_captures_fields() -> None:
     assert captured[0].action is Action.CREATE
     assert captured[0].entity_type == "identity_variant"
     assert captured[0].actor == _HUMAN
+    # The create that makes the variant default carries the default marker, so the
+    # create and update promotion paths publish a symmetric signal for the feed.
+    assert captured[0].metadata == {"is_default": True}
     assert session.commits == 1
 
 
@@ -72,11 +75,14 @@ async def test_contact_fields_are_each_optional() -> None:
 
 
 async def test_second_variant_is_not_default_unless_requested() -> None:
-    service, _, _, _ = _service()
+    service, _, _, captured = _service()
     first = await service.create(_USER, _HUMAN, build_variant_write(label="Personal"))
+    captured.clear()
     second = await service.create(_USER, _HUMAN, build_variant_write(label="Academic"))
     assert first.is_default is True
     assert second.is_default is False
+    # A non-default create carries no default marker.
+    assert captured[0].metadata is None
 
 
 async def test_creating_a_second_default_flips_the_previous_one() -> None:

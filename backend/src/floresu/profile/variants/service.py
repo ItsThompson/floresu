@@ -91,7 +91,17 @@ class IdentityVariantService:
             await self._repo.add(variant)
             if make_default and existing_default is not None:
                 existing_default.is_default = False
-            await self._publish(pk, actor, variant.id, Action.CREATE, _created_summary(variant))
+            # Carry the default marker whenever this create makes the variant the
+            # default (the forced first variant, or an explicit is_default), so the
+            # create and update promotion paths publish a symmetric signal.
+            await self._publish(
+                pk,
+                actor,
+                variant.id,
+                Action.CREATE,
+                _created_summary(variant),
+                metadata={"is_default": True} if make_default else None,
+            )
         return to_read(variant)
 
     async def get(self, user_id: str, variant_id: int) -> IdentityVariantRead:
