@@ -1,9 +1,9 @@
-"""Unit tests for the shared profile duplicate-name/label Conflict mapper.
+"""Unit tests for the shared unique-violation → Conflict mapper.
 
-The curated profile services wrap their writes in ``conflict_on_duplicate`` so a
-``UNIQUE`` breach becomes a recoverable :class:`Conflict`. These tests exercise the
-helper directly: a unique-violation ``IntegrityError`` is mapped to a Conflict, and
-a non-unique integrity error propagates unchanged.
+Services wrap their writes in ``conflict_on_duplicate`` so a ``UNIQUE`` breach
+becomes a recoverable :class:`Conflict`. These tests exercise the helper directly:
+a unique-violation ``IntegrityError`` is mapped to a Conflict, and a non-unique
+integrity error propagates unchanged.
 """
 
 from __future__ import annotations
@@ -11,8 +11,8 @@ from __future__ import annotations
 import pytest
 from sqlalchemy.exc import IntegrityError
 
+from floresu.core.conflicts import conflict_on_duplicate
 from floresu.core.errors import Conflict
-from floresu.profile.conflicts import conflict_on_duplicate
 
 
 class _OrigError(Exception):

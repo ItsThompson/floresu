@@ -2101,6 +2101,391 @@
           }
         }
       }
+    },
+    "/resumes": {
+      "post": {
+        "tags": [
+          "resumes"
+        ],
+        "summary": "Create Resume",
+        "operationId": "create_resume_resumes_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResumeCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumeRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "resumes"
+        ],
+        "summary": "List Resumes",
+        "operationId": "list_resumes_resumes_get",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ResumeKind"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "include_archived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Archived"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ResumeSummary"
+                  },
+                  "title": "Response List Resumes Resumes Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/resumes/{resume_id}": {
+      "get": {
+        "tags": [
+          "resumes"
+        ],
+        "summary": "Get Resume",
+        "operationId": "get_resume_resumes__resume_id__get",
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Resume Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumeRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "resumes"
+        ],
+        "summary": "Update Resume",
+        "operationId": "update_resume_resumes__resume_id__put",
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Resume Id"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResumeUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumeRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/resumes/{resume_id}/items": {
+      "post": {
+        "tags": [
+          "resumes"
+        ],
+        "summary": "Add Item",
+        "operationId": "add_item_resumes__resume_id__items_post",
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Resume Id"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddItemRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumeRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/resumes/{resume_id}/items/{item_id}/remove": {
+      "post": {
+        "tags": [
+          "resumes"
+        ],
+        "summary": "Remove Item",
+        "operationId": "remove_item_resumes__resume_id__items__item_id__remove_post",
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Resume Id"
+            }
+          },
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "If-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumeRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/resumes/{resume_id}/reorder": {
+      "post": {
+        "tags": [
+          "resumes"
+        ],
+        "summary": "Reorder",
+        "operationId": "reorder_resumes__resume_id__reorder_post",
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Resume Id"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResumeReorderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumeRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2113,6 +2498,41 @@
         ],
         "title": "ActorType",
         "description": "Who performed a write."
+      },
+      "AddItemRequest": {
+        "properties": {
+          "section_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Section Id"
+          },
+          "item": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/LibraryRefItemInput"
+              },
+              {
+                "$ref": "#/components/schemas/LocalItemInput"
+              }
+            ],
+            "title": "Item",
+            "discriminator": {
+              "propertyName": "kind",
+              "mapping": {
+                "library_ref": "#/components/schemas/LibraryRefItemInput",
+                "local": "#/components/schemas/LocalItemInput"
+              }
+            }
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "section_id",
+          "item"
+        ],
+        "title": "AddItemRequest",
+        "description": "Append one item to a section; the server mints the item id."
       },
       "AuditEntry": {
         "properties": {
@@ -2246,6 +2666,20 @@
         ],
         "title": "AuthorizationContext",
         "description": "What the SPA consent screen renders for a parked ``auth_request_id``."
+      },
+      "BlankSource": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "const": "blank",
+            "title": "Mode",
+            "default": "blank"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "BlankSource",
+        "description": "Seed an empty document."
       },
       "Body_revoke_oauth_revoke_post": {
         "properties": {
@@ -2754,6 +3188,27 @@
         "title": "DecisionResult",
         "description": "The loopback URL the SPA redirects the browser to (approve or deny).\n\nReturned as JSON (not a 302) because the SPA calls the decision endpoint via a\ncredentialed XHR; the SPA performs the browser navigation to the loopback\nlistener itself."
       },
+      "DuplicateSource": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "const": "duplicate",
+            "title": "Mode",
+            "default": "duplicate"
+          },
+          "duplicate_id": {
+            "type": "integer",
+            "title": "Duplicate Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "duplicate_id"
+        ],
+        "title": "DuplicateSource",
+        "description": "Make a faithful copy of an existing resume."
+      },
       "EducationDetail": {
         "properties": {
           "institution": {
@@ -2875,6 +3330,27 @@
         ],
         "title": "EducationWrite"
       },
+      "FromResumeSource": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "const": "from_resume",
+            "title": "Mode",
+            "default": "from_resume"
+          },
+          "from_resume_id": {
+            "type": "integer",
+            "title": "From Resume Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "from_resume_id"
+        ],
+        "title": "FromResumeSource",
+        "description": "Seed content from an existing resume (the copies may later diverge in shape)."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2887,6 +3363,92 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "IdentitySnapshot": {
+        "properties": {
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "contact": {
+            "$ref": "#/components/schemas/IdentitySnapshotContact"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/IdentitySnapshotLink"
+            },
+            "type": "array",
+            "title": "Links"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "full_name"
+        ],
+        "title": "IdentitySnapshot",
+        "description": "Inlined, frozen identity facts a finalized resume carries in place of a reference."
+      },
+      "IdentitySnapshotContact": {
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "IdentitySnapshotContact",
+        "description": "Frozen contact facts inlined on finalize; each field optional per variant."
+      },
+      "IdentitySnapshotLink": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "label",
+          "url"
+        ],
+        "title": "IdentitySnapshotLink",
+        "description": "A labeled link inlined on finalize."
       },
       "IdentityVariantRead": {
         "properties": {
@@ -2979,6 +3541,157 @@
         ],
         "title": "IdentityVariantWrite",
         "description": "The create/update body: label, name, optional contact, links, default flag."
+      },
+      "LibraryRefItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "const": "library_ref",
+            "title": "Kind",
+            "default": "library_ref"
+          },
+          "bullet_id": {
+            "type": "integer",
+            "title": "Bullet Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "bullet_id"
+        ],
+        "title": "LibraryRefItem",
+        "description": "An item that references a canonical bulletpoint; the text is resolved on read."
+      },
+      "LibraryRefItemInput": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "library_ref",
+            "title": "Kind",
+            "default": "library_ref"
+          },
+          "bullet_id": {
+            "type": "integer",
+            "title": "Bullet Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "bullet_id"
+        ],
+        "title": "LibraryRefItemInput",
+        "description": "Add an item that references a canonical bulletpoint."
+      },
+      "LocalItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "const": "local",
+            "title": "Kind",
+            "default": "local"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text"
+          },
+          "source_refs": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LocalItemSourceRefs"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "forked_from_bullet_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forked From Bullet Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "text"
+        ],
+        "title": "LocalItem",
+        "description": "A resume-local item: a copy-on-write fork or a net-new inline item.\n\nIts ``text`` lives only here, so it is never searchable and never embedded.\n``forked_from_bullet_id`` is set when the item is a fork of a canonical bullet\n(the copy-on-write path sets it); a net-new inline item leaves it unset."
+      },
+      "LocalItemInput": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "local",
+            "title": "Kind",
+            "default": "local"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text"
+          },
+          "source_refs": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LocalItemSourceRefs"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "LocalItemInput",
+        "description": "Add a net-new inline item; its text lives only on the resume."
+      },
+      "LocalItemSourceRefs": {
+        "properties": {
+          "source_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Source Ids"
+          },
+          "worklog_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Worklog Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "LocalItemSourceRefs",
+        "description": "Provenance carried on a local item so it can later be promoted to the library."
       },
       "LoginRequest": {
         "properties": {
@@ -3121,6 +3834,437 @@
         "title": "ReorderRequest",
         "description": "A section reorder: the full ordered id list for one kind."
       },
+      "ResumeCreateRequest": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/ResumeKind"
+          },
+          "source": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BlankSource"
+              },
+              {
+                "$ref": "#/components/schemas/FromResumeSource"
+              },
+              {
+                "$ref": "#/components/schemas/DuplicateSource"
+              }
+            ],
+            "title": "Source",
+            "discriminator": {
+              "propertyName": "mode",
+              "mapping": {
+                "blank": "#/components/schemas/BlankSource",
+                "duplicate": "#/components/schemas/DuplicateSource",
+                "from_resume": "#/components/schemas/FromResumeSource"
+              }
+            }
+          },
+          "job_application_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Application Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "template_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "source"
+        ],
+        "title": "ResumeCreateRequest",
+        "description": "The creation contract: ``kind`` sets the result; ``source`` seeds the content."
+      },
+      "ResumeDocument": {
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "title": "Schema Version"
+          },
+          "header": {
+            "$ref": "#/components/schemas/ResumeHeader"
+          },
+          "template_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Template Id"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/ResumeSection"
+            },
+            "type": "array",
+            "title": "Sections"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema_version",
+          "template_id"
+        ],
+        "title": "ResumeDocument",
+        "description": "The authoritative, versioned resume document."
+      },
+      "ResumeHeader": {
+        "properties": {
+          "identity_variant_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identity Variant Id"
+          },
+          "identity_snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdentitySnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ResumeHeader",
+        "description": "The header: a living resume references a variant; a finalized one inlines a snapshot."
+      },
+      "ResumeKind": {
+        "type": "string",
+        "enum": [
+          "living",
+          "application"
+        ],
+        "title": "ResumeKind",
+        "description": "A resume is either an evergreen living resume or a single application resume."
+      },
+      "ResumeRecord": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ResumeKind"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResumeStatus"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "revision": {
+            "type": "integer",
+            "title": "Revision"
+          },
+          "schema_version": {
+            "type": "integer",
+            "title": "Schema Version"
+          },
+          "job_application_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Application Id"
+          },
+          "forked_from_resume_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forked From Resume Id"
+          },
+          "archived_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "document": {
+            "$ref": "#/components/schemas/ResumeDocument"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "title",
+          "revision",
+          "schema_version",
+          "job_application_id",
+          "forked_from_resume_id",
+          "archived_at",
+          "updated_at",
+          "document"
+        ],
+        "title": "ResumeRecord",
+        "description": "A single resume with its full, validated (upcast-on-read) document."
+      },
+      "ResumeReorderRequest": {
+        "properties": {
+          "section_order": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section Order"
+          },
+          "item_orders": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Orders"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ResumeReorderRequest",
+        "description": "Reorder sections and/or the items within sections, addressed by id.\n\n``section_order`` is the full ordered list of section ids; each entry of\n``item_orders`` maps a section id to the full ordered list of its item ids.\nBoth are permutations of their current sets (the service rejects a partial or\nduplicated list), so a reorder never addresses an item by array index and never\ncollides. At least one of the two must be provided."
+      },
+      "ResumeSection": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SectionKind"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "item_order": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Item Order"
+          },
+          "items": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/LibraryRefItem"
+                },
+                {
+                  "$ref": "#/components/schemas/LocalItem"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "title"
+        ],
+        "title": "ResumeSection",
+        "description": "One ordered section: an id-keyed items map plus an explicit order list."
+      },
+      "ResumeStatus": {
+        "type": "string",
+        "enum": [
+          "draft",
+          "finalized"
+        ],
+        "title": "ResumeStatus",
+        "description": "Living resumes stay ``draft``; an application resume freezes to ``finalized``."
+      },
+      "ResumeSummary": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ResumeKind"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResumeStatus"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "revision": {
+            "type": "integer",
+            "title": "Revision"
+          },
+          "schema_version": {
+            "type": "integer",
+            "title": "Schema Version"
+          },
+          "job_application_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Application Id"
+          },
+          "forked_from_resume_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forked From Resume Id"
+          },
+          "archived_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "title",
+          "revision",
+          "schema_version",
+          "job_application_id",
+          "forked_from_resume_id",
+          "archived_at",
+          "updated_at"
+        ],
+        "title": "ResumeSummary",
+        "description": "List projection: the scalar columns without the document."
+      },
+      "ResumeUpdate": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Title"
+          },
+          "template_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Template Id"
+          },
+          "header": {
+            "$ref": "#/components/schemas/ResumeHeader"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/ResumeSection"
+            },
+            "type": "array",
+            "title": "Sections"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "template_id"
+        ],
+        "title": "ResumeUpdate",
+        "description": "The full-document write: the authoritative content the single writer persists."
+      },
       "RoleDetail": {
         "properties": {
           "company": {
@@ -3244,6 +4388,20 @@
           "job_title"
         ],
         "title": "RoleWrite"
+      },
+      "SectionKind": {
+        "type": "string",
+        "enum": [
+          "work",
+          "projects",
+          "education",
+          "skills",
+          "certifications",
+          "summary",
+          "custom"
+        ],
+        "title": "SectionKind",
+        "description": "The fixed set of resume section kinds."
       },
       "SkillRead": {
         "properties": {

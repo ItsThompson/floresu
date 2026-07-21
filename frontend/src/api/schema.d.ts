@@ -694,6 +694,93 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/resumes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Resumes */
+        get: operations["list_resumes_resumes_get"];
+        put?: never;
+        /** Create Resume */
+        post: operations["create_resume_resumes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/resumes/{resume_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Resume */
+        get: operations["get_resume_resumes__resume_id__get"];
+        /** Update Resume */
+        put: operations["update_resume_resumes__resume_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/resumes/{resume_id}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Item */
+        post: operations["add_item_resumes__resume_id__items_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/resumes/{resume_id}/items/{item_id}/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Remove Item */
+        post: operations["remove_item_resumes__resume_id__items__item_id__remove_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/resumes/{resume_id}/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reorder */
+        post: operations["reorder_resumes__resume_id__reorder_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -704,6 +791,16 @@ export interface components {
          * @enum {string}
          */
         ActorType: "human" | "agent";
+        /**
+         * AddItemRequest
+         * @description Append one item to a section; the server mints the item id.
+         */
+        AddItemRequest: {
+            /** Section Id */
+            section_id: string;
+            /** Item */
+            item: components["schemas"]["LibraryRefItemInput"] | components["schemas"]["LocalItemInput"];
+        };
         /**
          * AuditEntry
          * @description One audit-log row, projected for the feed and item-history reads.
@@ -763,6 +860,17 @@ export interface components {
             scopes: string[];
             /** Authenticated */
             authenticated: boolean;
+        };
+        /**
+         * BlankSource
+         * @description Seed an empty document.
+         */
+        BlankSource: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            mode: "blank";
         };
         /** Body_revoke_oauth_revoke_post */
         Body_revoke_oauth_revoke_post: {
@@ -936,6 +1044,19 @@ export interface components {
             /** Redirect Uri */
             redirect_uri: string;
         };
+        /**
+         * DuplicateSource
+         * @description Make a faithful copy of an existing resume.
+         */
+        DuplicateSource: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            mode: "duplicate";
+            /** Duplicate Id */
+            duplicate_id: number;
+        };
         /** EducationDetail */
         EducationDetail: {
             /** Institution */
@@ -967,10 +1088,56 @@ export interface components {
             /** Field */
             field?: string | null;
         };
+        /**
+         * FromResumeSource
+         * @description Seed content from an existing resume (the copies may later diverge in shape).
+         */
+        FromResumeSource: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            mode: "from_resume";
+            /** From Resume Id */
+            from_resume_id: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * IdentitySnapshot
+         * @description Inlined, frozen identity facts a finalized resume carries in place of a reference.
+         */
+        IdentitySnapshot: {
+            /** Full Name */
+            full_name: string;
+            contact?: components["schemas"]["IdentitySnapshotContact"];
+            /** Links */
+            links?: components["schemas"]["IdentitySnapshotLink"][];
+        };
+        /**
+         * IdentitySnapshotContact
+         * @description Frozen contact facts inlined on finalize; each field optional per variant.
+         */
+        IdentitySnapshotContact: {
+            /** Email */
+            email?: string | null;
+            /** Phone */
+            phone?: string | null;
+            /** Location */
+            location?: string | null;
+        };
+        /**
+         * IdentitySnapshotLink
+         * @description A labeled link inlined on finalize.
+         */
+        IdentitySnapshotLink: {
+            /** Label */
+            label: string;
+            /** Url */
+            url: string;
         };
         /**
          * IdentityVariantRead
@@ -1008,6 +1175,82 @@ export interface components {
              * @default false
              */
             is_default: boolean;
+        };
+        /**
+         * LibraryRefItem
+         * @description An item that references a canonical bulletpoint; the text is resolved on read.
+         */
+        LibraryRefItem: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @default library_ref
+             * @constant
+             */
+            kind: "library_ref";
+            /** Bullet Id */
+            bullet_id: number;
+        };
+        /**
+         * LibraryRefItemInput
+         * @description Add an item that references a canonical bulletpoint.
+         */
+        LibraryRefItemInput: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "library_ref";
+            /** Bullet Id */
+            bullet_id: number;
+        };
+        /**
+         * LocalItem
+         * @description A resume-local item: a copy-on-write fork or a net-new inline item.
+         *
+         *     Its ``text`` lives only here, so it is never searchable and never embedded.
+         *     ``forked_from_bullet_id`` is set when the item is a fork of a canonical bullet
+         *     (the copy-on-write path sets it); a net-new inline item leaves it unset.
+         */
+        LocalItem: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @default local
+             * @constant
+             */
+            kind: "local";
+            /** Text */
+            text: string;
+            source_refs?: components["schemas"]["LocalItemSourceRefs"] | null;
+            /** Forked From Bullet Id */
+            forked_from_bullet_id?: number | null;
+        };
+        /**
+         * LocalItemInput
+         * @description Add a net-new inline item; its text lives only on the resume.
+         */
+        LocalItemInput: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "local";
+            /** Text */
+            text: string;
+            source_refs?: components["schemas"]["LocalItemSourceRefs"] | null;
+        };
+        /**
+         * LocalItemSourceRefs
+         * @description Provenance carried on a local item so it can later be promoted to the library.
+         */
+        LocalItemSourceRefs: {
+            /** Source Ids */
+            source_ids?: number[];
+            /** Worklog Ids */
+            worklog_ids?: number[];
         };
         /**
          * LoginRequest
@@ -1067,6 +1310,158 @@ export interface components {
             /** Source Ids */
             source_ids: number[];
         };
+        /**
+         * ResumeCreateRequest
+         * @description The creation contract: ``kind`` sets the result; ``source`` seeds the content.
+         */
+        ResumeCreateRequest: {
+            kind: components["schemas"]["ResumeKind"];
+            /** Source */
+            source: components["schemas"]["BlankSource"] | components["schemas"]["FromResumeSource"] | components["schemas"]["DuplicateSource"];
+            /** Job Application Id */
+            job_application_id?: number | null;
+            /** Title */
+            title?: string | null;
+            /** Template Id */
+            template_id?: string | null;
+        };
+        /**
+         * ResumeDocument
+         * @description The authoritative, versioned resume document.
+         */
+        ResumeDocument: {
+            /** Schema Version */
+            schema_version: number;
+            header?: components["schemas"]["ResumeHeader"];
+            /** Template Id */
+            template_id: string;
+            /** Sections */
+            sections?: components["schemas"]["ResumeSection"][];
+        };
+        /**
+         * ResumeHeader
+         * @description The header: a living resume references a variant; a finalized one inlines a snapshot.
+         */
+        ResumeHeader: {
+            /** Identity Variant Id */
+            identity_variant_id?: number | null;
+            identity_snapshot?: components["schemas"]["IdentitySnapshot"] | null;
+        };
+        /**
+         * ResumeKind
+         * @description A resume is either an evergreen living resume or a single application resume.
+         * @enum {string}
+         */
+        ResumeKind: "living" | "application";
+        /**
+         * ResumeRecord
+         * @description A single resume with its full, validated (upcast-on-read) document.
+         */
+        ResumeRecord: {
+            /** Id */
+            id: number;
+            kind: components["schemas"]["ResumeKind"];
+            status: components["schemas"]["ResumeStatus"];
+            /** Title */
+            title: string;
+            /** Revision */
+            revision: number;
+            /** Schema Version */
+            schema_version: number;
+            /** Job Application Id */
+            job_application_id: number | null;
+            /** Forked From Resume Id */
+            forked_from_resume_id: number | null;
+            /** Archived At */
+            archived_at: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            document: components["schemas"]["ResumeDocument"];
+        };
+        /**
+         * ResumeReorderRequest
+         * @description Reorder sections and/or the items within sections, addressed by id.
+         *
+         *     ``section_order`` is the full ordered list of section ids; each entry of
+         *     ``item_orders`` maps a section id to the full ordered list of its item ids.
+         *     Both are permutations of their current sets (the service rejects a partial or
+         *     duplicated list), so a reorder never addresses an item by array index and never
+         *     collides. At least one of the two must be provided.
+         */
+        ResumeReorderRequest: {
+            /** Section Order */
+            section_order?: string[] | null;
+            /** Item Orders */
+            item_orders?: {
+                [key: string]: string[];
+            } | null;
+        };
+        /**
+         * ResumeSection
+         * @description One ordered section: an id-keyed items map plus an explicit order list.
+         */
+        ResumeSection: {
+            /** Id */
+            id: string;
+            kind: components["schemas"]["SectionKind"];
+            /** Title */
+            title: string;
+            /** Item Order */
+            item_order?: string[];
+            /** Items */
+            items?: {
+                [key: string]: components["schemas"]["LibraryRefItem"] | components["schemas"]["LocalItem"];
+            };
+        };
+        /**
+         * ResumeStatus
+         * @description Living resumes stay ``draft``; an application resume freezes to ``finalized``.
+         * @enum {string}
+         */
+        ResumeStatus: "draft" | "finalized";
+        /**
+         * ResumeSummary
+         * @description List projection: the scalar columns without the document.
+         */
+        ResumeSummary: {
+            /** Id */
+            id: number;
+            kind: components["schemas"]["ResumeKind"];
+            status: components["schemas"]["ResumeStatus"];
+            /** Title */
+            title: string;
+            /** Revision */
+            revision: number;
+            /** Schema Version */
+            schema_version: number;
+            /** Job Application Id */
+            job_application_id: number | null;
+            /** Forked From Resume Id */
+            forked_from_resume_id: number | null;
+            /** Archived At */
+            archived_at: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * ResumeUpdate
+         * @description The full-document write: the authoritative content the single writer persists.
+         */
+        ResumeUpdate: {
+            /** Title */
+            title: string;
+            /** Template Id */
+            template_id: string;
+            header?: components["schemas"]["ResumeHeader"];
+            /** Sections */
+            sections?: components["schemas"]["ResumeSection"][];
+        };
         /** RoleDetail */
         RoleDetail: {
             /** Company */
@@ -1102,6 +1497,12 @@ export interface components {
             /** Location */
             location?: string | null;
         };
+        /**
+         * SectionKind
+         * @description The fixed set of resume section kinds.
+         * @enum {string}
+         */
+        SectionKind: "work" | "projects" | "education" | "skills" | "certifications" | "summary" | "custom";
         /**
          * SkillRead
          * @description A skill with its derived usage count (computed from tag matches, not stored).
@@ -2802,6 +3203,247 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditEntry"][];
+                };
+            };
+        };
+    };
+    list_resumes_resumes_get: {
+        parameters: {
+            query?: {
+                kind?: components["schemas"]["ResumeKind"] | null;
+                include_archived?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResumeSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_resume_resumes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResumeCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResumeRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_resume_resumes__resume_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                resume_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResumeRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_resume_resumes__resume_id__put: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": number;
+            };
+            path: {
+                resume_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResumeUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResumeRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_item_resumes__resume_id__items_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": number;
+            };
+            path: {
+                resume_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddItemRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResumeRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_item_resumes__resume_id__items__item_id__remove_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": number;
+            };
+            path: {
+                resume_id: number;
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResumeRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reorder_resumes__resume_id__reorder_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": number;
+            };
+            path: {
+                resume_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResumeReorderRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResumeRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
