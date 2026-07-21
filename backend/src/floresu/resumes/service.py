@@ -18,8 +18,9 @@ the current schema, reindex ``resume_bullet_ref`` to exactly the bullets the liv
 document references, append a keep-all revision snapshot of the *fully resolved*
 document (references resolved to text at that moment, so a later library edit never
 rewrites the past), and increment ``revision``. On read, an older document is
-upcast to the current schema and validated before it is served. Copy-on-write scope
-resolution, promote, finalize, and rendering build on this substrate elsewhere.
+upcast to the current schema and validated before it is served. The pure document
+surgery, guards, and summaries live in :mod:`floresu.resumes.operations`; this
+module orchestrates them and owns persistence.
 """
 
 from __future__ import annotations
@@ -27,32 +28,38 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from floresu.core.db import transaction
-from floresu.core.errors import Conflict, NotFound, Unauthorized, Validation
+from floresu.core.errors import Validation
 from floresu.core.events import Action, WriteEvent
 from floresu.core.observability import track_failures
-from floresu.resumes.config import (
-    DEFAULT_LIST_LIMIT,
-    DEFAULT_TEMPLATE_ID,
-    DEFAULT_TITLE,
-    ENTITY_TYPE,
+from floresu.resumes.config import DEFAULT_LIST_LIMIT, ENTITY_TYPE
+from floresu.resumes.creation import (
+    require_free_job_application,
+    seed_document,
+    validate_creation_contract,
 )
-from floresu.resumes.document import (
-    LibraryRefItem,
-    LocalItem,
-    ResumeDocument,
-    ResumeSection,
-    referenced_bullet_ids,
-    resolve_document,
-)
+from floresu.resumes.document import ResumeDocument, referenced_bullet_ids, resolve_document
 from floresu.resumes.injection import Clock, IdFactory, new_item_id, utcnow
 from floresu.resumes.models import Resume, ResumeKind, ResumeRevision, ResumeStatus
+from floresu.resumes.operations import (
+    apply_item_order,
+    apply_section_order,
+    build_item,
+    created_summary,
+    edited_summary,
+    find_item_section,
+    find_section,
+    guard_editable,
+    guard_revision,
+    item_added_summary,
+    item_removed_summary,
+    reordered_summary,
+    require_user_pk,
+    resume_not_found,
+    revalidate_document,
+)
 from floresu.resumes.schemas import (
     AddItemRequest,
-    BlankSource,
-    FromResumeSource,
-    LibraryRefItemInput,
     ResumeCreateRequest,
-    ResumeItemInput,
     ResumeReorderRequest,
     ResumeSummary,
     ResumeUpdate,
@@ -96,11 +103,12 @@ class ResumeService:
         self, user_id: str, actor: Actor, request: ResumeCreateRequest
     ) -> ResumeRecord:
         """Create a resume per the contract; snapshot revision 1 and index its refs."""
-        pk = _require_user_pk(user_id)
-        _validate_contract(request)
-        document, title, forked_from = await self._seed(pk, request)
+        pk = require_user_pk(user_id)
+        validate_creation_contract(request)
+        document, title, forked_from = await seed_document(self._repo, pk, request)
         if request.kind is ResumeKind.APPLICATION:
-            await self._require_free_job_application(pk, request.job_application_id)
+            assert request.job_application_id is not None  # guaranteed by the contract check
+            await require_free_job_application(self._repo, pk, request.job_application_id)
         now = self._clock()
         resume = Resume(
             user_id=pk,
@@ -118,13 +126,13 @@ class ResumeService:
         async with transaction(self._session):
             await self._repo.add(resume)
             await self._snapshot_and_index(
-                pk, resume, document, actor, Action.CREATE, summary=_created_summary(resume)
+                pk, resume, document, actor, Action.CREATE, summary=created_summary(resume)
             )
         return to_record(resume, document)
 
     async def get(self, user_id: str, resume_id: int) -> ResumeRecord:
         """Read one resume; upcast its document to the current schema, then serve."""
-        pk = _require_user_pk(user_id)
+        pk = require_user_pk(user_id)
         resume = await self._load(pk, resume_id)
         return to_record(resume, load_document(resume.document))
 
@@ -137,7 +145,7 @@ class ResumeService:
         limit: int = DEFAULT_LIST_LIMIT,
     ) -> list[ResumeSummary]:
         """List resumes newest-first; active-only by default, optionally filtered by kind."""
-        pk = _require_user_pk(user_id)
+        pk = require_user_pk(user_id)
         rows = await self._repo.list_resumes(
             pk, kind=kind, include_archived=include_archived, limit=limit
         )
@@ -147,7 +155,7 @@ class ResumeService:
         self, user_id: str, resume_id: int, actor: Actor, if_match: int, body: ResumeUpdate
     ) -> ResumeRecord:
         """Overwrite the authoritative document (If-Match guarded); snapshot and reindex."""
-        pk = _require_user_pk(user_id)
+        pk = require_user_pk(user_id)
         resume = await self._prepare_write(pk, resume_id, if_match)
         document = ResumeDocument(
             schema_version=CURRENT_SCHEMA_VERSION,
@@ -158,7 +166,7 @@ class ResumeService:
         async with transaction(self._session):
             resume.title = body.title
             await self._apply_save(
-                pk, resume, document, actor, Action.UPDATE, summary=_edited_summary(resume)
+                pk, resume, document, actor, Action.UPDATE, summary=edited_summary(resume)
             )
         return to_record(resume, document)
 
@@ -166,17 +174,17 @@ class ResumeService:
         self, user_id: str, resume_id: int, actor: Actor, if_match: int, request: AddItemRequest
     ) -> ResumeRecord:
         """Append one item to a section (server-minted id); snapshot and reindex."""
-        pk = _require_user_pk(user_id)
+        pk = require_user_pk(user_id)
         resume = await self._prepare_write(pk, resume_id, if_match)
         document = load_document(resume.document)
-        section = _find_section(document, request.section_id)
-        item = _build_item(request.item, self._id_factory())
+        section = find_section(document, request.section_id)
+        item = build_item(request.item, self._id_factory())
         section.items[item.id] = item
         section.item_order.append(item.id)
-        document = _revalidate(document)
+        document = revalidate_document(document)
         async with transaction(self._session):
             await self._apply_save(
-                pk, resume, document, actor, Action.UPDATE, summary=_item_added_summary(resume)
+                pk, resume, document, actor, Action.UPDATE, summary=item_added_summary(resume)
             )
         return to_record(resume, document)
 
@@ -184,16 +192,16 @@ class ResumeService:
         self, user_id: str, resume_id: int, actor: Actor, if_match: int, item_id: str
     ) -> ResumeRecord:
         """Remove one item from its section; snapshot and reindex."""
-        pk = _require_user_pk(user_id)
+        pk = require_user_pk(user_id)
         resume = await self._prepare_write(pk, resume_id, if_match)
         document = load_document(resume.document)
-        section = _find_item_section(document, item_id)
+        section = find_item_section(document, item_id)
         del section.items[item_id]
         section.item_order.remove(item_id)
-        document = _revalidate(document)
+        document = revalidate_document(document)
         async with transaction(self._session):
             await self._apply_save(
-                pk, resume, document, actor, Action.UPDATE, summary=_item_removed_summary(resume)
+                pk, resume, document, actor, Action.UPDATE, summary=item_removed_summary(resume)
             )
         return to_record(resume, document)
 
@@ -206,15 +214,15 @@ class ResumeService:
         request: ResumeReorderRequest,
     ) -> ResumeRecord:
         """Reorder sections and/or items by id (never by index); records a reorder action."""
-        pk = _require_user_pk(user_id)
+        pk = require_user_pk(user_id)
         resume = await self._prepare_write(pk, resume_id, if_match)
         document = load_document(resume.document)
         if request.section_order is not None:
-            _apply_section_order(document, request.section_order)
+            apply_section_order(document, request.section_order)
         if request.item_orders is not None:
             for section_id, order in request.item_orders.items():
-                _apply_item_order(_find_section(document, section_id), order)
-        document = _revalidate(document)
+                apply_item_order(find_section(document, section_id), order)
+        document = revalidate_document(document)
         metadata: dict[str, Any] = {}
         if request.section_order is not None:
             metadata["section_order"] = request.section_order
@@ -227,7 +235,7 @@ class ResumeService:
                 document,
                 actor,
                 Action.REORDER,
-                summary=_reordered_summary(resume),
+                summary=reordered_summary(resume),
                 metadata=metadata,
             )
         return to_record(resume, document)
@@ -240,14 +248,14 @@ class ResumeService:
         only. Bullet ownership is established by the caller, which resolves the
         bullet in the user's scope before asking.
         """
-        _require_user_pk(user_id)
+        require_user_pk(user_id)
         return await self._repo.used_in_count(bullet_id)
 
     async def _prepare_write(self, pk: int, resume_id: int, if_match: int) -> Resume:
         """Load the resume and enforce the write preconditions (editable + fresh revision)."""
         resume = await self._load(pk, resume_id)
-        _guard_editable(resume)
-        _guard_revision(resume, if_match)
+        guard_editable(resume)
+        guard_revision(resume, if_match)
         return resume
 
     async def _apply_save(
@@ -315,58 +323,10 @@ class ResumeService:
             metadata={**(metadata or {}), "revision": resume.revision},
         )
 
-    async def _seed(
-        self, pk: int, request: ResumeCreateRequest
-    ) -> tuple[ResumeDocument, str, int | None]:
-        """Build the initial document, title, and fork provenance for a create.
-
-        A blank create yields an empty document. A ``from_resume`` / ``duplicate``
-        create copies the (upcast-on-read) source document verbatim and records the
-        source id as ``forked_from_resume_id``; the result kind is set by ``kind``,
-        never by the source, so any owned source resume is a valid seed.
-        """
-        source = request.source
-        if isinstance(source, BlankSource):
-            template_id = request.template_id or DEFAULT_TEMPLATE_ID
-            document = ResumeDocument(
-                schema_version=CURRENT_SCHEMA_VERSION, template_id=template_id
-            )
-            return document, request.title or DEFAULT_TITLE, None
-        source_id = (
-            source.from_resume_id if isinstance(source, FromResumeSource) else source.duplicate_id
-        )
-        src = await self._repo.get(pk, source_id)
-        if src is None:
-            raise Validation(
-                "The source resume does not exist or is not yours.",
-                fields={"source": f"Unknown resume id {source_id}."},
-            )
-        source_doc = load_document(src.document)
-        document = ResumeDocument(
-            schema_version=CURRENT_SCHEMA_VERSION,
-            header=source_doc.header.model_copy(deep=True),
-            template_id=request.template_id or source_doc.template_id,
-            sections=[section.model_copy(deep=True) for section in source_doc.sections],
-        )
-        return document, request.title or src.title, source_id
-
-    async def _require_free_job_application(self, pk: int, job_application_id: int | None) -> None:
-        """The application's job application must be owned and not already linked (1:1)."""
-        # ``job_application_id`` is guaranteed non-null for an application by the contract.
-        assert job_application_id is not None
-        owned = await self._repo.owned_job_application_ids(pk, [job_application_id])
-        if job_application_id not in owned:
-            raise Validation(
-                "The job application does not exist or is not yours.",
-                fields={"job_application_id": f"Unknown id {job_application_id}."},
-            )
-        if await self._repo.job_application_link_exists(job_application_id):
-            raise Conflict("This job application already has an application resume.")
-
     async def _load(self, pk: int, resume_id: int) -> Resume:
         resume = await self._repo.get(pk, resume_id)
         if resume is None:
-            raise _not_found(resume_id)
+            raise resume_not_found(resume_id)
         return resume
 
     async def _publish(
@@ -391,118 +351,3 @@ class ResumeService:
                 metadata=metadata,
             ),
         )
-
-
-def _validate_contract(request: ResumeCreateRequest) -> None:
-    """Enforce the job-application rule: required for application, forbidden for living."""
-    if request.kind is ResumeKind.APPLICATION and request.job_application_id is None:
-        raise Validation(
-            "An application resume requires a job application.",
-            fields={"job_application_id": "Required when kind is application."},
-        )
-    if request.kind is ResumeKind.LIVING and request.job_application_id is not None:
-        raise Validation(
-            "A living resume cannot link to a job application.",
-            fields={"job_application_id": "Forbidden when kind is living."},
-        )
-
-
-def _build_item(item_input: ResumeItemInput, item_id: str) -> LibraryRefItem | LocalItem:
-    """Project an add-item input onto a document item, stamping the server-minted id."""
-    if isinstance(item_input, LibraryRefItemInput):
-        return LibraryRefItem(id=item_id, bullet_id=item_input.bullet_id)
-    return LocalItem(id=item_id, text=item_input.text, source_refs=item_input.source_refs)
-
-
-def _find_section(document: ResumeDocument, section_id: str) -> ResumeSection:
-    for section in document.sections:
-        if section.id == section_id:
-            return section
-    raise Validation(
-        "No section with that id on this resume.",
-        fields={"section_id": f"Unknown section id {section_id!r}."},
-    )
-
-
-def _find_item_section(document: ResumeDocument, item_id: str) -> ResumeSection:
-    for section in document.sections:
-        if item_id in section.items:
-            return section
-    raise NotFound(f"No item with id {item_id!r} on this resume.")
-
-
-def _apply_section_order(document: ResumeDocument, order: list[str]) -> None:
-    current = {section.id: section for section in document.sections}
-    if len(set(order)) != len(order):
-        raise Validation("The section order contains duplicate ids.")
-    if set(order) != set(current):
-        raise Validation(
-            "A section reorder must list every section exactly once.",
-            fields={"section_order": f"Expected the {len(current)} section id(s)."},
-        )
-    document.sections = [current[section_id] for section_id in order]
-
-
-def _apply_item_order(section: ResumeSection, order: list[str]) -> None:
-    if len(set(order)) != len(order):
-        raise Validation("An item order contains duplicate ids.")
-    if set(order) != set(section.items):
-        raise Validation(
-            "An item reorder must list every item in the section exactly once.",
-            fields={"item_order": f"Expected the {len(section.items)} item id(s)."},
-        )
-    section.item_order = list(order)
-
-
-def _revalidate(document: ResumeDocument) -> ResumeDocument:
-    """Re-run the document validators after an in-place mutation."""
-    return ResumeDocument.model_validate(document.model_dump(mode="python"))
-
-
-def _guard_editable(resume: Resume) -> None:
-    """A finalized resume is read-only; the only path is to fork a new draft copy."""
-    if resume.status is ResumeStatus.FINALIZED:
-        raise Conflict("This resume is finalized and read-only; fork a new draft copy to edit.")
-
-
-def _guard_revision(resume: Resume, if_match: int) -> None:
-    """Reject a stale write with a recoverable re-read/retry conflict."""
-    if resume.revision != if_match:
-        raise Conflict(
-            "This resume changed since you loaded it "
-            f"(you sent revision {if_match}, current is {resume.revision}); re-read and retry."
-        )
-
-
-def _require_user_pk(user_id: str) -> int:
-    """Cast the resolved string identity to the bigint PK, or reject as stale."""
-    try:
-        return int(user_id)
-    except ValueError as exc:
-        raise Unauthorized("Session is invalid or expired.") from exc
-
-
-def _not_found(resume_id: int) -> NotFound:
-    # 404-over-403: a resume another account owns is scoped out of the read, so a
-    # miss is indistinguishable from "does not exist" (no existence leak).
-    return NotFound(f"No resume with id {resume_id}.")
-
-
-def _created_summary(resume: Resume) -> str:
-    return f"Created {resume.kind.value} resume “{resume.title}”"
-
-
-def _edited_summary(resume: Resume) -> str:
-    return f"Edited resume “{resume.title}”"
-
-
-def _item_added_summary(resume: Resume) -> str:
-    return f"Added an item to resume “{resume.title}”"
-
-
-def _item_removed_summary(resume: Resume) -> str:
-    return f"Removed an item from resume “{resume.title}”"
-
-
-def _reordered_summary(resume: Resume) -> str:
-    return f"Reordered resume “{resume.title}”"
