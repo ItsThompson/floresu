@@ -88,6 +88,7 @@ export function LibraryView() {
 
       {editor && (
         <BulletForm
+          key={editor.mode === "edit" ? `edit-${editor.bullet.id}` : "create"}
           mode={editor.mode}
           initialValues={editorInitialValues}
           sources={data.sources}

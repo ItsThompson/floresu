@@ -222,6 +222,59 @@ describe("LibraryView", () => {
     expect(screen.queryByText("Old framing")).not.toBeInTheDocument();
   });
 
+  it("re-seeds the form when the edit target switches, writing to the right bullet", async () => {
+    const handle = installLibraryApi({
+      sources: [acme],
+      bullets: [
+        buildBullet({ id: 10, text: "Bullet A text", source_ids: [1] }),
+        buildBullet({ id: 11, text: "Bullet B text", source_ids: [1] }),
+      ],
+    });
+
+    renderWithProviders(<LibraryView />);
+    await screen.findByText("Bullet A text");
+
+    const editButtonFor = (text: string) => {
+      const row = screen.getByText(text).closest("li") as HTMLElement;
+      return within(row).getByRole("button", { name: "Edit" });
+    };
+
+    // Edit A: the form seeds with A's text.
+    await user.click(editButtonFor("Bullet A text"));
+    expect(screen.getByLabelText("Statement")).toHaveValue("Bullet A text");
+
+    // Switch to Edit B without cancelling: the form must re-seed to B, not keep A's text.
+    await user.click(editButtonFor("Bullet B text"));
+    expect(screen.getByLabelText("Statement")).toHaveValue("Bullet B text");
+
+    // Saving writes A-free content onto B only; A is untouched (no wrong-target write).
+    await user.clear(screen.getByLabelText("Statement"));
+    await user.type(screen.getByLabelText("Statement"), "Edited B only");
+    await user.click(screen.getByRole("button", { name: "Save bullet" }));
+
+    await screen.findByText("Edited B only");
+    const bullets = handle.getBullets();
+    expect(bullets.find((entry) => entry.id === 11)?.text).toBe("Edited B only");
+    expect(bullets.find((entry) => entry.id === 10)?.text).toBe("Bullet A text");
+  });
+
+  it("re-seeds to an empty form when 'New bullet' is clicked while editing", async () => {
+    installLibraryApi({
+      sources: [acme],
+      bullets: [buildBullet({ id: 10, text: "Bullet A text", source_ids: [1] })],
+    });
+
+    renderWithProviders(<LibraryView />);
+    await screen.findByText("Bullet A text");
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    expect(screen.getByLabelText("Statement")).toHaveValue("Bullet A text");
+
+    await user.click(screen.getByRole("button", { name: "New bullet" }));
+    expect(screen.getByRole("form", { name: "New bullet" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Statement")).toHaveValue("");
+  });
+
   it("archives a bullet, removing it from the library", async () => {
     installLibraryApi({
       sources: [acme],
