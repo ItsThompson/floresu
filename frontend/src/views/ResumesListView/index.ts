@@ -1,0 +1,1 @@
+export { ResumesListView } from "./ResumesListView";
