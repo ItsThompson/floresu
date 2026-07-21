@@ -6,7 +6,11 @@ import { RequireOnboarded } from "@/components/RequireOnboarded";
 import { AuthView } from "@/views/AuthView";
 import { ConsentView } from "@/views/ConsentView";
 import { HomeView } from "@/views/HomeView";
+import { IdentityVariantsView } from "@/views/IdentityVariantsView";
 import { OnboardingView } from "@/views/OnboardingView";
+import { ProfileHubView } from "@/views/ProfileHubView";
+import { ProfileSourceDetailView } from "@/views/ProfileSourceDetailView";
+import { SkillsView } from "@/views/SkillsView";
 
 /**
  * The application route tree. Kept separate from `App` (the provider
@@ -41,7 +45,15 @@ export const appRoutes: RouteObject[] = [
           {
             path: "/",
             element: <AppShell />,
-            children: [{ index: true, element: <HomeView /> }],
+            children: [
+              { index: true, element: <HomeView /> },
+              // Career Profile (Ticket 26): hub, source detail, skills, identities.
+              { path: "profile", element: <ProfileHubView /> },
+              { path: "profile/skills", element: <SkillsView /> },
+              { path: "profile/identities", element: <IdentityVariantsView /> },
+              { path: "profile/sources/new", element: <ProfileSourceDetailView /> },
+              { path: "profile/sources/:sourceId", element: <ProfileSourceDetailView /> },
+            ],
           },
         ],
       },
