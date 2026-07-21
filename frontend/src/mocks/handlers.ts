@@ -1,6 +1,7 @@
 import { delay, http, HttpResponse } from "msw";
 
 import { mockAuthUser, mockFeedHistory } from "./data";
+import { worklogHandlers } from "./worklogHandlers";
 
 /**
  * MSW request handlers for the zero-backend dev harness (`npm run dev:mock`).
@@ -37,4 +38,6 @@ export const handlers = [
     await delay(LATENCY_MS);
     return HttpResponse.json(mockFeedHistory);
   }),
+
+  ...worklogHandlers,
 ];
