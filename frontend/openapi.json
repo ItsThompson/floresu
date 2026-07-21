@@ -854,6 +854,57 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "lifecycle"
+        ],
+        "summary": "Delete Source",
+        "operationId": "delete_source_sources__source_id__delete",
+        "parameters": [
+          {
+            "name": "source_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Source Id"
+            }
+          },
+          {
+            "name": "confirm",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "boolean",
+              "description": "Must be true. This action is permanent and cannot be undone.",
+              "title": "Confirm"
+            },
+            "description": "Must be true. This action is permanent and cannot be undone."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletionReceipt"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/sources/{source_id}/archive": {
@@ -1141,6 +1192,57 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "lifecycle"
+        ],
+        "summary": "Delete Worklog",
+        "operationId": "delete_worklog_worklog__worklog_id__delete",
+        "parameters": [
+          {
+            "name": "worklog_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Worklog Id"
+            }
+          },
+          {
+            "name": "confirm",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "boolean",
+              "description": "Must be true. This action is permanent and cannot be undone.",
+              "title": "Confirm"
+            },
+            "description": "Must be true. This action is permanent and cannot be undone."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletionReceipt"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/worklog/{worklog_id}/archive": {
@@ -1388,6 +1490,57 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BulletpointRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "lifecycle"
+        ],
+        "summary": "Delete Bullet",
+        "operationId": "delete_bullet_bullets__bullet_id__delete",
+        "parameters": [
+          {
+            "name": "bullet_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Bullet Id"
+            }
+          },
+          {
+            "name": "confirm",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "boolean",
+              "description": "Must be true. This action is permanent and cannot be undone.",
+              "title": "Confirm"
+            },
+            "description": "Must be true. This action is permanent and cannot be undone."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletionReceipt"
                 }
               }
             }
@@ -2427,6 +2580,57 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "lifecycle"
+        ],
+        "summary": "Delete Resume",
+        "operationId": "delete_resume_resumes__resume_id__delete",
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Resume Id"
+            }
+          },
+          {
+            "name": "confirm",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "boolean",
+              "description": "Must be true. This action is permanent and cannot be undone.",
+              "title": "Confirm"
+            },
+            "description": "Must be true. This action is permanent and cannot be undone."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletionReceipt"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/resumes/{resume_id}/items": {
@@ -2610,10 +2814,92 @@
           }
         }
       }
+    },
+    "/account/export": {
+      "get": {
+        "tags": [
+          "lifecycle"
+        ],
+        "summary": "Export Account",
+        "operationId": "export_account_account_export_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/account": {
+      "delete": {
+        "tags": [
+          "lifecycle"
+        ],
+        "summary": "Delete Account",
+        "operationId": "delete_account_account_delete",
+        "parameters": [
+          {
+            "name": "confirm",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "boolean",
+              "description": "Must be true. This action is permanent and cannot be undone.",
+              "title": "Confirm"
+            },
+            "description": "Must be true. This action is permanent and cannot be undone."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountDeletionReceipt"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AccountDeletionReceipt": {
+        "properties": {
+          "deleted": {
+            "type": "boolean",
+            "title": "Deleted"
+          },
+          "revoked_agent_count": {
+            "type": "integer",
+            "title": "Revoked Agent Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "deleted",
+          "revoked_agent_count"
+        ],
+        "title": "AccountDeletionReceipt",
+        "description": "The result of an account deletion: the account is gone and agents are revoked."
+      },
       "ActorType": {
         "type": "string",
         "enum": [
@@ -3311,6 +3597,30 @@
         ],
         "title": "DecisionResult",
         "description": "The loopback URL the SPA redirects the browser to (approve or deny).\n\nReturned as JSON (not a 302) because the SPA calls the decision endpoint via a\ncredentialed XHR; the SPA performs the browser navigation to the loopback\nlistener itself."
+      },
+      "DeletionReceipt": {
+        "properties": {
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type"
+          },
+          "entity_id": {
+            "type": "integer",
+            "title": "Entity Id"
+          },
+          "embedding_purged": {
+            "type": "boolean",
+            "title": "Embedding Purged"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entity_type",
+          "entity_id",
+          "embedding_purged"
+        ],
+        "title": "DeletionReceipt",
+        "description": "The result of a permanent delete: what was removed, and whether a vector went with it."
       },
       "DuplicateSource": {
         "properties": {

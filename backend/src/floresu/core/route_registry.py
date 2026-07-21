@@ -133,6 +133,16 @@ EXTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("GET", "/resumes/templates"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("POST", "/resumes/{resume_id}/preview"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("POST", "/resumes/{resume_id}/export"): AccessLevel.EXTERNAL_COOKIE,
+    # Web-human-only lifecycle (external app ONLY; deliberately absent from the
+    # internal registry below so an agent has no destructive route). Permanent
+    # (hard) delete per entity uses DELETE, the method the internal app reserves
+    # for this web-only surface; data export and account deletion round it out.
+    RouteKey("DELETE", "/worklog/{worklog_id}"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("DELETE", "/sources/{source_id}"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("DELETE", "/bullets/{bullet_id}"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("DELETE", "/resumes/{resume_id}"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("GET", "/account/export"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("DELETE", "/account"): AccessLevel.EXTERNAL_COOKIE,
     # Live activity feed (external app only): the SSE stream and the initial-load
     # read both require the human session cookie.
     RouteKey("GET", "/feed"): AccessLevel.EXTERNAL_COOKIE,
