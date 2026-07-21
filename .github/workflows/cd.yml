@@ -1,0 +1,234 @@
+name: CD
+
+# Two triggers:
+#   - workflow_run: fires after CI completes on main; build/deploy are gated on
+#     CI having concluded successfully.
+#   - workflow_dispatch: manual re-deploy of the current main.
+#
+# The single static concurrency group serializes deploys so an auto push-deploy
+# and a manual dispatch can never race onto the box. In-progress deploys are
+# never cancelled mid-flight; a second run queues behind the first.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: cd-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+# The SHA being released: the exact commit CI validated on the auto path, or the
+# dispatched HEAD manually. Used for BOTH the image tag and deploy.sh's
+# DEPLOY_SHA so the pushed :sha-<...> tag and the recorded rollback SHA always
+# match within a run.
+env:
+  DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # discover: parse the deployable Compose file with the official parser and emit
+  # a build matrix of the first-party images (ghcr.io/<org>/floresu/*),
+  # auto-derived so a new first-party service is picked up without editing this
+  # workflow (the same derivation deploy.sh's rollback uses).
+  # ---------------------------------------------------------------------------
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Discover first-party build services
+        id: set-matrix
+        run: |
+          # Filter docker-compose.yml to images under ghcr.io/<org>/floresu/ that
+          # declare a build. service = last path segment (owner-agnostic); the
+          # build context/dockerfile are converted from absolute to repo-relative.
+          matrix=$(docker compose -f docker-compose.yml config --format json | jq -c --arg pwd "$PWD" '
+            [ .services | to_entries[]
+              | select((.value.image // "") | test("ghcr\\.io/.+/floresu/"))
+              | select(.value.build != null)
+              | {
+                  service: (.value.image | split("/") | last | split(":") | first),
+                  context: ("." + (.value.build.context | ltrimstr($pwd))),
+                  file: ("." + ((.value.build.context + "/" + .value.build.dockerfile) | ltrimstr($pwd)))
+                } ]')
+          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
+          echo "Discovered first-party services:"
+          echo "${matrix}" | jq -r '.[].service'
+
+  # ---------------------------------------------------------------------------
+  # build-and-push: build each first-party image with Buildx and push two tags to
+  # GHCR: :latest (what deploy.sh pulls) and :sha-<DEPLOY_SHA> (immutable, what a
+  # rollback re-pulls). GHA layer cache keeps rebuilds cheap.
+  # ---------------------------------------------------------------------------
+  build-and-push:
+    needs: [discover]
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        include: ${{ fromJson(needs.discover.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Resolve GHCR owner (lowercase)
+        id: owner
+        run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve frontend production build args
+        id: frontend-build-args
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ matrix.service }}" != "frontend" ]]; then
+            exit 0
+          fi
+          set -a
+          source .env.prod
+          set +a
+          {
+            echo 'value<<EOF'
+            echo "VITE_API_BASE_URL=${PUBLIC_BASE_URL:?PUBLIC_BASE_URL is required}"
+            echo "VITE_MCP_URL=${MCP_PUBLIC_URL:?MCP_PUBLIC_URL is required}"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          push: true
+          tags: |
+            ghcr.io/${{ steps.owner.outputs.owner }}/floresu/${{ matrix.service }}:latest
+            ghcr.io/${{ steps.owner.outputs.owner }}/floresu/${{ matrix.service }}:sha-${{ env.DEPLOY_SHA }}
+          build-args: ${{ steps.frontend-build-args.outputs.value }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ---------------------------------------------------------------------------
+  # deploy: register a Docker Context to the VPS, render/read every config and
+  # secret CLI-side (committed .env.prod + files rendered in the runner + GitHub
+  # secrets), and hand off to scripts/deploy.sh which drives the whole lifecycle
+  # over the context. Rollback is CI-owned: on a failed deploy the conditional
+  # step below reads the previous .deployed-sha, checks it out, re-exports env
+  # from that checkout, and re-runs the deploy once with FLORESU_IMAGE_TAG=sha-<prev>.
+  # ---------------------------------------------------------------------------
+  deploy:
+    needs: [build-and-push]
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          # Full history so the rollback step can `git checkout <prev-sha>`.
+          fetch-depth: 0
+
+      - name: Set up SSH (used by the Docker Context and the .deployed-sha line)
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.DEPLOY_SERVER_IP }}" >> ~/.ssh/known_hosts
+
+      - name: Register the Docker Context to the VPS
+        run: |
+          docker context create floresu \
+            --docker "host=ssh://deploy@${{ secrets.DEPLOY_SERVER_IP }}"
+
+      # A single step runs the whole deploy: a step-level env: block carries the
+      # GitHub secrets (masked; referenced as $VARS, never interpolated into the
+      # run: text), and the script renders/reads the config content and exports it
+      # as the environment-sourced Compose config/secret vars. ALL are set before
+      # deploy.sh's first compose call (the migration `run` materializes
+      # configs/secrets exactly like `up`). Secrets are kept OUT of $GITHUB_ENV.
+      - name: Deploy over the Docker Context
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          SESSION_JWT_SECRET: ${{ secrets.SESSION_JWT_SECRET }}
+          INTERNAL_API_TOKEN: ${{ secrets.INTERNAL_API_TOKEN }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          GF_SECURITY_ADMIN_PASSWORD: ${{ secrets.GF_SECURITY_ADMIN_PASSWORD }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          FLORESU_OAUTH_PRIVATE_KEY: ${{ secrets.FLORESU_OAUTH_PRIVATE_KEY }}
+          FLORESU_CLOUDFLARED_CREDENTIALS: ${{ secrets.FLORESU_CLOUDFLARED_CREDENTIALS }}
+          DEPLOY_SERVER_IP: ${{ secrets.DEPLOY_SERVER_IP }}
+          DEPLOY_SHA: ${{ env.DEPLOY_SHA }}
+        run: |
+          set -euo pipefail
+          : "${DISCORD_WEBHOOK_URL:?DISCORD_WEBHOOK_URL is required (Alertmanager exits on a blank webhook and fails the gate after migrations)}"
+          : "${GF_SECURITY_ADMIN_PASSWORD:?GF_SECURITY_ADMIN_PASSWORD is required}"
+          set -a
+          source .env.prod
+          # Pull from the same owner build-and-push pushed to (owner-agnostic).
+          GHCR_OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          FLORESU_PROMETHEUS_CONFIG="$(cat deployments/prometheus/prometheus.yml)"
+          FLORESU_PROMETHEUS_ALERTS="$(cat deployments/prometheus/alerts.yml)"
+          FLORESU_CLOUDFLARED_INGRESS="$(envsubst '$CF_TUNNEL_ID $CF_APP_HOSTNAME $CF_API_HOSTNAME $CF_MCP_HOSTNAME' < deployments/cloudflare/config.yml)"
+          FLORESU_ALERTMANAGER_CONFIG="$(envsubst '$DISCORD_WEBHOOK_URL' < deployments/alertmanager/alertmanager.yml)"
+          set +a
+          ./scripts/deploy.sh "${DEPLOY_SERVER_IP}"
+
+      # CI-owned rollback. On any failure above, read the previous .deployed-sha,
+      # check it out, re-export env FROM THAT checkout, and re-run the deploy once
+      # pinned to the previous images AND config. If no previous SHA exists (first
+      # deploy) read-deployed-sha refuses and the job fails; a failed rollback
+      # re-run also fails the job (human intervention).
+      - name: Roll back to the previous SHA on failure
+        if: failure()
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          SESSION_JWT_SECRET: ${{ secrets.SESSION_JWT_SECRET }}
+          INTERNAL_API_TOKEN: ${{ secrets.INTERNAL_API_TOKEN }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          GF_SECURITY_ADMIN_PASSWORD: ${{ secrets.GF_SECURITY_ADMIN_PASSWORD }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          FLORESU_OAUTH_PRIVATE_KEY: ${{ secrets.FLORESU_OAUTH_PRIVATE_KEY }}
+          FLORESU_CLOUDFLARED_CREDENTIALS: ${{ secrets.FLORESU_CLOUDFLARED_CREDENTIALS }}
+          DEPLOY_SERVER_IP: ${{ secrets.DEPLOY_SERVER_IP }}
+        run: |
+          set -euo pipefail
+          : "${DISCORD_WEBHOOK_URL:?DISCORD_WEBHOOK_URL is required}"
+          : "${GF_SECURITY_ADMIN_PASSWORD:?GF_SECURITY_ADMIN_PASSWORD is required}"
+          prev="$(./scripts/deploy.sh read-deployed-sha "${DEPLOY_SERVER_IP}")" \
+            || { echo 'no previous .deployed-sha; cannot roll back'; exit 1; }
+          echo "rolling back to ${prev}"
+          git checkout "${prev}"
+          set -a
+          source .env.prod
+          GHCR_OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          FLORESU_PROMETHEUS_CONFIG="$(cat deployments/prometheus/prometheus.yml)"
+          FLORESU_PROMETHEUS_ALERTS="$(cat deployments/prometheus/alerts.yml)"
+          FLORESU_CLOUDFLARED_INGRESS="$(envsubst '$CF_TUNNEL_ID $CF_APP_HOSTNAME $CF_API_HOSTNAME $CF_MCP_HOSTNAME' < deployments/cloudflare/config.yml)"
+          FLORESU_ALERTMANAGER_CONFIG="$(envsubst '$DISCORD_WEBHOOK_URL' < deployments/alertmanager/alertmanager.yml)"
+          set +a
+          DEPLOY_SHA="${prev}" FLORESU_IMAGE_TAG="sha-${prev}" ./scripts/deploy.sh "${DEPLOY_SERVER_IP}"
