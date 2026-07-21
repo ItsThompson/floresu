@@ -17,7 +17,7 @@ from floresu.resumes.document import (
     ResumeDocument,
     ResumeSection,
 )
-from floresu.resumes.models import Resume, ResumeStatus
+from floresu.resumes.models import Resume, ResumeKind, ResumeStatus
 from floresu.resumes.schemas import LibraryRefItemInput, ResumeItemInput
 
 
@@ -133,6 +133,14 @@ def guard_editable(resume: Resume) -> None:
         raise Conflict("This resume is finalized and read-only; fork a new draft copy to edit.")
 
 
+def guard_finalizable(resume: Resume) -> None:
+    """Finalize is guarded to application drafts; living or finalized resumes reject."""
+    if resume.kind is not ResumeKind.APPLICATION:
+        raise Conflict("Only application resumes can be finalized; a living resume stays a draft.")
+    if resume.status is ResumeStatus.FINALIZED:
+        raise Conflict("This resume is already finalized and read-only.")
+
+
 def guard_revision(resume: Resume, if_match: int) -> None:
     """Reject a stale write with a recoverable re-read/retry conflict."""
     if resume.revision != if_match:
@@ -182,3 +190,11 @@ def bullet_forked_summary(resume: Resume) -> str:
 
 def promoted_summary(resume: Resume) -> str:
     return f"Promoted an item from resume “{resume.title}” into the library"
+
+
+def finalized_summary(resume: Resume) -> str:
+    return f"Finalized resume “{resume.title}”"
+
+
+def application_submitted_summary(resume: Resume) -> str:
+    return f"Marked the application submitted by finalizing resume “{resume.title}”"
