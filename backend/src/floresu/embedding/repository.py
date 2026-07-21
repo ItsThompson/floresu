@@ -18,7 +18,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol
 
 from sqlalchemy import delete as sql_delete
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from floresu.embedding.models import Embedding
@@ -92,6 +92,10 @@ class SqlAlchemyEmbeddingRepository:
                 "content_hash": statement.excluded.content_hash,
                 "vector": statement.excluded.vector,
                 "model": statement.excluded.model,
+                # ORM ``onupdate`` does not fire for a Core upsert, so stamp the
+                # re-embed time explicitly (the column records when the vector was
+                # produced).
+                "updated_at": func.now(),
             },
         )
         await self._session.execute(statement)

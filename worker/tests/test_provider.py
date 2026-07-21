@@ -6,12 +6,15 @@ import json
 
 import httpx
 
-from floresu_worker.provider import EMBEDDING_DIMENSION, EMBEDDING_MODEL, OpenAIEmbeddingProvider
+from floresu_worker.config import EMBEDDING_DIMENSION, EMBEDDING_MODEL
+from floresu_worker.provider import OpenAIEmbeddingProvider
 
 
-def _provider(handler: httpx.MockTransport) -> OpenAIEmbeddingProvider:
+def _provider(
+    handler: httpx.MockTransport, *, dimension: int = EMBEDDING_DIMENSION
+) -> OpenAIEmbeddingProvider:
     client = httpx.AsyncClient(base_url="https://api.openai.test", transport=handler)
-    return OpenAIEmbeddingProvider(client)
+    return OpenAIEmbeddingProvider(client, dimension=dimension)
 
 
 async def test_embed_posts_batch_and_returns_vectors_in_order() -> None:
@@ -29,13 +32,26 @@ async def test_embed_posts_batch_and_returns_vectors_in_order() -> None:
             },
         )
 
-    vectors = await _provider(httpx.MockTransport(handler)).embed(["a", "b"])
+    # A test-sized dimension so the mock's 1-wide vectors pass the width guard.
+    vectors = await _provider(httpx.MockTransport(handler), dimension=1).embed(["a", "b"])
 
     assert vectors == [[1.0], [2.0]]
     body = json.loads(captured[0].content)
     assert body["model"] == EMBEDDING_MODEL
     assert body["input"] == ["a", "b"]
-    assert body["dimensions"] == EMBEDDING_DIMENSION
+    assert body["dimensions"] == 1
+
+
+async def test_embed_raises_on_a_wrong_width_vector() -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"data": [{"index": 0, "embedding": [1.0, 2.0]}]})
+
+    provider = _provider(httpx.MockTransport(handler), dimension=1536)
+    try:
+        await provider.embed(["x"])
+    except ValueError:
+        return
+    raise AssertionError("expected a ValueError for a wrong-width vector")
 
 
 async def test_embed_empty_batch_makes_no_request() -> None:

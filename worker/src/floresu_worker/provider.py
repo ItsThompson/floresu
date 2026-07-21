@@ -13,13 +13,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from floresu_worker.config import EMBEDDING_DIMENSION, EMBEDDING_MODEL
+
 if TYPE_CHECKING:
     import httpx
-
-# Pinned to the backend's ``embeddings.vector`` column (see
-# ``floresu.embedding.config``). Mirrored here, not configured.
-EMBEDDING_MODEL = "text-embedding-3-small"
-EMBEDDING_DIMENSION = 1536
 
 _EMBEDDINGS_PATH = "/v1/embeddings"
 
@@ -68,9 +65,10 @@ class OpenAIEmbeddingProvider:
     async def embed(self, texts: list[str]) -> list[list[float]]:
         """Embed a batch via OpenAI, preserving input order.
 
-        Requests a fixed output dimension so the vectors always match the pinned
-        column width, and raises for a non-2xx response so the arq job retries on a
-        provider outage.
+        Requests a fixed output dimension and verifies every returned vector matches
+        it, so a provider that ignores the ``dimensions`` param fails loudly (the
+        arq job retries) rather than posting a wrong-width vector. Raises for a
+        non-2xx response so the job also retries on a provider outage.
         """
         if not texts:
             return []
@@ -81,4 +79,10 @@ class OpenAIEmbeddingProvider:
         response.raise_for_status()
         payload = response.json()
         rows = sorted(payload["data"], key=lambda row: row["index"])
-        return [row["embedding"] for row in rows]
+        vectors = [row["embedding"] for row in rows]
+        for vector in vectors:
+            if len(vector) != self._dimension:
+                raise ValueError(
+                    f"provider returned a {len(vector)}-dim vector; expected {self._dimension}"
+                )
+        return vectors

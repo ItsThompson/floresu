@@ -6,6 +6,7 @@ The tasks run over a fake internal-API client, a fake provider, and a fake Redis
 
 from __future__ import annotations
 
+from floresu_worker.config import EMBEDDING_DIMENSION
 from floresu_worker.schemas import EmbedItemContent, VectorWrite
 
 
@@ -43,7 +44,7 @@ class FailingClient(FakeInternalClient):
 class FakeProvider:
     """A provider returning a fixed-width vector and recording its calls."""
 
-    def __init__(self, *, model: str = "fake-model", dimension: int = 4) -> None:
+    def __init__(self, *, model: str = "fake-model", dimension: int = EMBEDDING_DIMENSION) -> None:
         self._model = model
         self._dimension = dimension
         self.calls: list[list[str]] = []

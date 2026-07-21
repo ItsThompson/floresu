@@ -17,6 +17,7 @@ from pydantic import SecretStr
 from floresu_worker.client import InternalApiClient
 from floresu_worker.config import (
     ACTOR_HEADER,
+    EMBEDDING_DIMENSION,
     INTERNAL_API_TOKEN_HEADER,
     USER_ID_HEADER,
     WORKER_ACTOR,
@@ -73,18 +74,17 @@ async def test_put_vector_posts_the_payload_and_returns_status() -> None:
         return httpx.Response(200, json={"status": "applied"})
 
     client, captured = _client(handler)
-    write = VectorWrite(content_hash="h1", vector=[0.1, 0.2], model="m")
+    write = VectorWrite(content_hash="h1", vector=[0.1] * EMBEDDING_DIMENSION, model="m")
     status = await client.put_vector(7, "bullet", 3, write)
 
     assert status == "applied"
     request = captured[0]
     assert request.method == "PUT"
     assert request.url.path == "/embed/items/bullet/3"
-    assert json.loads(request.content) == {
-        "content_hash": "h1",
-        "vector": [0.1, 0.2],
-        "model": "m",
-    }
+    body = json.loads(request.content)
+    assert body["content_hash"] == "h1"
+    assert body["model"] == "m"
+    assert len(body["vector"]) == EMBEDDING_DIMENSION
     assert request.headers[USER_ID_HEADER] == "7"
 
 

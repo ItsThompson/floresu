@@ -71,9 +71,11 @@ class OpenAIEmbeddingProvider:
     async def embed(self, texts: list[str]) -> list[list[float]]:
         """Embed a batch via OpenAI, preserving input order.
 
-        Requests a fixed output dimension so the vectors always match the pinned
-        column width. Raises for a non-2xx response so the caller (the worker's
-        retry, or the fast-path's best-effort guard) handles a provider outage.
+        Requests a fixed output dimension and verifies every returned vector matches
+        it, so a provider that ignores the ``dimensions`` param fails loudly here
+        rather than writing a wrong-width vector. Raises for a non-2xx response so
+        the caller (the worker's retry, or the fast-path's best-effort guard)
+        handles a provider outage.
         """
         if not texts:
             return []
@@ -86,4 +88,10 @@ class OpenAIEmbeddingProvider:
         # OpenAI returns ``data`` sorted by ``index``; sort defensively so the
         # returned order matches the input order regardless of server ordering.
         rows = sorted(payload["data"], key=lambda row: row["index"])
-        return [row["embedding"] for row in rows]
+        vectors = [row["embedding"] for row in rows]
+        for vector in vectors:
+            if len(vector) != self._dimension:
+                raise ValueError(
+                    f"provider returned a {len(vector)}-dim vector; expected {self._dimension}"
+                )
+        return vectors

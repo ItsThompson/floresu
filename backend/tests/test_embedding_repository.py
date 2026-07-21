@@ -89,6 +89,10 @@ async def test_upsert_overwrites_in_place(
             vector=_vector(0.1),
             model="m1",
         )
+    async with sessionmaker() as session:
+        first = await SqlAlchemyEmbeddingRepository(session).get(_WORKLOG, 1)
+    assert first is not None
+    first_updated_at = first.updated_at
     async with sessionmaker() as session, transaction(session):
         repo = SqlAlchemyEmbeddingRepository(session)
         await repo.upsert(
@@ -106,6 +110,9 @@ async def test_upsert_overwrites_in_place(
     assert stored.content_hash == "h2"
     assert stored.model == "m2"
     assert float(stored.vector[0]) == pytest.approx(0.9)
+    # The re-embed refreshes updated_at (the moment the vector was produced), so it
+    # advances past the first insert's stamp rather than freezing.
+    assert stored.updated_at > first_updated_at
 
 
 async def test_delete_removes_the_row_and_is_idempotent(
