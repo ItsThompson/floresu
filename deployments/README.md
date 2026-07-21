@@ -43,9 +43,9 @@ the `CF_*` vars). One named tunnel, three hosts, outbound-only (zero inbound
 ports), TLS at the Cloudflare edge. The path allow-list refuses the observability
 surface at the edge:
 
-- `floresu.app` -> `frontend:80`
-- `api.floresu.app` -> `backend:8000`, but `/metrics`, `/healthz`, `/readyz` are 404'd at the edge
-- `mcp.floresu.app` -> `mcp:9000`, but ONLY `/mcp(/...)` and the PRM document; everything else is 404'd
+- `floresu.com` -> `frontend:80`, but `/metrics`, `/healthz`, `/readyz` are 404'd at the edge
+- `api.floresu.com` -> `backend:8000`, but `/metrics`, `/healthz`, `/readyz` are 404'd at the edge
+- `mcp.floresu.com` -> `mcp:9000`, but ONLY `/mcp(/...)` and the PRM document; everything else is 404'd
 - the internal app (`:8001`) is never tunnel-routed
 
 `/metrics` and health are scraped/probed in-network only.
@@ -81,7 +81,7 @@ crash-loop on a blank webhook; a live bring-up requires the webhook secret.
 The deployment code is complete and testable without infrastructure. Before the
 first real deploy, provision and supply:
 
-1. **Domains + DNS**: confirm `floresu.app`, `api.floresu.app`, `mcp.floresu.app`
+1. **Domains + DNS**: confirm `floresu.com`, `api.floresu.com`, `mcp.floresu.com`
    (or your domains) and point them at the Cloudflare Tunnel. Update `.env.prod`
    (`PUBLIC_BASE_URL`, `APP_PUBLIC_URL`, `MCP_PUBLIC_URL`, `COOKIE_DOMAIN`,
    `CORS_ORIGIN`, `CF_*_HOSTNAME`) if the domains differ.
@@ -91,7 +91,7 @@ first real deploy, provision and supply:
    and its `credentials.json` in the `FLORESU_CLOUDFLARED_CREDENTIALS` GitHub secret.
 4. **GHCR owner**: set `.env.prod` `GHCR_OWNER` to your GitHub org/user (lowercase).
 5. **GitHub Actions secrets**: `DEPLOY_SSH_KEY`, `DEPLOY_SERVER_IP`,
-   `POSTGRES_PASSWORD`, `SESSION_JWT_SECRET`, `INTERNAL_API_TOKEN`,
+   `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `SESSION_JWT_SECRET`, `INTERNAL_API_TOKEN`,
    `DISCORD_WEBHOOK_URL`, `GF_SECURITY_ADMIN_PASSWORD`, `OPENAI_API_KEY`,
    `FLORESU_OAUTH_PRIVATE_KEY` (RSA PEM), `FLORESU_CLOUDFLARED_CREDENTIALS`.
 6. **R2** (rendering/storage, wired by the rendering ticket): provision the bucket

@@ -12,7 +12,7 @@
 # TLS terminates at the Cloudflare edge; origin traffic inside Docker is
 # plaintext http:// on app-net.
 #
-# HOST-SPLIT: floresu.app (SPA) and api.floresu.app (backend :8000) are distinct
+# HOST-SPLIT: floresu.com (SPA) and api.floresu.com (backend :8000) are distinct
 # origins. The SPA calls the API cross-origin (baked VITE_API_BASE_URL); the SPA
 # container's nginx serves index.html for any unmatched path, so deep links and
 # the /authorize OAuth-consent landing resolve client-side.
@@ -23,11 +23,18 @@ tunnel: ${CF_TUNNEL_ID}
 credentials-file: /etc/cloudflared/credentials.json
 
 ingress:
-  # 1. SPA (floresu.app) -> nginx static frontend (history-API fallback inside).
+  # 1. SPA (floresu.com) -> nginx static frontend (history-API fallback inside).
+  #    Refuse the observability/health surface at the edge here too: nginx serves
+  #    /healthz (200) and the SPA history fallback would 200 any /metrics|/readyz
+  #    path as index.html, so block them BEFORE the catch-through to frontend
+  #    (mirrors the api + mcp hosts; strict allow-list on every host).
+  - hostname: ${CF_APP_HOSTNAME}
+    path: '^/(metrics|healthz|readyz)/?$'
+    service: http_status:404
   - hostname: ${CF_APP_HOSTNAME}
     service: http://frontend:80
 
-  # 2. External API (api.floresu.app) -> backend external app (:8000). The
+  # 2. External API (api.floresu.com) -> backend external app (:8000). The
   #    internal app (:8001) is NEVER routed here (it stays non-tunnel-routed on
   #    app-net, token-gated).
   #    The observability/health surface (/metrics, /healthz, /readyz) is scraped
@@ -43,7 +50,7 @@ ingress:
   - hostname: ${CF_API_HOSTNAME}
     service: http://backend:8000
 
-  # 3. MCP (mcp.floresu.app): PUBLICLY expose ONLY the PRM discovery document
+  # 3. MCP (mcp.floresu.com): PUBLICLY expose ONLY the PRM discovery document
   #    (/.well-known/oauth-protected-resource) and the /mcp transport. The MCP
   #    server's /metrics, /healthz and /readyz are scraped in-network and MUST
   #    NOT be reachable through the tunnel. Any other path on this hostname falls
