@@ -128,6 +128,11 @@ EXTERNAL_ROUTE_ACCESS: RouteRegistry = {
     # Copy-on-write scoped bullet edit and promote (resume item <-> canonical bullet).
     RouteKey("POST", "/resumes/bullet-edit"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("POST", "/resumes/{resume_id}/items/{item_id}/promote"): AccessLevel.EXTERNAL_COOKIE,
+    # Resume rendering: the global template list, the ephemeral preview stream (never
+    # stored), and the export that persists a PDF to R2 and records the object key.
+    RouteKey("GET", "/resumes/templates"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("POST", "/resumes/{resume_id}/preview"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("POST", "/resumes/{resume_id}/export"): AccessLevel.EXTERNAL_COOKIE,
     # Live activity feed (external app only): the SSE stream and the initial-load
     # read both require the human session cookie.
     RouteKey("GET", "/feed"): AccessLevel.EXTERNAL_COOKIE,
@@ -187,6 +192,10 @@ INTERNAL_ROUTE_ACCESS: RouteRegistry = {
     # Copy-on-write scoped bullet edit and promote (resume item <-> canonical bullet).
     RouteKey("POST", "/resumes/bullet-edit"): AccessLevel.INTERNAL_TRUSTED,
     RouteKey("POST", "/resumes/{resume_id}/items/{item_id}/promote"): AccessLevel.INTERNAL_TRUSTED,
+    # Resume rendering on the agent-facing internal app: trusted-header identity.
+    RouteKey("GET", "/resumes/templates"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("POST", "/resumes/{resume_id}/preview"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("POST", "/resumes/{resume_id}/export"): AccessLevel.INTERNAL_TRUSTED,
     # Embedding pipeline (internal app only): the arq worker reads an item's text
     # and writes its vector back over these trusted-header routes. Purge is a POST
     # (not a DELETE): the agent-facing internal app exposes no DELETE routes.

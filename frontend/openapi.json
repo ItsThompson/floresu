@@ -2102,6 +2102,130 @@
         }
       }
     },
+    "/resumes/templates": {
+      "get": {
+        "tags": [
+          "resumes"
+        ],
+        "summary": "List Templates",
+        "operationId": "list_templates_resumes_templates_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TemplateInfo"
+                  },
+                  "type": "array",
+                  "title": "Response List Templates Resumes Templates Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/resumes/{resume_id}/preview": {
+      "post": {
+        "tags": [
+          "resumes"
+        ],
+        "summary": "Preview Resume",
+        "operationId": "preview_resume_resumes__resume_id__preview_post",
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Resume Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/PreviewRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/resumes/{resume_id}/export": {
+      "post": {
+        "tags": [
+          "resumes"
+        ],
+        "summary": "Export Resume",
+        "operationId": "export_resume_resumes__resume_id__export_post",
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Resume Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/resumes": {
       "post": {
         "tags": [
@@ -2463,126 +2587,6 @@
             }
           }
         },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ResumeRecord"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/resumes/bullet-edit": {
-      "post": {
-        "tags": [
-          "resumes"
-        ],
-        "summary": "Bullet Edit",
-        "operationId": "bullet_edit_resumes_bullet_edit_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ScopeEditRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/ScopePromptResult"
-                    },
-                    {
-                      "$ref": "#/components/schemas/EditedEverywhereResult"
-                    },
-                    {
-                      "$ref": "#/components/schemas/ForkedThisResumeResult"
-                    }
-                  ],
-                  "title": "Response Bullet Edit Resumes Bullet Edit Post",
-                  "discriminator": {
-                    "propertyName": "outcome",
-                    "mapping": {
-                      "prompt": "#/components/schemas/ScopePromptResult",
-                      "edited_everywhere": "#/components/schemas/EditedEverywhereResult",
-                      "forked_this_resume": "#/components/schemas/ForkedThisResumeResult"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/resumes/{resume_id}/items/{item_id}/promote": {
-      "post": {
-        "tags": [
-          "resumes"
-        ],
-        "summary": "Promote Item",
-        "operationId": "promote_item_resumes__resume_id__items__item_id__promote_post",
-        "parameters": [
-          {
-            "name": "resume_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Resume Id"
-            }
-          },
-          {
-            "name": "item_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Item Id"
-            }
-          },
-          {
-            "name": "If-Match",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "If-Match"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -3329,26 +3333,6 @@
         "title": "DuplicateSource",
         "description": "Make a faithful copy of an existing resume."
       },
-      "EditedEverywhereResult": {
-        "properties": {
-          "outcome": {
-            "type": "string",
-            "const": "edited_everywhere",
-            "title": "Outcome",
-            "default": "edited_everywhere"
-          },
-          "bullet": {
-            "$ref": "#/components/schemas/BulletpointRecord"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "bullet"
-        ],
-        "title": "EditedEverywhereResult",
-        "description": "The canonical bullet was edited in place; every reference resolves the new text."
-      },
       "EducationDetail": {
         "properties": {
           "institution": {
@@ -3470,25 +3454,35 @@
         ],
         "title": "EducationWrite"
       },
-      "ForkedThisResumeResult": {
+      "ExportResult": {
         "properties": {
-          "outcome": {
-            "type": "string",
-            "const": "forked_this_resume",
-            "title": "Outcome",
-            "default": "forked_this_resume"
+          "resume_id": {
+            "type": "integer",
+            "title": "Resume Id"
           },
-          "resume": {
-            "$ref": "#/components/schemas/ResumeRecord"
+          "revision": {
+            "type": "integer",
+            "title": "Revision"
+          },
+          "object_key": {
+            "type": "string",
+            "title": "Object Key"
+          },
+          "download_url": {
+            "type": "string",
+            "title": "Download Url"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "resume"
+          "resume_id",
+          "revision",
+          "object_key",
+          "download_url"
         ],
-        "title": "ForkedThisResumeResult",
-        "description": "A resume-local copy was forked; the canonical bullet is unchanged."
+        "title": "ExportResult",
+        "description": "Where a persisted resume PDF lives, plus a time-limited URL to download it."
       },
       "FromResumeSource": {
         "properties": {
@@ -3872,6 +3866,25 @@
         "title": "LoginRequest",
         "description": "Login input. ``email`` is a plain string (not ``EmailStr``) so a malformed\naddress takes the same generic 401 path as a wrong password, never leaking\nwhether the address is even well-formed vs. registered."
       },
+      "PreviewRequest": {
+        "properties": {
+          "template_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PreviewRequest",
+        "description": "A preview render, optionally with a template override (not persisted)."
+      },
       "ProjectDetail": {
         "properties": {
           "links": {
@@ -4094,15 +4107,6 @@
         ],
         "title": "ResumeDocument",
         "description": "The authoritative, versioned resume document."
-      },
-      "ResumeEditScope": {
-        "type": "string",
-        "enum": [
-          "this_resume",
-          "everywhere"
-        ],
-        "title": "ResumeEditScope",
-        "description": "The intent a scoped bullet edit carries: fork here, or edit the canonical."
       },
       "ResumeHeader": {
         "properties": {
@@ -4558,96 +4562,6 @@
         ],
         "title": "RoleWrite"
       },
-      "ScopeEditRequest": {
-        "properties": {
-          "bullet_id": {
-            "type": "integer",
-            "title": "Bullet Id"
-          },
-          "new_text": {
-            "type": "string",
-            "minLength": 1,
-            "title": "New Text"
-          },
-          "scope": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ResumeEditScope"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "resume_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resume Id"
-          },
-          "if_match_resume_revision": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "If Match Resume Revision"
-          },
-          "if_match_bullet_revision": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "If Match Bullet Revision"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "bullet_id",
-          "new_text"
-        ],
-        "title": "ScopeEditRequest",
-        "description": "Edit a canonical bullet a resume item resolves to, with copy-on-write scope.\n\n``scope`` is required on the agent (MCP) boundary and optional on the web\nboundary, where it is prompted for only when the bullet is shared (used in two\nor more resumes). The two ``if_match`` tokens guard the record each scope\nmutates: ``if_match_resume_revision`` guards the resume a ``this_resume`` fork\nwrites, and ``if_match_bullet_revision`` guards the canonical bullet an\n``everywhere`` edit writes. The service requires the one the resolved scope\nneeds, so a stale edit is a recoverable conflict rather than a silent overwrite."
-      },
-      "ScopePromptResult": {
-        "properties": {
-          "outcome": {
-            "type": "string",
-            "const": "prompt",
-            "title": "Outcome",
-            "default": "prompt"
-          },
-          "bullet_id": {
-            "type": "integer",
-            "title": "Bullet Id"
-          },
-          "used_in_count": {
-            "type": "integer",
-            "title": "Used In Count"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "bullet_id",
-          "used_in_count"
-        ],
-        "title": "ScopePromptResult",
-        "description": "Web-only: the bullet is shared, so the UI must prompt before the edit applies."
-      },
       "SectionKind": {
         "type": "string",
         "enum": [
@@ -4945,6 +4859,31 @@
         ],
         "title": "TagRead",
         "description": "A tag for the reuse list; color is derived from the label, not carried."
+      },
+      "TemplateInfo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description"
+        ],
+        "title": "TemplateInfo",
+        "description": "A template registry entry the selector lists."
       },
       "ValidationError": {
         "properties": {
