@@ -126,12 +126,11 @@ export function useLibrary(): UseLibrary {
 
   // Re-run search after a write, but only while results are already on screen,
   // so an edit or archive updates the visible hits without a manual re-query.
+  // The status check stays out of any state updater so it is not double-invoked
+  // under StrictMode (which would fire a duplicate POST /search).
   const rerunActiveSearch = useCallback(() => {
-    setSearch((current) => {
-      if (current.status === "results") void runSearch(query, filters);
-      return current;
-    });
-  }, [runSearch, query, filters]);
+    if (search.status === "results") void runSearch(query, filters);
+  }, [runSearch, query, filters, search.status]);
 
   const saveBullet = useCallback(
     (values: BulletFormValues) => {
