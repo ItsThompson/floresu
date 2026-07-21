@@ -2,14 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { buildLibraryRefItem, buildLocalItem, buildResumeRecord, buildSection } from "@/mocks/resumeFixtures";
 
-import {
-  findItem,
-  moveInOrder,
-  orderedItems,
-  referencedBulletIds,
-  toResumeUpdate,
-  withLocalItemText,
-} from "./documentOps";
+import { moveInOrder, orderedItems, toResumeUpdate, withLocalItemText } from "./documentOps";
 
 describe("orderedItems", () => {
   it("resolves items in the explicit item_order, skipping missing ids", () => {
@@ -32,22 +25,6 @@ describe("moveInOrder", () => {
   it("returns the same order for a no-op or out-of-range move", () => {
     expect(moveInOrder(["a", "b"], 1, 1)).toEqual(["a", "b"]);
     expect(moveInOrder(["a", "b"], 5, 0)).toEqual(["a", "b"]);
-  });
-});
-
-describe("findItem", () => {
-  it("locates an item and its section by id", () => {
-    const item = buildLibraryRefItem({ id: "x", bullet_id: 42 });
-    const record = buildResumeRecord({
-      document: {
-        schema_version: 1,
-        template_id: "classic",
-        header: {},
-        sections: [buildSection({ id: "s", item_order: ["x"], items: { x: item } })],
-      },
-    });
-    expect(findItem(record, "x")?.item).toEqual(item);
-    expect(findItem(record, "nope")).toBeNull();
   });
 });
 
@@ -79,30 +56,6 @@ describe("withLocalItemText", () => {
     });
     const update = withLocalItemText(record, "ref", "ignored");
     expect(update.sections?.[0].items?.ref).toEqual(ref);
-  });
-});
-
-describe("referencedBulletIds", () => {
-  it("collects the unique bullet ids of library_ref items", () => {
-    const record = buildResumeRecord({
-      document: {
-        schema_version: 1,
-        template_id: "classic",
-        header: {},
-        sections: [
-          buildSection({
-            id: "s",
-            item_order: ["r1", "r2", "loc"],
-            items: {
-              r1: buildLibraryRefItem({ id: "r1", bullet_id: 1 }),
-              r2: buildLibraryRefItem({ id: "r2", bullet_id: 1 }),
-              loc: buildLocalItem({ id: "loc" }),
-            },
-          }),
-        ],
-      },
-    });
-    expect(referencedBulletIds(record)).toEqual([1]);
   });
 });
 

@@ -1,11 +1,5 @@
 import type { ResumeItem, ResumeRecord, ResumeSection, ResumeUpdate } from "./types";
 
-/** The section an item belongs to, plus the item itself, or null if not found. */
-export interface ItemLocation {
-  section: ResumeSection;
-  item: ResumeItem;
-}
-
 /** Build the full-document write body from a record, with optional field overrides. */
 export function toResumeUpdate(record: ResumeRecord, overrides?: Partial<ResumeUpdate>): ResumeUpdate {
   const { document } = record;
@@ -16,15 +10,6 @@ export function toResumeUpdate(record: ResumeRecord, overrides?: Partial<ResumeU
     sections: document.sections,
     ...overrides,
   };
-}
-
-/** Locate an item by id across all sections. */
-export function findItem(record: ResumeRecord, itemId: string): ItemLocation | null {
-  for (const section of record.document.sections ?? []) {
-    const item = section.items?.[itemId];
-    if (item) return { section, item };
-  }
-  return null;
 }
 
 /**
@@ -39,17 +24,6 @@ export function withLocalItemText(record: ResumeRecord, itemId: string, newText:
     return { ...section, items: { ...section.items, [itemId]: { ...item, text: newText } } };
   });
   return toResumeUpdate(record, { sections });
-}
-
-/** The bullet ids a document references, for resolving text from the library. */
-export function referencedBulletIds(record: ResumeRecord): number[] {
-  const ids = new Set<number>();
-  for (const section of record.document.sections ?? []) {
-    for (const item of Object.values(section.items ?? {})) {
-      if (item.kind === "library_ref") ids.add(item.bullet_id);
-    }
-  }
-  return [...ids];
 }
 
 /** The ordered items of a section, resolved from its id-keyed map and order list. */
