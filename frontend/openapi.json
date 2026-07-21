@@ -2379,6 +2379,204 @@
         }
       }
     },
+    "/resumes/{resume_id}/finalize": {
+      "post": {
+        "tags": [
+          "resumes"
+        ],
+        "summary": "Finalize Resume",
+        "operationId": "finalize_resume_resumes__resume_id__finalize_post",
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Resume Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinalizeResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/job-applications": {
+      "get": {
+        "tags": [
+          "job-applications"
+        ],
+        "summary": "List Applications",
+        "operationId": "list_applications_job_applications_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/JobApplicationSummary"
+                  },
+                  "type": "array",
+                  "title": "Response List Applications Job Applications Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "job-applications"
+        ],
+        "summary": "Create Application",
+        "operationId": "create_application_job_applications_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobApplicationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobApplicationSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/job-applications/{application_id}": {
+      "get": {
+        "tags": [
+          "job-applications"
+        ],
+        "summary": "Get Application",
+        "operationId": "get_application_job_applications__application_id__get",
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobApplicationSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "job-applications"
+        ],
+        "summary": "Update Application",
+        "operationId": "update_application_job_applications__application_id__patch",
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobApplicationUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobApplicationSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/resumes": {
       "post": {
         "tags": [
@@ -4017,6 +4215,35 @@
         "title": "ExportResult",
         "description": "Where a persisted resume PDF lives, plus a time-limited URL to download it."
       },
+      "FinalizeResult": {
+        "properties": {
+          "resume_id": {
+            "type": "integer",
+            "title": "Resume Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResumeStatus",
+            "default": "finalized"
+          },
+          "pdf_object_key": {
+            "type": "string",
+            "title": "Pdf Object Key"
+          },
+          "revision_no": {
+            "type": "integer",
+            "title": "Revision No"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "resume_id",
+          "pdf_object_key",
+          "revision_no"
+        ],
+        "title": "FinalizeResult",
+        "description": "The outcome of finalizing an application resume: what was frozen and stored.\n\nFinalize is terminal, so ``status`` is always ``finalized``; ``revision_no`` is\nthe appended frozen-snapshot revision and ``pdf_object_key`` is the R2 key of the\nPDF rendered from it (retained per the retention rules even if the resume is\nlater deleted)."
+      },
       "ForkedThisResumeResult": {
         "properties": {
           "outcome": {
@@ -4248,6 +4475,132 @@
         ],
         "title": "IdentityVariantWrite",
         "description": "The create/update body: label, name, optional contact, links, default flag."
+      },
+      "JobApplicationCreate": {
+        "properties": {
+          "company": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Company"
+          },
+          "role_title": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Role Title"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "company",
+          "role_title"
+        ],
+        "title": "JobApplicationCreate",
+        "description": "Create an application: a company and role title; the status starts ``added``."
+      },
+      "JobApplicationStatus": {
+        "type": "string",
+        "enum": [
+          "added",
+          "submitted"
+        ],
+        "title": "JobApplicationStatus",
+        "description": "A job application is ``added`` then ``submitted`` (submit finalizes its resume)."
+      },
+      "JobApplicationSummary": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "company": {
+            "type": "string",
+            "title": "Company"
+          },
+          "role_title": {
+            "type": "string",
+            "title": "Role Title"
+          },
+          "status": {
+            "$ref": "#/components/schemas/JobApplicationStatus"
+          },
+          "linked_resume_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linked Resume Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "company",
+          "role_title",
+          "status",
+          "linked_resume_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "JobApplicationSummary",
+        "description": "List/read projection: the scalar columns plus the 1:1 linked resume id."
+      },
+      "JobApplicationUpdate": {
+        "properties": {
+          "company": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company"
+          },
+          "role_title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role Title"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobApplicationStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "JobApplicationUpdate",
+        "description": "A partial write: change the company/role title and/or set the status.\n\nAt least one field must be present. Setting ``status`` to ``submitted`` is the\nfinalize trigger the service acts on; the company/role title are plain edits."
       },
       "LibraryRefItem": {
         "properties": {
