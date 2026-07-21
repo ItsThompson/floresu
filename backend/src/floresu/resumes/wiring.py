@@ -21,6 +21,8 @@ from starlette.requests import Request
 
 from floresu.core.db import get_session
 from floresu.core.events import WriteEventPublisher
+from floresu.library.cow import LibraryCanonicalBulletWriter
+from floresu.library.repository import SqlAlchemyLibraryRepository
 from floresu.resumes.repository import SqlAlchemyResumeRepository
 from floresu.resumes.resolver import SqlAlchemyBulletTextResolver
 from floresu.resumes.service import ResumeService
@@ -41,6 +43,7 @@ def build_resume_service_provider() -> Callable[..., ResumeService]:
             SqlAlchemyResumeRepository(session),
             SqlAlchemyBulletTextResolver(session),
             publisher,
+            LibraryCanonicalBulletWriter(session, SqlAlchemyLibraryRepository(session), publisher),
         )
 
     return provider

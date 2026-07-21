@@ -26,6 +26,7 @@ from tests.resumes_fakes import (
     InMemoryBulletTextResolver,
     InMemoryResumeRepository,
     build_add_item,
+    build_bullet_writer,
     build_create_request,
     build_section,
     build_update,
@@ -70,6 +71,7 @@ def _service() -> tuple[
         repo,
         resolver,
         publisher,
+        build_bullet_writer(session, publisher),  # type: ignore[arg-type]
         clock=_FixedClock(datetime(2026, 1, 1, tzinfo=UTC)),
         id_factory=_SeqIds(),
     )

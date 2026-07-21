@@ -19,6 +19,8 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from floresu.library.schemas import BulletpointRecord
+from floresu.resumes.cow import ResumeEditScope
 from floresu.resumes.document import (
     LocalItemSourceRefs,
     ResumeDocument,
@@ -180,3 +182,63 @@ def to_summary(resume: Resume) -> ResumeSummary:
 def to_record(resume: Resume, document: ResumeDocument) -> ResumeRecord:
     """Join a row and its validated document into the single-read shape."""
     return ResumeRecord(**to_summary(resume).model_dump(), document=document)
+
+
+class ScopeEditRequest(BaseModel):
+    """Edit a canonical bullet a resume item resolves to, with copy-on-write scope.
+
+    ``scope`` is required on the agent (MCP) boundary and optional on the web
+    boundary, where it is prompted for only when the bullet is shared (used in two
+    or more resumes). The two ``if_match`` tokens guard the record each scope
+    mutates: ``if_match_resume_revision`` guards the resume a ``this_resume`` fork
+    writes, and ``if_match_bullet_revision`` guards the canonical bullet an
+    ``everywhere`` edit writes. The service requires the one the resolved scope
+    needs, so a stale edit is a recoverable conflict rather than a silent overwrite.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    bullet_id: int
+    new_text: str = Field(min_length=1)
+    # Required on MCP (the agent states intent); prompted on web when used-in >= 2.
+    scope: ResumeEditScope | None = None
+    # Required when the resolved scope is this_resume (the resume to fork in).
+    resume_id: int | None = None
+    # Guards the resume (this_resume) / the canonical bullet (everywhere) respectively.
+    if_match_resume_revision: int | None = None
+    if_match_bullet_revision: int | None = None
+
+
+class ScopePromptResult(BaseModel):
+    """Web-only: the bullet is shared, so the UI must prompt before the edit applies."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    outcome: Literal["prompt"] = "prompt"
+    bullet_id: int
+    used_in_count: int
+
+
+class EditedEverywhereResult(BaseModel):
+    """The canonical bullet was edited in place; every reference resolves the new text."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    outcome: Literal["edited_everywhere"] = "edited_everywhere"
+    bullet: BulletpointRecord
+
+
+class ForkedThisResumeResult(BaseModel):
+    """A resume-local copy was forked; the canonical bullet is unchanged."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    outcome: Literal["forked_this_resume"] = "forked_this_resume"
+    resume: ResumeRecord
+
+
+# The scoped-edit outcome: a web prompt, an everywhere edit, or a this-resume fork.
+ScopeEditResult = Annotated[
+    ScopePromptResult | EditedEverywhereResult | ForkedThisResumeResult,
+    Field(discriminator="outcome"),
+]

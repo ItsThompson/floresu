@@ -47,6 +47,56 @@ def find_item_section(document: ResumeDocument, item_id: str) -> ResumeSection:
     raise NotFound(f"No item with id {item_id!r} on this resume.")
 
 
+def fork_bullet_reference(document: ResumeDocument, bullet_id: int, new_text: str) -> int:
+    """Fork every reference to ``bullet_id`` in this resume into a resume-local item.
+
+    A copy-on-write ``this_resume`` edit: each :class:`LibraryRefItem` pointing at
+    ``bullet_id`` becomes a :class:`LocalItem` carrying the edited ``new_text`` with
+    ``forked_from_bullet_id`` set for provenance, keeping its id and order. The
+    canonical bullet is untouched, and because the item is no longer a reference the
+    write-derived index drops the bullet's row (unless another item still references
+    it). Rejects the edit when the resume does not reference the bullet, since there
+    is nothing to fork. Returns how many items were forked.
+    """
+    forked = 0
+    for section in document.sections:
+        for item_id, item in section.items.items():
+            if isinstance(item, LibraryRefItem) and item.bullet_id == bullet_id:
+                section.items[item_id] = LocalItem(
+                    id=item.id, text=new_text, forked_from_bullet_id=bullet_id
+                )
+                forked += 1
+    if forked == 0:
+        raise Validation(
+            "This resume does not reference that bulletpoint, so there is nothing to edit here.",
+            fields={"bullet_id": f"No item references bullet {bullet_id} on this resume."},
+        )
+    return forked
+
+
+def find_local_item(document: ResumeDocument, item_id: str) -> LocalItem:
+    """The resume-local item with ``item_id``, or an error if it is missing or a reference.
+
+    Only a :class:`LocalItem` (a fork or a net-new inline item) can be promoted to a
+    canonical bullet; a :class:`LibraryRefItem` already is one.
+    """
+    section = find_item_section(document, item_id)
+    item = section.items[item_id]
+    if isinstance(item, LibraryRefItem):
+        raise Validation(
+            "That item already references a canonical bulletpoint; only a resume-local "
+            "item can be promoted.",
+            fields={"item_id": f"Item {item_id!r} is a library reference."},
+        )
+    return item
+
+
+def swap_item_to_reference(document: ResumeDocument, item_id: str, bullet_id: int) -> None:
+    """Swap a resume-local item to reference the canonical bullet promoted from it."""
+    section = find_item_section(document, item_id)
+    section.items[item_id] = LibraryRefItem(id=item_id, bullet_id=bullet_id)
+
+
 def apply_section_order(document: ResumeDocument, order: list[str]) -> None:
     """Permute the sections to ``order`` (a full, non-colliding permutation of section ids)."""
     current = {section.id: section for section in document.sections}
@@ -124,3 +174,11 @@ def item_removed_summary(resume: Resume) -> str:
 
 def reordered_summary(resume: Resume) -> str:
     return f"Reordered resume “{resume.title}”"
+
+
+def bullet_forked_summary(resume: Resume) -> str:
+    return f"Edited a bullet only on resume “{resume.title}”"
+
+
+def promoted_summary(resume: Resume) -> str:
+    return f"Promoted an item from resume “{resume.title}” into the library"
