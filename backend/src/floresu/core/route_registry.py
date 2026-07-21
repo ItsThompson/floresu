@@ -133,6 +133,15 @@ EXTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("GET", "/resumes/templates"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("POST", "/resumes/{resume_id}/preview"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("POST", "/resumes/{resume_id}/export"): AccessLevel.EXTERNAL_COOKIE,
+    # Finalize an application resume: freeze references to inline read-only text,
+    # snapshot the identity, store the frozen PDF, and submit a linked application.
+    RouteKey("POST", "/resumes/{resume_id}/finalize"): AccessLevel.EXTERNAL_COOKIE,
+    # Job applications: the lightweight relational entity whose ``submitted`` status
+    # is the finalize trigger. The same routes mount on the internal app (below).
+    RouteKey("POST", "/job-applications"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("GET", "/job-applications"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("GET", "/job-applications/{application_id}"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("PATCH", "/job-applications/{application_id}"): AccessLevel.EXTERNAL_COOKIE,
     # Web-human-only lifecycle (external app ONLY; deliberately absent from the
     # internal registry below so an agent has no destructive route). Permanent
     # (hard) delete per entity uses DELETE, the method the internal app reserves
@@ -206,6 +215,14 @@ INTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("GET", "/resumes/templates"): AccessLevel.INTERNAL_TRUSTED,
     RouteKey("POST", "/resumes/{resume_id}/preview"): AccessLevel.INTERNAL_TRUSTED,
     RouteKey("POST", "/resumes/{resume_id}/export"): AccessLevel.INTERNAL_TRUSTED,
+    # Finalize an application resume on the agent-facing internal app: trusted-header
+    # identity (the agent's resume_finalize / jobapp_update submit path).
+    RouteKey("POST", "/resumes/{resume_id}/finalize"): AccessLevel.INTERNAL_TRUSTED,
+    # Job applications on the agent-facing internal app: trusted-header identity.
+    RouteKey("POST", "/job-applications"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("GET", "/job-applications"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("GET", "/job-applications/{application_id}"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("PATCH", "/job-applications/{application_id}"): AccessLevel.INTERNAL_TRUSTED,
     # Embedding pipeline (internal app only): the arq worker reads an item's text
     # and writes its vector back over these trusted-header routes. Purge is a POST
     # (not a DELETE): the agent-facing internal app exposes no DELETE routes.

@@ -28,6 +28,8 @@ from floresu.embedding.wiring import (
     create_openai_http_client,
     embedding_resolver,
 )
+from floresu.jobapps.router import create_jobapps_router
+from floresu.jobapps.wiring import build_jobapps_service_provider
 from floresu.library.router import create_bullets_router
 from floresu.library.wiring import build_bullet_service_provider
 from floresu.profile.router import create_sources_router
@@ -38,6 +40,8 @@ from floresu.profile.variants.wiring import build_variant_service_provider
 from floresu.profile.wiring import build_source_service_provider
 from floresu.rendering.wiring import build_render_module
 from floresu.resumes.cow import EditChannel
+from floresu.resumes.finalize_router import create_resume_finalize_router
+from floresu.resumes.finalize_wiring import build_resume_finalize_service_provider
 from floresu.resumes.render_router import create_resume_render_router
 from floresu.resumes.render_wiring import build_resume_render_service_provider
 from floresu.resumes.router import create_resumes_router
@@ -106,6 +110,20 @@ resume_render_router = create_resume_render_router(
     identity=require_internal_user,
     actor=resolve_internal_actor,
 )
+# Finalize an application resume on the agent-facing internal app: trusted-header
+# identity + agent actor (the agent's resume_finalize / jobapp submit path).
+resume_finalize_router = create_resume_finalize_router(
+    build_resume_finalize_service_provider(render_module, object_store),
+    identity=require_internal_user,
+    actor=resolve_internal_actor,
+)
+# Job applications on the agent-facing internal app: trusted-header identity + agent
+# actor. The submit trigger finalizes the linked resume through the same finalizer.
+jobapps_router = create_jobapps_router(
+    build_jobapps_service_provider(render_module, object_store),
+    identity=require_internal_user,
+    actor=resolve_internal_actor,
+)
 # Worker-facing embed routes (internal app only): the arq worker reads an item's
 # text and writes its vector back over these. The gate, provider call, and
 # transaction live in the service.
@@ -140,6 +158,8 @@ app: FastAPI = create_app(
         skills_router,
         variants_router,
         resume_render_router,
+        resume_finalize_router,
+        jobapps_router,
         resumes_router,
         embed_router,
         search_router,

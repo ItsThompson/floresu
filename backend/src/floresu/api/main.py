@@ -43,6 +43,8 @@ from floresu.embedding.wiring import (
 from floresu.feed.api import create_feed_router
 from floresu.feed.store import RedisFeedStore
 from floresu.feed.wiring import FEED_STORE_ATTR, build_sse_feed_consumer
+from floresu.jobapps.router import create_jobapps_router
+from floresu.jobapps.wiring import build_jobapps_service_provider
 from floresu.library.router import create_bullets_router
 from floresu.library.wiring import build_bullet_service_provider
 from floresu.lifecycle.router import create_lifecycle_router
@@ -65,6 +67,8 @@ from floresu.profile.variants.wiring import build_variant_service_provider
 from floresu.profile.wiring import build_source_service_provider
 from floresu.rendering.wiring import build_render_module
 from floresu.resumes.cow import EditChannel
+from floresu.resumes.finalize_router import create_resume_finalize_router
+from floresu.resumes.finalize_wiring import build_resume_finalize_service_provider
 from floresu.resumes.render_router import create_resume_render_router
 from floresu.resumes.render_wiring import build_resume_render_service_provider
 from floresu.resumes.router import create_resumes_router
@@ -188,6 +192,26 @@ resume_render_router = create_resume_render_router(
     actor=resolve_web_actor,
 )
 
+# Finalize an application resume (freeze references to inline read-only text, snapshot
+# the identity, render + store the frozen PDF, submit a linked application). Reuses the
+# process-wide render module and R2 object store. The suffix path never collides with
+# GET /resumes/{resume_id}, so mounting order is irrelevant.
+resume_finalize_router = create_resume_finalize_router(
+    build_resume_finalize_service_provider(render_module, object_store),
+    identity=require_user,
+    actor=resolve_web_actor,
+)
+
+# Job applications: the lightweight relational entity whose ``submitted`` status
+# finalizes the linked 1:1 resume. The submit trigger delegates to the finalizer built
+# from the same render module and object store. Mounted with the human session identity
+# and a human actor; the internal app mounts the same router for the agent path.
+jobapps_router = create_jobapps_router(
+    build_jobapps_service_provider(render_module, object_store),
+    identity=require_user,
+    actor=resolve_web_actor,
+)
+
 # Web-human-only lifecycle: restore is served by each domain router; this router
 # adds the destructive/recovery surface (permanent delete per entity, data export,
 # account deletion) that must never reach an agent. Mounted on the external app
@@ -252,6 +276,8 @@ app: FastAPI = create_app(
         variants_router,
         feed_router,
         resume_render_router,
+        resume_finalize_router,
+        jobapps_router,
         resumes_router,
         search_router,
         lifecycle_router,
