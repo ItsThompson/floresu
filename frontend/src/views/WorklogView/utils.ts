@@ -3,7 +3,7 @@ import type {
   ResolvedHit,
   SearchResult,
   SourceSummary,
-  WorklogFilters,
+  WorklogFilterValues,
   WorklogSummary,
 } from "./types";
 
@@ -35,7 +35,7 @@ export function formatDayLabel(isoDate: string): string {
  * inactive; the rest combine (all must pass). ISO date strings compare
  * lexicographically in chronological order, so the range check needs no parsing.
  */
-export function filterEntries(entries: WorklogSummary[], filters: WorklogFilters): WorklogSummary[] {
+export function filterEntries(entries: WorklogSummary[], filters: WorklogFilterValues): WorklogSummary[] {
   return entries.filter((entry) => {
     if (filters.sourceId !== null && !entry.source_ids.includes(filters.sourceId)) return false;
     if (filters.tag !== null && !entry.tags.includes(filters.tag)) return false;

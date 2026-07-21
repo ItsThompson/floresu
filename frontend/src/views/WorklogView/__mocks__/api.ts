@@ -22,6 +22,8 @@ interface WorklogApiOptions {
   failTimeline?: boolean;
   /** Force writes (create/edit) to fail, exercising the inline write error. */
   failWrite?: boolean;
+  /** Let the initial load succeed, then fail the timeline read after the first write. */
+  failTimelineAfterWrite?: boolean;
   /** Force the search request to fail. */
   failSearch?: boolean;
 }
@@ -49,12 +51,17 @@ export function installWorklogApi(options: WorklogApiOptions = {}): WorklogApiCa
   const bullets = options.bullets ?? [];
   const calls: WorklogApiCalls = { created: [], updated: [], archived: [], searched: [] };
   let nextId = Math.max(0, ...entries.map((entry) => entry.id)) + 1;
+  // Flips true after the first write so a post-write revalidation read fails while
+  // the initial load still succeeds.
+  let revalidationBroken = false;
 
   const recordFor = (entry: WorklogSummary) => buildEntryRecord({ ...entry, bullet_ids: [] });
 
   server.use(
     http.get("*/worklog", ({ request }) => {
-      if (options.failTimeline) return new HttpResponse(null, { status: 500 });
+      if (options.failTimeline || (options.failTimelineAfterWrite && revalidationBroken)) {
+        return new HttpResponse(null, { status: 500 });
+      }
       const includeArchived = new URL(request.url).searchParams.get("include_archived") === "true";
       return HttpResponse.json(
         entries.filter((entry) => includeArchived || entry.archived_at === null),
@@ -78,6 +85,7 @@ export function installWorklogApi(options: WorklogApiOptions = {}): WorklogApiCa
         archived_at: null,
       };
       entries.push(entry);
+      if (options.failTimelineAfterWrite) revalidationBroken = true;
       return HttpResponse.json(recordFor(entry), { status: 201 });
     }),
 

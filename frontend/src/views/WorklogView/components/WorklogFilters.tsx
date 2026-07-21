@@ -1,9 +1,9 @@
-import type { SourceSummary, WorklogFilters } from "../types";
+import type { SourceSummary, WorklogFilterValues } from "../types";
 
 interface WorklogFiltersProps {
   sources: SourceSummary[];
   tagOptions: string[];
-  filters: WorklogFilters;
+  filters: WorklogFilterValues;
   onSourceChange: (sourceId: number | null) => void;
   onTagChange: (tag: string | null) => void;
   onDateRangeChange: (from: string | null, to: string | null) => void;

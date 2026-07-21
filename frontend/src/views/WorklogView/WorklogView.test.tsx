@@ -394,6 +394,31 @@ describe("WorklogView", () => {
     expect(searchBox).toHaveValue("");
   });
 
+  it("keeps a committed create when the follow-up revalidation fails", async () => {
+    installWorklogApi({
+      entries: [buildEntry({ id: 1, title: "Existing entry" })],
+      sources: [ACME],
+      failTimelineAfterWrite: true,
+    });
+
+    renderWorklog();
+    const user = userEvent.setup();
+    await screen.findByText("Existing entry");
+
+    await user.click(screen.getByRole("button", { name: "+ Add entry" }));
+    await user.type(screen.getByLabelText("Title"), "Committed entry");
+    fireEvent.change(screen.getByLabelText("Date"), { target: { value: "2026-08-01" } });
+    await user.click(screen.getByRole("button", { name: "Save entry" }));
+
+    // The write committed, so the form closes and no write error is shown, even
+    // though the follow-up revalidation read fails (guards against a duplicate re-save).
+    await waitFor(() => expect(screen.queryByRole("form", { name: "Add entry" })).not.toBeInTheDocument());
+    expect(screen.queryByText(SAVE_ERROR_MESSAGE)).not.toBeInTheDocument();
+    // The cached timeline stays visible rather than blanking to the error state.
+    expect(screen.getByText("Existing entry")).toBeInTheDocument();
+    expect(screen.queryByText(TIMELINE_ERROR_MESSAGE)).not.toBeInTheDocument();
+  });
+
   it("shows an encouraging empty state when there are no entries", async () => {
     installWorklogApi({ entries: [], sources: [] });
 

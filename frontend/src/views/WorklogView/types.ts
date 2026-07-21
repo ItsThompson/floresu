@@ -24,7 +24,7 @@ export type WorklogStatus = "loading" | "ready" | "error";
 export type WriteStatus = "idle" | "saving" | "error";
 
 /** The three filters that narrow the timeline; all applied together. */
-export interface WorklogFilters {
+export interface WorklogFilterValues {
   sourceId: number | null;
   tag: string | null;
   /** Inclusive ISO date bounds (`yyyy-mm-dd`); `null` means unbounded. */

@@ -13,7 +13,7 @@ import type {
   FormMode,
   MonthGroup,
   SourceSummary,
-  WorklogFilters,
+  WorklogFilterValues,
   WorklogStatus,
   WorklogSummary,
   WorklogWrite,
@@ -25,11 +25,10 @@ const TIMELINE_KEY = "/worklog";
 const SOURCES_KEY = "/sources";
 const TAGS_KEY = "/worklog/tags";
 
-const NO_FILTERS: WorklogFilters = { sourceId: null, tag: null, dateFrom: null, dateTo: null };
+const NO_FILTERS: WorklogFilterValues = { sourceId: null, tag: null, dateFrom: null, dateTo: null };
 
-// swr options tuned for a form-driven view under jsdom: revalidation is
-// triggered explicitly after a write, so focus/reconnect revalidation only adds
-// noise (and unhandled fetches in tests).
+// Revalidation is triggered explicitly after each write, so focus/reconnect
+// revalidation is unnecessary here.
 const SWR_OPTIONS = { revalidateOnFocus: false, revalidateOnReconnect: false } as const;
 
 export interface WorklogViewState {
@@ -40,7 +39,7 @@ export interface WorklogViewState {
   totalCount: number;
   sources: SourceSummary[];
   tagOptions: string[];
-  filters: WorklogFilters;
+  filters: WorklogFilterValues;
   form: FormMode;
   /** Prefilled values when editing; `null` for create or a closed form. */
   editingValues: EntryFormValues | null;
@@ -107,7 +106,7 @@ export function useWorklog(): UseWorklog {
     SWR_OPTIONS,
   );
 
-  const [filters, setFilters] = useState<WorklogFilters>(NO_FILTERS);
+  const [filters, setFilters] = useState<WorklogFilterValues>(NO_FILTERS);
   const [form, setForm] = useState<FormMode>({ kind: "closed" });
   const [writeStatus, setWriteStatus] = useState<WriteStatus>("idle");
   const [writeError, setWriteError] = useState<string | null>(null);
@@ -133,11 +132,10 @@ export function useWorklog(): UseWorklog {
     };
   }, [form, entries]);
 
-  const status: WorklogStatus = timeline.error
-    ? "error"
-    : timeline.data === undefined
-      ? "loading"
-      : "ready";
+  // Show the error state only on the initial load; once rows are cached, a failed
+  // background revalidation keeps the cached timeline visible rather than blanking it.
+  const status: WorklogStatus =
+    timeline.data !== undefined ? "ready" : timeline.error ? "error" : "loading";
 
   const openCreate = useCallback(() => {
     setWriteStatus("idle");
@@ -179,13 +177,17 @@ export function useWorklog(): UseWorklog {
             : client.POST("/worklog", { body });
         const { error, response } = await request;
         if (error || !response.ok) throw new Error(SAVE_ERROR_MESSAGE);
-        await Promise.all([timeline.mutate(), tags.mutate()]);
-        setWriteStatus("idle");
-        setForm({ kind: "closed" });
       } catch {
         setWriteStatus("error");
         setWriteError(SAVE_ERROR_MESSAGE);
+        return;
       }
+      // The write committed: close the form before revalidating so a failed
+      // follow-up read never surfaces as a write failure (which would invite a
+      // duplicate re-save).
+      setWriteStatus("idle");
+      setForm({ kind: "closed" });
+      void Promise.all([timeline.mutate(), tags.mutate()]).catch(() => {});
     },
     [client, form, timeline, tags],
   );
@@ -198,10 +200,13 @@ export function useWorklog(): UseWorklog {
           params: { path: { worklog_id: entryId } },
         });
         if (error || !response.ok) throw new Error(ARCHIVE_ERROR_MESSAGE);
-        await timeline.mutate();
       } catch {
         setArchiveError(ARCHIVE_ERROR_MESSAGE);
+        return;
       }
+      // The archive committed; refresh best-effort. A failed read must not report
+      // an archive failure for an entry that is already archived.
+      void timeline.mutate().catch(() => {});
     },
     [client, timeline],
   );

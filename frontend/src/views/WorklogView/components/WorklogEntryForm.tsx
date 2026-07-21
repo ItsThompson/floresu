@@ -113,7 +113,7 @@ export function WorklogEntryForm({
         Tags
         <div className="flex flex-wrap items-center gap-2">
           {tags.map((tag) => (
-            <TagPill key={tag} label={tag} onRemove={() => setTags((prev) => prev.filter((t) => t !== tag))} />
+            <TagPill key={tag} label={tag} onRemove={() => setTags((prev) => prev.filter((existingTag) => existingTag !== tag))} />
           ))}
         </div>
         <div className="flex items-center gap-2">

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildEntry, buildSearchResult, buildSource } from "./__mocks__/fixtures";
-import type { WorklogFilters } from "./types";
+import type { WorklogFilterValues } from "./types";
 import {
   filterEntries,
   formatDayLabel,
@@ -11,7 +11,7 @@ import {
   sourceLabel,
 } from "./utils";
 
-const NO_FILTERS: WorklogFilters = { sourceId: null, tag: null, dateFrom: null, dateTo: null };
+const NO_FILTERS: WorklogFilterValues = { sourceId: null, tag: null, dateFrom: null, dateTo: null };
 
 describe("formatMonthLabel / formatDayLabel", () => {
   it("formats a calendar date in UTC without a timezone off-by-one", () => {

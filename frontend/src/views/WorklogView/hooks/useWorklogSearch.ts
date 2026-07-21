@@ -69,7 +69,7 @@ export function useWorklogSearch(): UseWorklogSearch {
     setHasSearched(true);
     try {
       const { data, error } = await client.POST("/search", { body: { query } });
-      if (error || !data) throw error ?? new Error(SEARCH_ERROR_MESSAGE);
+      if (error || !data) throw new Error(SEARCH_ERROR_MESSAGE);
       setResults(resolveRankedHits(data));
       setNotices(data.notices ?? []);
       setStatus("idle");
