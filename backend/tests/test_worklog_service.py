@@ -15,8 +15,7 @@ import pytest
 
 from floresu.core.actor import Actor, ActorType
 from floresu.core.errors import Conflict, NotFound, Unauthorized, Validation
-from floresu.core.events import WriteEvent
-from floresu.worklog.config import REEMBED_CONTENT_HASH_KEY
+from floresu.core.events import REEMBED_CONTENT_HASH_KEY, WriteEvent
 from floresu.worklog.injection import Clock
 from floresu.worklog.service import WorklogService
 from tests.worklog_fakes import (
