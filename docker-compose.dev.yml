@@ -1,0 +1,41 @@
+# =============================================================================
+# Floresu local-dev overrides. Layered ON TOP of docker-compose.yml (never
+# standalone):
+#   just dev-infra  -> only host-published Postgres + Redis for the host inner
+#                      loop (`just dev-api`, `just migrate`, the test suites).
+#   just up-dev     -> the full stack locally with dev env + host-published data.
+#
+# A separate project name (floresu-dev) keeps dev volumes/networks in their own
+# namespace, distinct from the production `floresu` project. Prod values
+# (expose-only, pinned public URLs) stay in the base file.
+# =============================================================================
+name: floresu-dev
+
+services:
+  backend:
+    environment:
+      ENVIRONMENT: development                 # relaxed cookies: Secure off, host-only
+      PUBLIC_BASE_URL: http://backend:8000     # in-network AS origin for local runs
+      APP_PUBLIC_URL: http://localhost:5173
+      MCP_PUBLIC_URL: http://localhost:9000
+
+  mcp:
+    environment:
+      ENVIRONMENT: development
+      PUBLIC_BASE_URL: http://backend:8000     # reach the AS JWKS in-network
+      MCP_PUBLIC_URL: http://localhost:9000
+
+  worker:
+    environment:
+      ENVIRONMENT: development
+
+  postgres:
+    # Publish to the host so host-run recipes (just dev-api, just migrate, the
+    # test suites) reach it at localhost:5432. Prod is expose-only (base file).
+    ports:
+      - "5432:5432"
+
+  redis:
+    # Publish to the host for the same host-run recipes. Prod is expose-only.
+    ports:
+      - "6379:6379"
