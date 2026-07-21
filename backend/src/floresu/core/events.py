@@ -50,8 +50,9 @@ _log = get_logger("floresu-events")
 # carries the new content hash under this key; the embed consumer (a post-commit
 # side channel a later slice registers) keys on its presence and compares the hash
 # to gate embedding. An edit that leaves the hash unchanged omits it, so no
-# re-embed is signalled. Shared by every embeddable domain (worklog, bullets, and
-# sources), so it lives with the write-event contract rather than in one domain.
+# re-embed is signalled. It is the shared writer-to-embed-consumer contract, so it
+# lives with the write-event contract rather than in one domain: worklog and
+# bullets publish it today, and any other embeddable domain uses this same key.
 REEMBED_CONTENT_HASH_KEY = "content_hash"
 
 
