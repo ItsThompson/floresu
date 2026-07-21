@@ -28,6 +28,7 @@ from floresu.audit import models as _audit_models  # noqa: F401
 from floresu.core.db import create_db_engine
 from floresu.core.orm import Base
 from floresu.core.settings import EnvSettings
+from floresu.library import models as _library_models  # noqa: F401
 from floresu.oauth import models as _oauth_models  # noqa: F401
 from floresu.profile import models as _profile_models  # noqa: F401
 from floresu.worklog import models as _worklog_models  # noqa: F401
