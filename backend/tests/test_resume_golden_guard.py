@@ -15,7 +15,7 @@ the machinery is real, the inputs are synthetic.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from pydantic import BaseModel, ConfigDict
@@ -27,8 +27,12 @@ from tests.resume_goldens import (
     assert_current_shape_locked,
     assert_historical_goldens_upcast,
     assert_lock_matches,
+    load_lock,
     sha256_hex,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class _V1(BaseModel):
@@ -127,3 +131,33 @@ def test_backward_compat_fails_when_an_upcaster_drops_a_real_value() -> None:
 
     with pytest.raises(AssertionError):
         assert_historical_goldens_upcast({1: v1_text}, load=load, invariants=invariants)
+
+
+def test_load_lock_rejects_a_malformed_line(tmp_path: Path) -> None:
+    path = tmp_path / "snapshots.lock"
+    path.write_text("v1 not-a-real-sha256\n", encoding="utf-8")
+    with pytest.raises(LockViolationError):
+        load_lock(path)
+
+
+def test_load_lock_rejects_a_duplicate_version(tmp_path: Path) -> None:
+    sha = "a" * 64
+    path = tmp_path / "snapshots.lock"
+    path.write_text(f"v1 {sha}\nv1 {sha}\n", encoding="utf-8")
+    with pytest.raises(LockViolationError):
+        load_lock(path)
+
+
+def test_load_lock_rejects_a_non_ascending_version(tmp_path: Path) -> None:
+    sha = "a" * 64
+    path = tmp_path / "snapshots.lock"
+    path.write_text(f"v2 {sha}\nv1 {sha}\n", encoding="utf-8")
+    with pytest.raises(LockViolationError):
+        load_lock(path)
+
+
+def test_load_lock_parses_comments_blank_lines_and_ascending_entries(tmp_path: Path) -> None:
+    sha1, sha2 = "a" * 64, "b" * 64
+    path = tmp_path / "snapshots.lock"
+    path.write_text(f"# header comment\n\nv1 {sha1}\nv2 {sha2}\n", encoding="utf-8")
+    assert load_lock(path) == {1: sha1, 2: sha2}
