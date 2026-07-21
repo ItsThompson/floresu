@@ -41,6 +41,8 @@ from floresu.feed.store import RedisFeedStore
 from floresu.feed.wiring import FEED_STORE_ATTR, build_sse_feed_consumer
 from floresu.library.router import create_bullets_router
 from floresu.library.wiring import build_bullet_service_provider
+from floresu.lifecycle.router import create_lifecycle_router
+from floresu.lifecycle.wiring import build_lifecycle_service_provider
 from floresu.oauth.api import create_oauth_router
 from floresu.oauth.cleanup import start_stale_client_cleanup, stop_stale_client_cleanup
 from floresu.oauth.config import build_oauth_config
@@ -156,6 +158,19 @@ resumes_router = create_resumes_router(
     actor=resolve_web_actor,
 )
 
+# Web-human-only lifecycle: restore is served by each domain router; this router
+# adds the destructive/recovery surface (permanent delete per entity, data export,
+# account deletion) that must never reach an agent. Mounted on the external app
+# ONLY, with the human session identity and a human actor; a boundary test asserts
+# it is absent from the internal app. Account deletion clears the session cookies,
+# so the cookie policy is injected.
+lifecycle_router = create_lifecycle_router(
+    build_lifecycle_service_provider(),
+    identity=require_user,
+    actor=resolve_web_actor,
+    cookie_config=cookie_config,
+)
+
 
 # The live activity feed: GET /feed (SSE stream) + GET /feed/history (initial load).
 # The stream resolves the caller via require_user and reads the process-wide feed
@@ -199,6 +214,7 @@ app: FastAPI = create_app(
         variants_router,
         feed_router,
         resumes_router,
+        lifecycle_router,
     ],
     readiness_checks=[db_readiness_check(db.engine)],
     exception_handlers={**build_exception_handlers(), **build_oauth_exception_handlers()},
