@@ -106,3 +106,30 @@ jobs:
 
       - name: Fail on a stale committed client
         run: git diff --exit-code -- frontend/openapi.json frontend/src/api/schema.d.ts
+
+  resume-schema-lock:
+    name: resume schema lock
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      # Golden snapshot + append-only sha256 hash lock for the resume document
+      # shape. Any shape change fails here unless schema_version is bumped, an
+      # upcaster step is registered, and a new golden is committed; a released
+      # golden or its recorded hash can never change silently. Also asserts every
+      # historical golden still upcasts to the current shape with real field values
+      # intact, and that canonical serialization is byte-stable. Runs in the normal
+      # backend suite too; this named job makes it an explicit release gate.
+      - name: Resume schema golden + hash-lock guard
+        run: uv run pytest tests/test_resume_golden.py tests/test_resume_golden_guard.py --no-cov
