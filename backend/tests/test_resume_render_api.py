@@ -26,6 +26,7 @@ from floresu.core.headers import ACTOR_HEADER, INTERNAL_API_TOKEN_HEADER, USER_I
 from floresu.core.identity import SESSION_COOKIE_NAME, require_internal_user, require_user
 from floresu.core.settings import AppSettings
 from floresu.rendering.module import RenderModule
+from floresu.resumes.cow import EditChannel
 from floresu.resumes.render_router import create_resume_render_router
 from floresu.resumes.render_service import ResumeRenderService
 from floresu.resumes.router import create_resumes_router
@@ -42,6 +43,7 @@ from tests.resumes_fakes import (
     FakeSession,
     InMemoryBulletTextResolver,
     InMemoryResumeRepository,
+    build_bullet_writer,
     capturing_publisher,
 )
 from tests.storage_fakes import FakeObjectStore
@@ -80,24 +82,30 @@ def _client(
         )
 
     def resume_provider(request: Request) -> ResumeService:
+        session = cast("AsyncSession", FakeSession())
         return ResumeService(
-            cast("AsyncSession", FakeSession()),
+            session,
             InMemoryResumeRepository(),
             InMemoryBulletTextResolver(),
             request.app.state.events,
+            build_bullet_writer(session, request.app.state.events),
         )
 
     identity: Callable[..., Any]
     actor: Callable[..., Any]
     if internal:
         identity, actor = require_internal_user, resolve_internal_actor
+        channel = EditChannel.MCP
         settings = make_settings(service="floresu-internal", internal_api_token=_INTERNAL_TOKEN)
     else:
         identity, actor = require_user, resolve_web_actor
+        channel = EditChannel.WEB
         settings = make_settings(service="floresu-external", environment="development")
 
     render_router = create_resume_render_router(render_provider, identity=identity, actor=actor)
-    resumes_router = create_resumes_router(resume_provider, identity=identity, actor=actor)
+    resumes_router = create_resumes_router(
+        resume_provider, identity=identity, actor=actor, channel=channel
+    )
     # Mount order mirrors the apps: render before resumes, so /resumes/templates wins.
     app = create_app(
         settings,

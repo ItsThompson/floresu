@@ -25,6 +25,8 @@ from floresu.accounts.models import User
 from floresu.audit.wiring import build_write_event_publisher
 from floresu.core.actor import Actor, ActorType
 from floresu.core.db import create_db_engine, create_sessionmaker, transaction
+from floresu.library.cow import LibraryCanonicalBulletWriter
+from floresu.library.repository import SqlAlchemyLibraryRepository
 from floresu.profile.variants.repository import SqlAlchemyIdentityVariantRepository
 from floresu.profile.variants.schemas import IdentityVariantWrite, VariantContact, VariantLink
 from floresu.profile.variants.service import IdentityVariantService
@@ -96,11 +98,13 @@ async def _create_resume_with_content(
     bullet_text: str,
 ) -> int:
     async with sessionmaker() as session:
+        publisher = build_write_event_publisher()
         service = ResumeService(
             session,
             SqlAlchemyResumeRepository(session),
             SqlAlchemyBulletTextResolver(session),
-            build_write_event_publisher(),
+            publisher,
+            LibraryCanonicalBulletWriter(session, SqlAlchemyLibraryRepository(session), publisher),
         )
         created = await service.create(
             str(user_id), _HUMAN, ResumeCreateRequest(kind=ResumeKind.LIVING, source=BlankSource())
