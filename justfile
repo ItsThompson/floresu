@@ -106,6 +106,13 @@ codegen:
     cd backend && LOG_LEVEL=critical uv run python -c "import json; from floresu.api.main import app; print(json.dumps(app.openapi(), indent=2))" > ../frontend/openapi.json
     cd frontend && npm run codegen
 
+# Regenerate the current resume-schema golden snapshot and append its sha256 to the
+# hash lock. Run only after bumping CURRENT_SCHEMA_VERSION and registering an
+# upcaster; it refuses to overwrite a released golden, so a locked shape stays
+# frozen. The `resume schema lock` CI job fails until the new golden is committed.
+resume-goldens:
+    cd backend && uv run python -m tests.resume_goldens
+
 # --- format ---
 
 # Format Python and frontend sources.

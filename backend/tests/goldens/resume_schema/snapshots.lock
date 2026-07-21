@@ -1,0 +1,5 @@
+# Append-only sha256 lock for the resume-document schema goldens.
+# One line per released schema_version: "v<N> <sha256 of vN.json>".
+# Never edit or reorder an existing line; a version bump appends a new line.
+# Guarded by tests/test_resume_golden.py.
+v1 74d60749e72cc2c0049aee2a5c45b4312601ef9abc84e6ac2c1a45c78da005ca
