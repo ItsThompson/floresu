@@ -57,8 +57,12 @@ from floresu.profile.skills.wiring import build_skill_service_provider
 from floresu.profile.variants.router import create_variants_router
 from floresu.profile.variants.wiring import build_variant_service_provider
 from floresu.profile.wiring import build_source_service_provider
+from floresu.rendering.wiring import build_render_module
+from floresu.resumes.render_router import create_resume_render_router
+from floresu.resumes.render_wiring import build_resume_render_service_provider
 from floresu.resumes.router import create_resumes_router
 from floresu.resumes.wiring import build_resume_service_provider
+from floresu.storage.wiring import build_object_store
 from floresu.worklog.router import create_worklog_router
 from floresu.worklog.wiring import build_worklog_service_provider
 
@@ -156,6 +160,18 @@ resumes_router = create_resumes_router(
     actor=resolve_web_actor,
 )
 
+# Resume rendering: preview streams ephemeral bytes; export persists a PDF to R2 and
+# records the object key. The render module (typst-py) and the R2 object store are
+# process-wide and injected into the request-scoped service. Mounted before the
+# resumes router so GET /resumes/templates matches ahead of GET /resumes/{resume_id}.
+render_module = build_render_module()
+object_store = build_object_store(settings)
+resume_render_router = create_resume_render_router(
+    build_resume_render_service_provider(render_module, object_store),
+    identity=require_user,
+    actor=resolve_web_actor,
+)
+
 
 # The live activity feed: GET /feed (SSE stream) + GET /feed/history (initial load).
 # The stream resolves the caller via require_user and reads the process-wide feed
@@ -198,6 +214,7 @@ app: FastAPI = create_app(
         skills_router,
         variants_router,
         feed_router,
+        resume_render_router,
         resumes_router,
     ],
     readiness_checks=[db_readiness_check(db.engine)],

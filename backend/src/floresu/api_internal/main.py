@@ -36,8 +36,12 @@ from floresu.profile.skills.wiring import build_skill_service_provider
 from floresu.profile.variants.router import create_variants_router
 from floresu.profile.variants.wiring import build_variant_service_provider
 from floresu.profile.wiring import build_source_service_provider
+from floresu.rendering.wiring import build_render_module
+from floresu.resumes.render_router import create_resume_render_router
+from floresu.resumes.render_wiring import build_resume_render_service_provider
 from floresu.resumes.router import create_resumes_router
 from floresu.resumes.wiring import build_resume_service_provider
+from floresu.storage.wiring import build_object_store
 from floresu.worklog.router import create_worklog_router
 from floresu.worklog.wiring import build_worklog_service_provider
 
@@ -88,6 +92,16 @@ resumes_router = create_resumes_router(
     identity=require_internal_user,
     actor=resolve_internal_actor,
 )
+# Resume rendering on the agent-facing internal app: trusted-header identity + agent
+# actor. Mounted before the resumes router so GET /resumes/templates matches ahead of
+# GET /resumes/{resume_id}.
+render_module = build_render_module()
+object_store = build_object_store(settings)
+resume_render_router = create_resume_render_router(
+    build_resume_render_service_provider(render_module, object_store),
+    identity=require_internal_user,
+    actor=resolve_internal_actor,
+)
 # Worker-facing embed routes (internal app only): the arq worker reads an item's
 # text and writes its vector back over these. The gate, provider call, and
 # transaction live in the service.
@@ -115,6 +129,7 @@ app: FastAPI = create_app(
         bullets_router,
         skills_router,
         variants_router,
+        resume_render_router,
         resumes_router,
         embed_router,
     ],
