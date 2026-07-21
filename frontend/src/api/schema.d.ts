@@ -781,6 +781,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Search */
+        post: operations["search_search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1023,6 +1040,16 @@ export interface components {
             last_active_at: string;
         };
         /**
+         * DateRange
+         * @description An inclusive date window; either bound may be omitted for an open range.
+         */
+        DateRange: {
+            /** From */
+            from?: string | null;
+            /** To */
+            to?: string | null;
+        };
+        /**
          * DecisionRequest
          * @description The human's consent decision for a parked request.
          */
@@ -1088,6 +1115,17 @@ export interface components {
             /** Field */
             field?: string | null;
         };
+        /**
+         * EmbedItemKind
+         * @description The three embeddable corpus kinds; the ``embeddings.item_kind`` discriminator.
+         *
+         *     The values match the ``WriteEvent.entity_type`` strings the corpus writers emit
+         *     (worklog entries, canonical bullets, and profile sources), so the enqueue seam
+         *     maps a write event to an embed job by this membership alone. Outputs (resume
+         *     documents) are deliberately absent: they never enter the searchable corpus.
+         * @enum {string}
+         */
+        EmbedItemKind: "worklog" | "bullet" | "source";
         /**
          * FromResumeSource
          * @description Seed content from an existing resume (the copies may later diverge in shape).
@@ -1286,6 +1324,17 @@ export interface components {
             kind: "project";
             /** Links */
             links?: string[];
+        };
+        /**
+         * RankedHit
+         * @description One entry in the flat RRF-ranked list: what matched and its fused score.
+         */
+        RankedHit: {
+            type: components["schemas"]["EmbedItemKind"];
+            /** Id */
+            id: number;
+            /** Score */
+            score: number;
         };
         /**
          * RegisterRequest
@@ -1496,6 +1545,125 @@ export interface components {
             title_aliases?: string[];
             /** Location */
             location?: string | null;
+        };
+        /**
+         * SearchBulletNode
+         * @description A matched canonical bullet and its edges to worklog entries and sources.
+         */
+        SearchBulletNode: {
+            /** Id */
+            id: number;
+            /** Text */
+            text: string;
+            /** Score */
+            score: number;
+            /** Worklog Ids */
+            worklog_ids: number[];
+            /** Source Ids */
+            source_ids: number[];
+        };
+        /**
+         * SearchFilters
+         * @description Optional filters that narrow the corpus before retrieval and fusion.
+         */
+        SearchFilters: {
+            /** Source Ids */
+            source_ids?: number[] | null;
+            /** Kinds */
+            kinds?: components["schemas"]["SourceKind"][] | null;
+            /** Tags */
+            tags?: string[] | null;
+            /** @default both */
+            layer: components["schemas"]["SearchLayer"];
+            date_range?: components["schemas"]["DateRange"] | null;
+            /** Limit */
+            limit?: number | null;
+        };
+        /**
+         * SearchGraph
+         * @description The hit set rolled into the provenance DAG: nodes carrying scores + edges.
+         */
+        SearchGraph: {
+            /** Sources */
+            sources: components["schemas"]["SearchSourceNode"][];
+            /** Worklog */
+            worklog: components["schemas"]["SearchWorklogNode"][];
+            /** Bullets */
+            bullets: components["schemas"]["SearchBulletNode"][];
+        };
+        /**
+         * SearchLayer
+         * @description Which layers of the corpus a query searches; ``both`` by default.
+         * @enum {string}
+         */
+        SearchLayer: "raw" | "library" | "both";
+        /**
+         * SearchNotice
+         * @description A soft, non-fatal notice (e.g. semantic retrieval degraded to lexical-only).
+         */
+        SearchNotice: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+        };
+        /**
+         * SearchQuery
+         * @description The one search input: a free-text query plus optional filters.
+         */
+        SearchQuery: {
+            /** Query */
+            query: string;
+            filters?: components["schemas"]["SearchFilters"];
+        };
+        /**
+         * SearchResult
+         * @description The search response: the flat ranked list, the scored DAG, and any notices.
+         */
+        SearchResult: {
+            /** Ranked */
+            ranked: components["schemas"]["RankedHit"][];
+            graph: components["schemas"]["SearchGraph"];
+            /** Notices */
+            notices?: components["schemas"]["SearchNotice"][];
+        };
+        /**
+         * SearchSourceNode
+         * @description A source in the graph: a direct hit and/or the parent of matched children.
+         *
+         *     ``match_score`` is this source's own retrieval score, present only when the
+         *     source matched the query directly. ``score`` is its ranking score: the match
+         *     score (if any) combined with the scores of its matched children.
+         */
+        SearchSourceNode: {
+            /** Id */
+            id: number;
+            kind: components["schemas"]["SourceKind"];
+            /** Label */
+            label: string;
+            /** Match Score */
+            match_score?: number | null;
+            /** Score */
+            score: number;
+        };
+        /**
+         * SearchWorklogNode
+         * @description A matched worklog entry and its edges up to sources.
+         */
+        SearchWorklogNode: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Score */
+            score: number;
+            /** Source Ids */
+            source_ids: number[];
         };
         /**
          * SectionKind
@@ -3435,6 +3603,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResumeRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_search_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SearchQuery"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResult"];
                 };
             };
             /** @description Validation Error */

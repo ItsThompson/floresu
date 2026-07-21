@@ -157,3 +157,17 @@ def require_internal_user(request: Request) -> str:
     if not user_id:
         raise Unauthorized("Missing trusted user identity.")
     return user_id
+
+
+def resolve_user_pk(user_id: str) -> int:
+    """Cast a resolved string identity to the bigint primary key, or reject it.
+
+    Both identity boundaries resolve ``user_id`` as a string (a cookie subject or a
+    trusted header). A service that keys rows by the integer PK casts it once
+    through this shared helper, so the "stale/invalid identity" rejection is
+    single-sourced rather than re-derived per domain.
+    """
+    try:
+        return int(user_id)
+    except ValueError as exc:
+        raise Unauthorized("Session is invalid or expired.") from exc

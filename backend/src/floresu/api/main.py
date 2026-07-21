@@ -35,7 +35,11 @@ from floresu.core.identity import StripInboundIdentityMiddleware, deny_all_sessi
 from floresu.core.redis import create_redis_client
 from floresu.core.settings import EXTERNAL_PORT, EXTERNAL_SERVICE, build_app_settings
 from floresu.embedding.enqueue import build_async_embed_enqueue_consumer
-from floresu.embedding.wiring import build_embed_queue
+from floresu.embedding.wiring import (
+    build_embed_queue,
+    create_embedding_provider,
+    create_openai_http_client,
+)
 from floresu.feed.api import create_feed_router
 from floresu.feed.store import RedisFeedStore
 from floresu.feed.wiring import FEED_STORE_ATTR, build_sse_feed_consumer
@@ -59,6 +63,8 @@ from floresu.profile.variants.wiring import build_variant_service_provider
 from floresu.profile.wiring import build_source_service_provider
 from floresu.resumes.router import create_resumes_router
 from floresu.resumes.wiring import build_resume_service_provider
+from floresu.search.router import create_search_router
+from floresu.search.wiring import build_search_service_provider
 from floresu.worklog.router import create_worklog_router
 from floresu.worklog.wiring import build_worklog_service_provider
 
@@ -76,6 +82,12 @@ feed_store = RedisFeedStore(redis_client)
 # The arq queue the embed jobs are enqueued onto (worker-drained). Human/web writes
 # take this asynchronous path; the agent path uses the internal app's fast-path.
 embed_queue = build_embed_queue(settings.redis_url)
+# The embedding provider used to embed the search query on this app (the only
+# external AI dependency). Query embedding is best-effort: search degrades to
+# lexical-only and surfaces a soft notice when it is unavailable. The httpx client
+# is closed on shutdown by the lifespan below.
+search_query_client = create_openai_http_client(settings)
+search_embedding_provider = create_embedding_provider(search_query_client)
 
 # Human session cookies: HS256 codec + bcrypt hasher wired into the /auth router
 # and the real cookie verifier behind require_user.
@@ -164,6 +176,13 @@ feed_router = create_feed_router(
     identity=require_user, audit_service_provider=build_audit_service_provider()
 )
 
+# Hybrid search backing the Library search view: read-only, human session identity.
+# Embeds the query via the app's provider and degrades to lexical-only on failure.
+search_router = create_search_router(
+    build_search_service_provider(search_embedding_provider),
+    identity=require_user,
+)
+
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -183,6 +202,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         finally:
             await stop_stale_client_cleanup(cleanup_task)
             await embed_queue.aclose()
+            await search_query_client.aclose()
             await redis_client.aclose()
 
 
@@ -199,6 +219,7 @@ app: FastAPI = create_app(
         variants_router,
         feed_router,
         resumes_router,
+        search_router,
     ],
     readiness_checks=[db_readiness_check(db.engine)],
     exception_handlers={**build_exception_handlers(), **build_oauth_exception_handlers()},
