@@ -14,9 +14,9 @@ methods mirror the internal routes op-for-op; the tool layer maps their response
 to lean tool outputs. The ``httpx.AsyncClient`` is injected (bound to the backend
 internal base URL) so tests substitute a transport without a live backend.
 
-This is the RS foundation: it carries the two smoke methods (``worklog_list`` /
-``worklog_create``) that prove the path. The full method surface mirroring every
-internal route lands with the read/write tools in later tickets.
+The read methods below back the read tool surface; each is a single GET (or the
+search POST) mirroring one internal route. The write method surface mirroring the
+remaining routes lands with the write tools in a later ticket.
 """
 
 from __future__ import annotations
@@ -110,6 +110,105 @@ class InternalApiClient:
     async def worklog_create(self, user_id: str, actor: str, body: Any) -> httpx.Response:
         """Create a worklog entry (``POST /worklog``)."""
         return await self._request("POST", "/worklog", user_id=user_id, actor=actor, json=body)
+
+    async def worklog_get(self, user_id: str, actor: str, worklog_id: int) -> httpx.Response:
+        """Get one worklog entry with its sources, tags, and framing bullets
+        (``GET /worklog/{id}``)."""
+        return await self._request("GET", f"/worklog/{worklog_id}", user_id=user_id, actor=actor)
+
+    async def list_tags(self, user_id: str, actor: str) -> httpx.Response:
+        """List the user's existing tag labels for reuse (``GET /worklog/tags``)."""
+        return await self._request("GET", "/worklog/tags", user_id=user_id, actor=actor)
+
+    async def sources_list(
+        self, user_id: str, actor: str, *, kind: str | None = None, include_archived: bool = False
+    ) -> httpx.Response:
+        """List profile sources, optionally of one kind (``GET /sources``)."""
+        return await self._request(
+            "GET",
+            "/sources",
+            user_id=user_id,
+            actor=actor,
+            params={"kind": kind, "include_archived": include_archived},
+        )
+
+    async def source_get(self, user_id: str, actor: str, source_id: int) -> httpx.Response:
+        """Get one profile source with its typed detail (``GET /sources/{id}``)."""
+        return await self._request("GET", f"/sources/{source_id}", user_id=user_id, actor=actor)
+
+    async def skills_list(
+        self, user_id: str, actor: str, *, include_archived: bool = False
+    ) -> httpx.Response:
+        """List the user's skills (``GET /skills``)."""
+        return await self._request(
+            "GET",
+            "/skills",
+            user_id=user_id,
+            actor=actor,
+            params={"include_archived": include_archived},
+        )
+
+    async def skill_get(self, user_id: str, actor: str, skill_id: int) -> httpx.Response:
+        """Get one skill (``GET /skills/{id}``)."""
+        return await self._request("GET", f"/skills/{skill_id}", user_id=user_id, actor=actor)
+
+    async def variants_list(
+        self, user_id: str, actor: str, *, include_archived: bool = False
+    ) -> httpx.Response:
+        """List the user's identity variants (``GET /identity-variants``)."""
+        return await self._request(
+            "GET",
+            "/identity-variants",
+            user_id=user_id,
+            actor=actor,
+            params={"include_archived": include_archived},
+        )
+
+    async def variant_get(self, user_id: str, actor: str, variant_id: int) -> httpx.Response:
+        """Get one identity variant (``GET /identity-variants/{id}``)."""
+        return await self._request(
+            "GET", f"/identity-variants/{variant_id}", user_id=user_id, actor=actor
+        )
+
+    async def bullets_list(
+        self, user_id: str, actor: str, *, include_archived: bool = False
+    ) -> httpx.Response:
+        """List the user's canonical library bulletpoints (``GET /bullets``)."""
+        return await self._request(
+            "GET",
+            "/bullets",
+            user_id=user_id,
+            actor=actor,
+            params={"include_archived": include_archived},
+        )
+
+    async def bullet_get(self, user_id: str, actor: str, bullet_id: int) -> httpx.Response:
+        """Get one canonical bulletpoint with its provenance edges (``GET /bullets/{id}``)."""
+        return await self._request("GET", f"/bullets/{bullet_id}", user_id=user_id, actor=actor)
+
+    async def resumes_list(
+        self, user_id: str, actor: str, *, kind: str | None = None, include_archived: bool = False
+    ) -> httpx.Response:
+        """List the user's living and application resumes (``GET /resumes``)."""
+        return await self._request(
+            "GET",
+            "/resumes",
+            user_id=user_id,
+            actor=actor,
+            params={"kind": kind, "include_archived": include_archived},
+        )
+
+    async def resume_get(self, user_id: str, actor: str, resume_id: int) -> httpx.Response:
+        """Get one resume with its full document (``GET /resumes/{id}``)."""
+        return await self._request("GET", f"/resumes/{resume_id}", user_id=user_id, actor=actor)
+
+    async def list_templates(self, user_id: str, actor: str) -> httpx.Response:
+        """List the available global render templates (``GET /resumes/templates``)."""
+        return await self._request("GET", "/resumes/templates", user_id=user_id, actor=actor)
+
+    async def search(self, user_id: str, actor: str, body: Any) -> httpx.Response:
+        """Run hybrid search over the corpus (``POST /search``)."""
+        return await self._request("POST", "/search", user_id=user_id, actor=actor, json=body)
 
 
 def create_internal_http_client(settings: RsSettings) -> httpx.AsyncClient:
