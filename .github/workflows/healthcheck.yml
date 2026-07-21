@@ -7,15 +7,15 @@ name: Healthcheck
 # the same public surfaces a browser would. It complements the in-cluster
 # Prometheus/Alertmanager `ServiceDown` alert by catching failures internal
 # scraping cannot see: DNS, the Cloudflare edge, the tunnel, and per-host ingress
-# routing. If floresu.app is unreachable to a browser while the containers are
+# routing. If floresu.com is unreachable to a browser while the containers are
 # healthy on app-net, only an external probe notices.
 #
 # Three already-public, unauthenticated, static surfaces are probed for HTTP 200
 # (deliberately NOT the edge-blocked /healthz|/readyz|/metrics observability
 # path, per deployments/cloudflare/config.yml):
-#   - https://floresu.app/                                              (SPA via nginx)
-#   - https://api.floresu.app/.well-known/oauth-authorization-server    (OAuth AS metadata)
-#   - https://mcp.floresu.app/.well-known/oauth-protected-resource      (MCP PRM discovery)
+#   - https://floresu.com/                                              (SPA via nginx)
+#   - https://api.floresu.com/.well-known/oauth-authorization-server    (OAuth AS metadata)
+#   - https://mcp.floresu.com/.well-known/oauth-protected-resource      (MCP PRM discovery)
 #
 # On failure (after retries) it posts one message to the P0 Discord webhook and
 # fails the job, so GitHub's native failure email/UI also fires.
@@ -51,9 +51,9 @@ jobs:
           # trailing-slash sensitive (the tunnel ingress allow-list has no optional
           # slash), so keep it exactly as written.
           urls=(
-            "https://floresu.app/"
-            "https://api.floresu.app/.well-known/oauth-authorization-server"
-            "https://mcp.floresu.app/.well-known/oauth-protected-resource"
+            "https://floresu.com/"
+            "https://api.floresu.com/.well-known/oauth-authorization-server"
+            "https://mcp.floresu.com/.well-known/oauth-protected-resource"
           )
 
           # Probe one URL up to 3 times with linear backoff (5s, 10s). Returns 0

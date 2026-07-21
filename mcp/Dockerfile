@@ -10,7 +10,7 @@
 # this image (the MCP<->backend firewall holds by construction).
 #
 # /metrics, /healthz and /readyz are NOT tunnel-exposed: only PRM + the /mcp
-# transport are public (mcp.floresu.app). /metrics is scraped in-network
+# transport are public (mcp.floresu.com). /metrics is scraped in-network
 # (app-net); the tunnel ingress allow-list (deployments/cloudflare/config.yml)
 # enforces this.
 # =============================================================================

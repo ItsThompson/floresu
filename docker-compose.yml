@@ -36,7 +36,7 @@ services:
       dockerfile: Dockerfile
       args:
         # Baked into the SPA bundle at build time. VITE_API_BASE_URL is the API
-        # origin the SPA calls cross-origin (api.floresu.app in prod; empty ->
+        # origin the SPA calls cross-origin (api.floresu.com in prod; empty ->
         # same-origin). VITE_MCP_URL is the MCP endpoint the onboarding wizard
         # shows. cd.yml passes the prod values explicitly from .env.prod.
         VITE_API_BASE_URL: ${PUBLIC_BASE_URL:-}
@@ -79,7 +79,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       HOST: 0.0.0.0
     expose:
-      - "8000"  # external app (tunnel-routed as api.floresu.app)
+      - "8000"  # external app (tunnel-routed as api.floresu.com)
       - "8001"  # internal app (app-net; never tunnel-routed, token-gated)
     networks:
       - app-net

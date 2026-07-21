@@ -38,7 +38,7 @@ scrape_configs:
       - targets: ["backend:8000", "backend:8001"]
 
   # MCP /metrics is scraped here over app-net, never via the tunnel:
-  # mcp.floresu.app only path-exposes the PRM doc + /mcp transport at ingress,
+  # mcp.floresu.com only path-exposes the PRM doc + /mcp transport at ingress,
   # so /metrics is unreachable publicly.
   - job_name: mcp
     metrics_path: /metrics
