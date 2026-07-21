@@ -18,11 +18,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from floresu.core.conflicts import conflict_on_duplicate
 from floresu.core.db import transaction
 from floresu.core.errors import Conflict, NotFound, Unauthorized, Validation
 from floresu.core.events import Action, WriteEvent
 from floresu.core.observability import track_failures
-from floresu.profile.conflicts import conflict_on_duplicate
 from floresu.profile.injection import Clock, utcnow
 from floresu.profile.skills.config import DEFAULT_LIST_LIMIT, ENTITY_TYPE
 from floresu.profile.skills.models import Skill
