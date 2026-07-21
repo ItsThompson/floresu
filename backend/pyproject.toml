@@ -40,6 +40,18 @@ dependencies = [
     # httpx backs the OpenAI embedding provider on the synchronous fast-path (an
     # injected AsyncClient, faked in tests so no live OpenAI call is made).
     "httpx>=0.27.0,<1",
+    # Synchronous PDF rendering: typst-py is an in-process binding to the Typst
+    # compiler (Apache-2.0). It bundles the compiler and a set of embedded fonts in
+    # the wheel, so rendering needs no separately-bundled binary and no font mount;
+    # ``ignore_system_fonts`` keeps output deterministic across hosts. The resume
+    # document is fed in as JSON via ``sys.inputs`` (never as Typst source), so
+    # arbitrary user text cannot inject markup.
+    "typst>=0.15.0,<1",
+    # Cloudflare R2 object storage for rendered PDFs. R2 is S3-compatible, so the
+    # async aioboto3 client (pulls aiobotocore/botocore) puts objects and mints the
+    # time-limited presigned GET URLs downloads use. The client is injected, so tests
+    # substitute a fake and no live R2 credentials are needed off the deployed box.
+    "aioboto3>=13,<16",
 ]
 
 [project.scripts]
@@ -62,6 +74,7 @@ dev = [
     "pytest-cov>=6.0",
     "httpx>=0.27",
     "testcontainers[postgres,redis]>=4.8,<5",
+    "pypdf>=5,<7",
 ]
 
 [tool.ruff]
@@ -90,6 +103,12 @@ namespace_packages = true
 [[tool.mypy.overrides]]
 # testcontainers ships no type stubs; only its Postgres container helper is used.
 module = ["testcontainers.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# aioboto3 and the botocore stack ship no type stubs; the R2 object-store adapter
+# is the only consumer and confines their dynamically-typed client to one module.
+module = ["aioboto3.*", "aiobotocore.*", "botocore.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
