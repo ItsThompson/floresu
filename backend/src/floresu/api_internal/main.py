@@ -38,6 +38,8 @@ from floresu.profile.variants.wiring import build_variant_service_provider
 from floresu.profile.wiring import build_source_service_provider
 from floresu.resumes.router import create_resumes_router
 from floresu.resumes.wiring import build_resume_service_provider
+from floresu.search.router import create_search_router
+from floresu.search.wiring import build_search_service_provider
 from floresu.worklog.router import create_worklog_router
 from floresu.worklog.wiring import build_worklog_service_provider
 
@@ -95,6 +97,12 @@ embed_router = create_embedding_router(
     build_embedding_service_provider(embedding_provider),
     identity=require_internal_user,
 )
+# Hybrid search (the agent's search_experience tool): reuses the one embedding
+# provider to embed the query, with the trusted-header identity.
+search_router = create_search_router(
+    build_search_service_provider(embedding_provider),
+    identity=require_internal_user,
+)
 
 
 @asynccontextmanager
@@ -117,6 +125,7 @@ app: FastAPI = create_app(
         variants_router,
         resumes_router,
         embed_router,
+        search_router,
     ],
     readiness_checks=[db_readiness_check(db.engine)],
     exception_handlers=build_exception_handlers(),

@@ -129,6 +129,10 @@ EXTERNAL_ROUTE_ACCESS: RouteRegistry = {
     # read both require the human session cookie.
     RouteKey("GET", "/feed"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("GET", "/feed/history"): AccessLevel.EXTERNAL_COOKIE,
+    # Hybrid search: the query/retrieval API backing the Library search view. The
+    # web boundary resolves the human session cookie; the same route mounts on the
+    # internal app for the agent's search_experience tool (below).
+    RouteKey("POST", "/search"): AccessLevel.EXTERNAL_COOKIE,
 }
 INTERNAL_ROUTE_ACCESS: RouteRegistry = {
     # Profile sources on the agent-facing internal app: trusted-header identity.
@@ -183,6 +187,9 @@ INTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("GET", "/embed/items/{kind}/{item_id}"): AccessLevel.INTERNAL_TRUSTED,
     RouteKey("PUT", "/embed/items/{kind}/{item_id}"): AccessLevel.INTERNAL_TRUSTED,
     RouteKey("POST", "/embed/items/{kind}/{item_id}/purge"): AccessLevel.INTERNAL_TRUSTED,
+    # Hybrid search on the agent-facing internal app (the search_experience tool):
+    # trusted-header identity.
+    RouteKey("POST", "/search"): AccessLevel.INTERNAL_TRUSTED,
 }
 
 
