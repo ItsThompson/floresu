@@ -14,8 +14,10 @@ mcp/
 worker/
 e2e/
 contract/
-templates/
 deployments/
+
+# NOTE: templates/ is intentionally NOT excluded: the backend IS the render
+# image and the Typst templates under templates/ must ship in it.
 
 # Local dev / tooling artifacts.
 **/.venv/

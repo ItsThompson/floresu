@@ -59,6 +59,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # the container down if either app exits.
 COPY scripts/serve-backend.sh /app/scripts/serve-backend.sh
 
+# The Typst templates the render path reads. The backend IS the render image, so
+# the templates ship in it (populated by the rendering slice under templates/).
+COPY templates/ /app/templates/
+
 # ---------------------------------------------------------------------------
 FROM python:3.12-slim-bookworm AS runtime
 
