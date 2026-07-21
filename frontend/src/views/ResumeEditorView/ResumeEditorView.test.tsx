@@ -1,0 +1,335 @@
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
+import { describe, expect, it, vi } from "vitest";
+
+import { buildAuthUser } from "@/mocks/data";
+import { createResumeApiMock } from "@/mocks/resumeApiMock";
+import {
+  buildBulletpoint,
+  buildLibraryRefItem,
+  buildLocalItem,
+  buildResumeRecord,
+  buildSection,
+  buildTemplate,
+  buildVariant,
+} from "@/mocks/resumeFixtures";
+import { server } from "@/mocks/server";
+import { renderApp } from "@/test/renderWithProviders";
+
+vi.mock("@/views/ResumeEditorView/pdf/renderPdf", () => ({
+  renderPdfToCanvas: vi.fn().mockResolvedValue(undefined),
+}));
+
+function authenticate() {
+  server.use(
+    http.post("*/auth/refresh", () =>
+      HttpResponse.json(buildAuthUser({ has_completed_onboarding: true })),
+    ),
+  );
+}
+
+/** A resume with one work section holding a library reference and a local item. */
+function seedResume(overrides?: Parameters<typeof buildResumeRecord>[0]) {
+  const ref = buildLibraryRefItem({ id: "it-ref", bullet_id: 100 });
+  const local = buildLocalItem({ id: "it-loc", text: "Local bullet text" });
+  return buildResumeRecord({
+    id: 1,
+    kind: "living",
+    title: "Backend Engineer",
+    document: {
+      schema_version: 1,
+      template_id: "classic",
+      header: {},
+      sections: [
+        buildSection({
+          id: "sec-work",
+          title: "Work Experience",
+          item_order: ["it-ref", "it-loc"],
+          items: { "it-ref": ref, "it-loc": local },
+        }),
+      ],
+    },
+    ...overrides,
+  });
+}
+
+describe("ResumeEditorView", () => {
+  it("loads the resume and resolves library and local item text", async () => {
+    authenticate();
+    const { handlers } = createResumeApiMock({
+      resumes: [seedResume()],
+      bullets: [buildBulletpoint({ id: 100, text: "Cut checkout latency by 40%.", used_in_count: 1 })],
+    });
+    server.use(...handlers);
+    renderApp(["/resumes/1"]);
+
+    expect(await screen.findByText("Work Experience")).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("Cut checkout latency by 40%.")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Local bullet text")).toBeInTheDocument();
+  });
+
+  it("saves a local item edit (guarded by the revision)", async () => {
+    authenticate();
+    const { handlers, resumes } = createResumeApiMock({
+      resumes: [seedResume()],
+      bullets: [buildBulletpoint({ id: 100, used_in_count: 1 })],
+    });
+    server.use(...handlers);
+    renderApp(["/resumes/1"]);
+    const user = userEvent.setup();
+
+    const textarea = await screen.findByDisplayValue("Local bullet text");
+    await user.clear(textarea);
+    await user.type(textarea, "Edited local text");
+    await user.tab();
+
+    await waitFor(() => expect(resumes.get(1)?.revision).toBe(2));
+  });
+
+  it("adds a bullet from the library into a section", async () => {
+    authenticate();
+    const { handlers } = createResumeApiMock({
+      resumes: [seedResume()],
+      bullets: [
+        buildBulletpoint({ id: 100, text: "Cut checkout latency by 40%.", used_in_count: 1 }),
+        buildBulletpoint({ id: 200, text: "Led the platform migration.", used_in_count: 1 }),
+      ],
+    });
+    server.use(...handlers);
+    renderApp(["/resumes/1"]);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: /pull from library/i }));
+    await user.click(await screen.findByRole("button", { name: /Led the platform migration/ }));
+
+    await waitFor(() =>
+      expect(screen.getByDisplayValue("Led the platform migration.")).toBeInTheDocument(),
+    );
+  });
+
+  it("prompts for scope when editing a bullet shared by two or more resumes", async () => {
+    authenticate();
+    const { handlers, bullets } = createResumeApiMock({
+      resumes: [seedResume()],
+      bullets: [buildBulletpoint({ id: 100, text: "Cut checkout latency by 40%.", used_in_count: 2 })],
+    });
+    server.use(...handlers);
+    renderApp(["/resumes/1"]);
+    const user = userEvent.setup();
+
+    const textarea = await screen.findByDisplayValue("Cut checkout latency by 40%.");
+    await user.clear(textarea);
+    await user.type(textarea, "Cut checkout latency by 60%.");
+    await user.tab();
+
+    // The shared bullet triggers the scope prompt rather than applying silently.
+    const dialog = await screen.findByRole("dialog", { name: /used in 2 resumes/i });
+    await user.click(within(dialog).getByRole("radio", { name: /Everywhere/i }));
+    await user.click(within(dialog).getByRole("button", { name: "Apply" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(bullets.get(100)?.text).toBe("Cut checkout latency by 60%."));
+  });
+
+  it("applies an edit to a single-use bullet without prompting", async () => {
+    authenticate();
+    const { handlers, bullets } = createResumeApiMock({
+      resumes: [seedResume()],
+      bullets: [buildBulletpoint({ id: 100, text: "Cut checkout latency by 40%.", used_in_count: 1 })],
+    });
+    server.use(...handlers);
+    renderApp(["/resumes/1"]);
+    const user = userEvent.setup();
+
+    const textarea = await screen.findByDisplayValue("Cut checkout latency by 40%.");
+    await user.clear(textarea);
+    await user.type(textarea, "Cut checkout latency by 70%.");
+    await user.tab();
+
+    await waitFor(() => expect(bullets.get(100)?.text).toBe("Cut checkout latency by 70%."));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("prompts to re-read after a stale write conflict", async () => {
+    authenticate();
+    const { handlers } = createResumeApiMock({
+      resumes: [seedResume()],
+      bullets: [buildBulletpoint({ id: 100, used_in_count: 1 })],
+    });
+    server.use(...handlers);
+    renderApp(["/resumes/1"]);
+    const user = userEvent.setup();
+
+    const textarea = await screen.findByDisplayValue("Local bullet text");
+    // Force the next update to be rejected as stale.
+    server.use(
+      http.put("*/resumes/:resumeId", () =>
+        HttpResponse.json({ detail: "stale" }, { status: 409 }),
+      ),
+    );
+    await user.clear(textarea);
+    await user.type(textarea, "Edited while stale");
+    await user.tab();
+
+    expect(await screen.findByRole("dialog", { name: /This resume changed/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Re-read latest/ }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("changes the template, re-rendering the same content", async () => {
+    authenticate();
+    const { handlers, resumes } = createResumeApiMock({
+      resumes: [seedResume()],
+      bullets: [buildBulletpoint({ id: 100, used_in_count: 1 })],
+      templates: [buildTemplate({ id: "classic", name: "Classic" }), buildTemplate({ id: "modern", name: "Modern" })],
+    });
+    server.use(...handlers);
+    renderApp(["/resumes/1"]);
+    const user = userEvent.setup();
+
+    await user.selectOptions(await screen.findByLabelText("Template"), "modern");
+    await waitFor(() => expect(resumes.get(1)?.document.template_id).toBe("modern"));
+  });
+
+  it("renders a finalized resume read-only (no editing controls)", async () => {
+    authenticate();
+    const { handlers } = createResumeApiMock({
+      resumes: [seedResume({ kind: "application", status: "finalized" })],
+      bullets: [buildBulletpoint({ id: 100, text: "Cut checkout latency by 40%.", used_in_count: 1 })],
+    });
+    server.use(...handlers);
+    renderApp(["/resumes/1"]);
+
+    expect(await screen.findByText("Work Experience")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /pull from library/i })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Resume title")).toBeDisabled();
+  });
+
+  it("exports a PDF and surfaces a download link", async () => {
+    authenticate();
+    vi.spyOn(window, "open").mockReturnValue(null);
+    const { handlers } = createResumeApiMock({
+      resumes: [seedResume()],
+      bullets: [buildBulletpoint({ id: 100, used_in_count: 1 })],
+    });
+    server.use(...handlers);
+    renderApp(["/resumes/1"]);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: /Export/ }));
+    expect(await screen.findByRole("link", { name: /Download exported PDF/ })).toBeInTheDocument();
+  });
+
+  it("removes an item from a section", async () => {
+    authenticate();
+    const { handlers, resumes } = createResumeApiMock({
+      resumes: [seedResume()],
+      bullets: [buildBulletpoint({ id: 100, used_in_count: 1 })],
+    });
+    server.use(...handlers);
+    renderApp(["/resumes/1"]);
+    const user = userEvent.setup();
+
+    const localRow = (await screen.findByDisplayValue("Local bullet text")).closest("li") as HTMLElement;
+    await user.click(within(localRow).getByRole("button", { name: "Remove item" }));
+
+    await waitFor(() => expect(screen.queryByDisplayValue("Local bullet text")).not.toBeInTheDocument());
+    expect(resumes.get(1)?.document.sections?.[0].item_order).toEqual(["it-ref"]);
+  });
+
+  it("adds a net-new inline item that lives only on the resume", async () => {
+    authenticate();
+    const { handlers, resumes } = createResumeApiMock({
+      resumes: [seedResume()],
+      bullets: [buildBulletpoint({ id: 100, used_in_count: 1 })],
+    });
+    server.use(...handlers);
+    renderApp(["/resumes/1"]);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: /new/i }));
+    await user.type(screen.getByLabelText("New bullet text"), "A fresh inline bullet");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() => expect(screen.getByDisplayValue("A fresh inline bullet")).toBeInTheDocument());
+    const items = resumes.get(1)?.document.sections?.[0].items ?? {};
+    const added = Object.values(items).find((item) => item.kind === "local" && item.text === "A fresh inline bullet");
+    expect(added?.kind).toBe("local");
+  });
+
+  it("promotes a resume-local item to the library", async () => {
+    authenticate();
+    const { handlers, resumes } = createResumeApiMock({
+      resumes: [seedResume()],
+      bullets: [buildBulletpoint({ id: 100, used_in_count: 1 })],
+    });
+    server.use(...handlers);
+    renderApp(["/resumes/1"]);
+    const user = userEvent.setup();
+
+    const localRow = (await screen.findByDisplayValue("Local bullet text")).closest("li") as HTMLElement;
+    await user.click(within(localRow).getByRole("button", { name: "Promote" }));
+
+    await waitFor(() => expect(resumes.get(1)?.revision).toBe(2));
+  });
+
+  it("forks only this resume when the safe scope is chosen for a shared bullet", async () => {
+    authenticate();
+    const { handlers, resumes, bullets } = createResumeApiMock({
+      resumes: [seedResume()],
+      bullets: [buildBulletpoint({ id: 100, text: "Cut checkout latency by 40%.", used_in_count: 2 })],
+    });
+    server.use(...handlers);
+    renderApp(["/resumes/1"]);
+    const user = userEvent.setup();
+
+    const textarea = await screen.findByDisplayValue("Cut checkout latency by 40%.");
+    await user.clear(textarea);
+    await user.type(textarea, "Only-here wording.");
+    await user.tab();
+
+    const dialog = await screen.findByRole("dialog", { name: /used in 2 resumes/i });
+    // "Only this resume" is the default; apply it directly.
+    await user.click(within(dialog).getByRole("button", { name: "Apply" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    // The canonical bullet is untouched; the resume item became a local fork.
+    expect(bullets.get(100)?.text).toBe("Cut checkout latency by 40%.");
+    expect(resumes.get(1)?.document.sections?.[0].items?.["it-ref"].kind).toBe("local");
+  });
+
+  it("sets the header identity variant", async () => {
+    authenticate();
+    const { handlers, resumes } = createResumeApiMock({
+      resumes: [seedResume()],
+      bullets: [buildBulletpoint({ id: 100, used_in_count: 1 })],
+      variants: [buildVariant({ id: 5, label: "Personal" })],
+    });
+    server.use(...handlers);
+    renderApp(["/resumes/1"]);
+    const user = userEvent.setup();
+
+    await user.selectOptions(await screen.findByLabelText("Identity variant"), "5");
+    await waitFor(() => expect(resumes.get(1)?.document.header?.identity_variant_id).toBe(5));
+  });
+
+  it("reorders items within a section by drag and persists the new order", async () => {
+    authenticate();
+    const { handlers, resumes } = createResumeApiMock({
+      resumes: [seedResume()],
+      bullets: [buildBulletpoint({ id: 100, used_in_count: 1 })],
+    });
+    server.use(...handlers);
+    renderApp(["/resumes/1"]);
+
+    await screen.findByText("Work Experience");
+    const handles = screen.getAllByRole("button", { name: "Drag to reorder item" });
+    fireEvent.dragStart(handles[0]);
+    fireEvent.drop(handles[1]);
+
+    await waitFor(() =>
+      expect(resumes.get(1)?.document.sections?.[0].item_order).toEqual(["it-loc", "it-ref"]),
+    );
+  });
+});

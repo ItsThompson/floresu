@@ -1,0 +1,1 @@
+export { ResumeEditorView } from "./ResumeEditorView";
