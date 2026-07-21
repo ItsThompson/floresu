@@ -1,0 +1,14 @@
+# Dashboard provider: load every dashboard JSON baked into the image under
+# /var/lib/grafana/dashboards. Provisioned dashboards are read-only in the UI.
+apiVersion: 1
+
+providers:
+  - name: floresu
+    orgId: 1
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

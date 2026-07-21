@@ -1,0 +1,12 @@
+# Prometheus datasource, provisioned at Grafana startup. Points at the in-network
+# Prometheus service on app-net. Non-gating (spec §12): dashboards are optional.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: floresu-prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false

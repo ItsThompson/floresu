@@ -1,0 +1,106 @@
+# =============================================================================
+# Floresu P0 alert rules. Every rule routes to Discord via Alertmanager with
+# send_resolved (see deployments/alertmanager/alertmanager.yml), so an operator
+# sees both the firing and the recovery. Expressions follow a stable metric
+# convention so Grafana dashboards drop in alongside them.
+#
+# Three critical rules (paging-class faults) and four warning rules (degradation
+# the operator should notice before it becomes an outage).
+# =============================================================================
+
+groups:
+  - name: floresu-critical
+    rules:
+      # A scrape target is down (backend, mcp, worker, node-exporter, prometheus).
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} target {{ $labels.instance }} is down"
+          description: "Prometheus has not scraped {{ $labels.instance }} for over 1 minute."
+
+      # Host filesystem is running out of space (single VPS; no backups at P0, so
+      # this warns before the box fills and Postgres cannot write).
+      - alert: HostDiskAlmostFull
+        expr: |
+          (
+            node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"}
+            / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}
+          ) < 0.1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Host filesystem {{ $labels.mountpoint }} has < 10% free"
+          description: "{{ $labels.mountpoint }} on {{ $labels.instance }} is below 10% available."
+
+      # More than 5% of HTTP responses are 5xx over the last 5 minutes
+      # (backend + mcp share the http_requests_total convention).
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m]))
+          / sum(rate(http_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High 5xx error rate (> 5%)"
+          description: "More than 5% of HTTP responses were 5xx over the last 5 minutes."
+
+  - name: floresu-warning
+    rules:
+      # p95 database statement latency above 1s over 5 minutes.
+      - alert: SlowQueries
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(db_query_duration_seconds_bucket[5m])) by (le)
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow database queries (p95 > 1s)"
+          description: "The 95th-percentile db_query_duration_seconds exceeded 1s over 5 minutes."
+
+      # More than half of finished embed jobs failed over the last hour. The
+      # denominator is every finished job (all status labels); NaN when idle, so
+      # an idle queue never fires.
+      - alert: EmbeddingJobFailureRate
+        expr: |
+          sum(rate(embed_jobs_completed_total{status="failed"}[1h]))
+          / sum(rate(embed_jobs_completed_total[1h])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Embedding job failure rate > 50% (1h)"
+          description: "More than half of finished embed jobs failed over the last hour; the provider or the internal API may be unhealthy."
+
+      # The embed queue has a backlog but no job has completed in 10 minutes: the
+      # worker is stuck or crash-looping. `and on()` matches the label-less queue
+      # gauge against the label-less completion counter.
+      - alert: EmbeddingJobStuck
+        expr: |
+          (embed_queue_depth > 0)
+          and on() (sum(increase(embed_jobs_completed_total[10m])) == 0)
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Embed queue stuck (depth > 0, no completions in 10m)"
+          description: "The embed queue has pending work but the worker has completed no jobs in 10 minutes."
+
+      # A spike in failed logins (401 on /auth/login): credential stuffing or a
+      # broken client. The threshold is generous for ~5 users and is tunable.
+      - alert: AuthFailuresSpike
+        expr: |
+          sum(rate(http_requests_total{path="/auth/login",status="401"}[5m])) > 0.2
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Spike in failed logins (401 on /auth/login)"
+          description: "Sustained failed-login rate above 0.2/s over 5 minutes; possible credential stuffing."
