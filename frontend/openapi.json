@@ -2815,6 +2815,167 @@
         }
       }
     },
+    "/resumes/bullet-edit": {
+      "post": {
+        "tags": [
+          "resumes"
+        ],
+        "summary": "Bullet Edit",
+        "operationId": "bullet_edit_resumes_bullet_edit_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScopeEditRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ScopePromptResult"
+                    },
+                    {
+                      "$ref": "#/components/schemas/EditedEverywhereResult"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ForkedThisResumeResult"
+                    }
+                  ],
+                  "title": "Response Bullet Edit Resumes Bullet Edit Post",
+                  "discriminator": {
+                    "propertyName": "outcome",
+                    "mapping": {
+                      "prompt": "#/components/schemas/ScopePromptResult",
+                      "edited_everywhere": "#/components/schemas/EditedEverywhereResult",
+                      "forked_this_resume": "#/components/schemas/ForkedThisResumeResult"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/resumes/{resume_id}/items/{item_id}/promote": {
+      "post": {
+        "tags": [
+          "resumes"
+        ],
+        "summary": "Promote Item",
+        "operationId": "promote_item_resumes__resume_id__items__item_id__promote_post",
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Resume Id"
+            }
+          },
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "If-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumeRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/search": {
+      "post": {
+        "tags": [
+          "search"
+        ],
+        "summary": "Search",
+        "operationId": "search_search_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/account/export": {
       "get": {
         "tags": [
@@ -3565,6 +3726,38 @@
         "title": "ConnectedClient",
         "description": "One authorized agent in the user's connected-clients list."
       },
+      "DateRange": {
+        "properties": {
+          "from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From"
+          },
+          "to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "DateRange",
+        "description": "An inclusive date window; either bound may be omitted for an open range."
+      },
       "DecisionRequest": {
         "properties": {
           "auth_request_id": {
@@ -3642,6 +3835,26 @@
         ],
         "title": "DuplicateSource",
         "description": "Make a faithful copy of an existing resume."
+      },
+      "EditedEverywhereResult": {
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "const": "edited_everywhere",
+            "title": "Outcome",
+            "default": "edited_everywhere"
+          },
+          "bullet": {
+            "$ref": "#/components/schemas/BulletpointRecord"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "bullet"
+        ],
+        "title": "EditedEverywhereResult",
+        "description": "The canonical bullet was edited in place; every reference resolves the new text."
       },
       "EducationDetail": {
         "properties": {
@@ -3764,6 +3977,16 @@
         ],
         "title": "EducationWrite"
       },
+      "EmbedItemKind": {
+        "type": "string",
+        "enum": [
+          "worklog",
+          "bullet",
+          "source"
+        ],
+        "title": "EmbedItemKind",
+        "description": "The three embeddable corpus kinds; the ``embeddings.item_kind`` discriminator.\n\nThe values match the ``WriteEvent.entity_type`` strings the corpus writers emit\n(worklog entries, canonical bullets, and profile sources), so the enqueue seam\nmaps a write event to an embed job by this membership alone. Outputs (resume\ndocuments) are deliberately absent: they never enter the searchable corpus."
+      },
       "ExportResult": {
         "properties": {
           "resume_id": {
@@ -3793,6 +4016,26 @@
         ],
         "title": "ExportResult",
         "description": "Where a persisted resume PDF lives, plus a time-limited URL to download it."
+      },
+      "ForkedThisResumeResult": {
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "const": "forked_this_resume",
+            "title": "Outcome",
+            "default": "forked_this_resume"
+          },
+          "resume": {
+            "$ref": "#/components/schemas/ResumeRecord"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "resume"
+        ],
+        "title": "ForkedThisResumeResult",
+        "description": "A resume-local copy was forked; the canonical bullet is unchanged."
       },
       "FromResumeSource": {
         "properties": {
@@ -4274,6 +4517,29 @@
         ],
         "title": "ProjectWrite"
       },
+      "RankedHit": {
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/EmbedItemKind"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "id",
+          "score"
+        ],
+        "title": "RankedHit",
+        "description": "One entry in the flat RRF-ranked list: what matched and its fused score."
+      },
       "RegisterRequest": {
         "properties": {
           "email": {
@@ -4417,6 +4683,15 @@
         ],
         "title": "ResumeDocument",
         "description": "The authoritative, versioned resume document."
+      },
+      "ResumeEditScope": {
+        "type": "string",
+        "enum": [
+          "this_resume",
+          "everywhere"
+        ],
+        "title": "ResumeEditScope",
+        "description": "The intent a scoped bullet edit carries: fork here, or edit the canonical."
       },
       "ResumeHeader": {
         "properties": {
@@ -4871,6 +5146,398 @@
           "job_title"
         ],
         "title": "RoleWrite"
+      },
+      "ScopeEditRequest": {
+        "properties": {
+          "bullet_id": {
+            "type": "integer",
+            "title": "Bullet Id"
+          },
+          "new_text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "New Text"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResumeEditScope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "resume_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resume Id"
+          },
+          "if_match_resume_revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "If Match Resume Revision"
+          },
+          "if_match_bullet_revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "If Match Bullet Revision"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "bullet_id",
+          "new_text"
+        ],
+        "title": "ScopeEditRequest",
+        "description": "Edit a canonical bullet a resume item resolves to, with copy-on-write scope.\n\n``scope`` is required on the agent (MCP) boundary and optional on the web\nboundary, where it is prompted for only when the bullet is shared (used in two\nor more resumes). The two ``if_match`` tokens guard the record each scope\nmutates: ``if_match_resume_revision`` guards the resume a ``this_resume`` fork\nwrites, and ``if_match_bullet_revision`` guards the canonical bullet an\n``everywhere`` edit writes. The service requires the one the resolved scope\nneeds, so a stale edit is a recoverable conflict rather than a silent overwrite."
+      },
+      "ScopePromptResult": {
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "const": "prompt",
+            "title": "Outcome",
+            "default": "prompt"
+          },
+          "bullet_id": {
+            "type": "integer",
+            "title": "Bullet Id"
+          },
+          "used_in_count": {
+            "type": "integer",
+            "title": "Used In Count"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "bullet_id",
+          "used_in_count"
+        ],
+        "title": "ScopePromptResult",
+        "description": "Web-only: the bullet is shared, so the UI must prompt before the edit applies."
+      },
+      "SearchBulletNode": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "worklog_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Worklog Ids"
+          },
+          "source_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Source Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "text",
+          "score",
+          "worklog_ids",
+          "source_ids"
+        ],
+        "title": "SearchBulletNode",
+        "description": "A matched canonical bullet and its edges to worklog entries and sources."
+      },
+      "SearchFilters": {
+        "properties": {
+          "source_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Ids"
+          },
+          "kinds": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SourceKind"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kinds"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "layer": {
+            "$ref": "#/components/schemas/SearchLayer",
+            "default": "both"
+          },
+          "date_range": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DateRange"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SearchFilters",
+        "description": "Optional filters that narrow the corpus before retrieval and fusion."
+      },
+      "SearchGraph": {
+        "properties": {
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SearchSourceNode"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "worklog": {
+            "items": {
+              "$ref": "#/components/schemas/SearchWorklogNode"
+            },
+            "type": "array",
+            "title": "Worklog"
+          },
+          "bullets": {
+            "items": {
+              "$ref": "#/components/schemas/SearchBulletNode"
+            },
+            "type": "array",
+            "title": "Bullets"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sources",
+          "worklog",
+          "bullets"
+        ],
+        "title": "SearchGraph",
+        "description": "The hit set rolled into the provenance DAG: nodes carrying scores + edges."
+      },
+      "SearchLayer": {
+        "type": "string",
+        "enum": [
+          "raw",
+          "library",
+          "both"
+        ],
+        "title": "SearchLayer",
+        "description": "Which layers of the corpus a query searches; ``both`` by default."
+      },
+      "SearchNotice": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "SearchNotice",
+        "description": "A soft, non-fatal notice (e.g. semantic retrieval degraded to lexical-only)."
+      },
+      "SearchQuery": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/SearchFilters"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "SearchQuery",
+        "description": "The one search input: a free-text query plus optional filters."
+      },
+      "SearchResult": {
+        "properties": {
+          "ranked": {
+            "items": {
+              "$ref": "#/components/schemas/RankedHit"
+            },
+            "type": "array",
+            "title": "Ranked"
+          },
+          "graph": {
+            "$ref": "#/components/schemas/SearchGraph"
+          },
+          "notices": {
+            "items": {
+              "$ref": "#/components/schemas/SearchNotice"
+            },
+            "type": "array",
+            "title": "Notices"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ranked",
+          "graph"
+        ],
+        "title": "SearchResult",
+        "description": "The search response: the flat ranked list, the scored DAG, and any notices."
+      },
+      "SearchSourceNode": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SourceKind"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "match_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match Score"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "label",
+          "score"
+        ],
+        "title": "SearchSourceNode",
+        "description": "A source in the graph: a direct hit and/or the parent of matched children.\n\n``match_score`` is this source's own retrieval score, present only when the\nsource matched the query directly. ``score`` is its ranking score: the match\nscore (if any) combined with the scores of its matched children."
+      },
+      "SearchWorklogNode": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "source_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Source Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "date",
+          "score",
+          "source_ids"
+        ],
+        "title": "SearchWorklogNode",
+        "description": "A matched worklog entry and its edges up to sources."
       },
       "SectionKind": {
         "type": "string",
