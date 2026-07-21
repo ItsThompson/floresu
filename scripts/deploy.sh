@@ -28,7 +28,7 @@
 #   FLORESU_OAUTH_PRIVATE_KEY FLORESU_CLOUDFLARED_CREDENTIALS
 #   FLORESU_ALERTMANAGER_CONFIG FLORESU_CLOUDFLARED_INGRESS
 #   FLORESU_PROMETHEUS_CONFIG FLORESU_PROMETHEUS_ALERTS
-#   POSTGRES_PASSWORD SESSION_JWT_SECRET INTERNAL_API_TOKEN GF_SECURITY_ADMIN_PASSWORD
+#   POSTGRES_PASSWORD REDIS_PASSWORD SESSION_JWT_SECRET INTERNAL_API_TOKEN GF_SECURITY_ADMIN_PASSWORD
 #
 # Rollback is owned by CI (cd.yml): on a failed health gate this script exits
 # non-zero WITHOUT any internal re-deploy. cd.yml reads the previous SHA
@@ -74,6 +74,7 @@ REQUIRED_SECRET_ENV=(
   FLORESU_PROMETHEUS_CONFIG
   FLORESU_PROMETHEUS_ALERTS
   POSTGRES_PASSWORD
+  REDIS_PASSWORD
   SESSION_JWT_SECRET
   INTERNAL_API_TOKEN
   GF_SECURITY_ADMIN_PASSWORD
@@ -116,15 +117,6 @@ compose_run() {
 }
 
 # --- Pure helpers (unit-testable without a daemon) --------------------------
-
-# Read image refs (one per line) on stdin; emit unique first-party image bases
-# (tag stripped). First-party = ghcr.io/<owner>/floresu/*, matched by path so a
-# new service is picked up automatically. Retained as the canonical first-party
-# derivation (mirrored by cd.yml's discover-matrix jq) and covered by a
-# deploy_test.sh case; keep it and that test in sync.
-filter_first_party_images() {
-  { grep -E '^ghcr\.io/[^/]+/floresu/' || true; } | sed -E 's/:[^:/]*$//' | sort -u
-}
 
 # Read raw `docker compose ps --format json` on stdin (JSONL or a JSON array;
 # `flatten` normalizes both). Print a token for every reason the stack is NOT

@@ -53,27 +53,10 @@ export_required_secret_env() {
   export FLORESU_ALERTMANAGER_CONFIG="global: {}" FLORESU_CLOUDFLARED_INGRESS="tunnel: x"
   export FLORESU_PROMETHEUS_CONFIG="global: {}" FLORESU_PROMETHEUS_ALERTS="groups: []"
   export POSTGRES_PASSWORD="pw" SESSION_JWT_SECRET="s" INTERNAL_API_TOKEN="t"
-  export GF_SECURITY_ADMIN_PASSWORD="gf"
+  export GF_SECURITY_ADMIN_PASSWORD="gf" REDIS_PASSWORD="rpw"
 }
 
 # --- pure helpers -----------------------------------------------------------
-
-test_filter_first_party_images() {
-  source "${DEPLOY}"
-  local out
-  out="$(printf '%s\n' \
-    'ghcr.io/floresu-platform/floresu/backend:latest' \
-    'postgres:17-alpine' \
-    'cloudflare/cloudflared:2026.7.1' \
-    'ghcr.io/acme/floresu/worker:sha-abc' \
-    'ghcr.io/floresu-platform/floresu/frontend:latest' | filter_first_party_images)"
-  contains "${out}" "ghcr.io/acme/floresu/worker" || return 1
-  contains "${out}" "ghcr.io/floresu-platform/floresu/backend" || return 1
-  contains "${out}" "ghcr.io/floresu-platform/floresu/frontend" || return 1
-  not_contains "${out}" "postgres" || return 1
-  not_contains "${out}" "cloudflared" || return 1
-  equals "$(printf '%s\n' "${out}" | wc -l | tr -d ' ')" "3" || return 1
-}
 
 test_gate_unhealthy_jsonl() {
   source "${DEPLOY}"
@@ -354,7 +337,7 @@ test_failed_gate_nonzero_exit_and_no_deployed_sha_write() {
 test_api_ingress_blocks_observability_surface_before_backend() {
   local cfg
   cfg="${REPO_DIR}/deployments/cloudflare/config.yml"
-  # The AS host (api.floresu.app) must block the observability/health surface at
+  # The AS host (api.floresu.com) must block the observability/health surface at
   # ingress so internal Prometheus data is never tunnel-reachable (mirrors the
   # mcp host). cloudflared is first-match, so the block MUST precede the
   # unrestricted api -> backend:8000 rule, else /metrics routes through to :8000.
@@ -374,10 +357,23 @@ test_api_ingress_blocks_observability_surface_before_backend() {
   not_contains "$(cat "${cfg}")" "backend:8001" || { echo "internal app is tunnel-routed"; return 1; }
 }
 
+test_app_ingress_blocks_observability_surface_before_frontend() {
+  local cfg
+  cfg="${REPO_DIR}/deployments/cloudflare/config.yml"
+  # The SPA host must also 404 /metrics|/healthz|/readyz at the edge (nginx serves
+  # /healthz, and the SPA history fallback 200s any path), BEFORE the frontend
+  # catch-through. The app-host rule is first in the file, so the first
+  # observability-block line must precede the first frontend route.
+  local block_line frontend_line
+  block_line="$(grep -n 'metrics|healthz|readyz' "${cfg}" | head -1 | cut -d: -f1)"
+  frontend_line="$(grep -n 'service: http://frontend:80' "${cfg}" | head -1 | cut -d: -f1)"
+  [[ -n "${block_line}" && -n "${frontend_line}" && "${block_line}" -lt "${frontend_line}" ]] \
+    || { echo "app-host observability block (${block_line}) must precede frontend route (${frontend_line})"; return 1; }
+}
+
 # --- run all ----------------------------------------------------------------
 
 main_tests() {
-  run_test test_filter_first_party_images
   run_test test_gate_unhealthy_jsonl
   run_test test_gate_unhealthy_flags_exited_container_with_empty_health
   run_test test_gate_unhealthy_array_and_all_healthy
@@ -398,6 +394,7 @@ main_tests() {
   run_test test_failed_gate_no_internal_redeploy
   run_test test_failed_gate_nonzero_exit_and_no_deployed_sha_write
   run_test test_api_ingress_blocks_observability_surface_before_backend
+  run_test test_app_ingress_blocks_observability_surface_before_frontend
 
   echo "-----------------------------------------------------------------------"
   printf '%d passed, %d failed\n' "${PASS}" "${FAIL}"
