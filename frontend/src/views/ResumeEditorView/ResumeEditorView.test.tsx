@@ -132,6 +132,33 @@ describe("ResumeEditorView", () => {
     await waitFor(() => expect(bullets.get(100)?.text).toBe("Cut checkout latency by 60%."));
   });
 
+  it("clears the scope prompt and shows the re-read prompt when the scoped edit conflicts", async () => {
+    authenticate();
+    const { handlers } = createResumeApiMock({
+      resumes: [seedResume()],
+      bullets: [buildBulletpoint({ id: 100, text: "Cut checkout latency by 40%.", used_in_count: 2 })],
+    });
+    server.use(...handlers);
+    renderApp(["/resumes/1"]);
+    const user = userEvent.setup();
+
+    const textarea = await screen.findByDisplayValue("Cut checkout latency by 40%.");
+    await user.clear(textarea);
+    await user.type(textarea, "Cut checkout latency by 80%.");
+    await user.tab();
+
+    const scopeDialog = await screen.findByRole("dialog", { name: /used in 2 resumes/i });
+    // A concurrent change lands between the prompt and the apply: the scoped edit conflicts.
+    server.use(
+      http.post("*/resumes/bullet-edit", () => HttpResponse.json({ detail: "stale" }, { status: 409 })),
+    );
+    await user.click(within(scopeDialog).getByRole("button", { name: "Apply" }));
+
+    // The scope dialog is dismissed and the re-read prompt shows alone (no stacking).
+    expect(await screen.findByRole("dialog", { name: /This resume changed/i })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: /used in 2 resumes/i })).not.toBeInTheDocument();
+  });
+
   it("applies an edit to a single-use bullet without prompting", async () => {
     authenticate();
     const { handlers, bullets } = createResumeApiMock({

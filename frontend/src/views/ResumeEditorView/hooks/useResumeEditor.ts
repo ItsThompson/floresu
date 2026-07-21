@@ -56,6 +56,7 @@ export function useResumeEditor(resumeId: number): ResumeEditor {
     setStatus("loading");
     setIsStale(false);
     setSaveError(null);
+    setScopePrompt(null);
     const [resumeRes, bulletsRes, variantsRes, templatesRes] = await Promise.all([
       client.GET("/resumes/{resume_id}", { params: { path: { resume_id: resumeId } } }),
       client.GET("/bullets"),
@@ -117,6 +118,9 @@ export function useResumeEditor(resumeId: number): ResumeEditor {
         },
       });
       if (response.status === 409) {
+        // A concurrent change conflicts: drop any open scope prompt so the stale
+        // re-read dialog does not stack over a lingering scope dialog.
+        setScopePrompt(null);
         setIsStale(true);
         return;
       }
