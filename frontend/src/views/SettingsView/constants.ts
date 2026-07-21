@@ -1,4 +1,4 @@
-import type { ArchivedEntityType } from "./types";
+import type { ArchivedEntityType, ArchivedItem, ArchivedItemKey } from "./types";
 
 /**
  * The Settings sub-navigation, in display order. Each section is a nested route
@@ -24,6 +24,11 @@ export const ENTITY_TYPE_LABEL: Record<ArchivedEntityType, string> = {
   source: "Source",
   bullet: "Bullet",
 };
+
+/** Whether a tracked action key refers to a given archived item. */
+export function isSameArchivedItem(key: ArchivedItemKey, item: ArchivedItem): boolean {
+  return key.entityType === item.entityType && key.id === item.id;
+}
 
 /** Format an ISO timestamp as a calendar date (connected-on, archived-on). */
 export function formatDate(iso: string): string {

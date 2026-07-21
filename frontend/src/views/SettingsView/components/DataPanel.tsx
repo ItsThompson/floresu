@@ -23,6 +23,11 @@ export function DataPanel() {
   const { state, actions } = useAccountData();
   const [isConfirming, setIsConfirming] = useState(false);
 
+  // Guard the typed-email gate: with no user, an empty phrase would degrade the
+  // confirmation to no gate. Unreachable under the auth/onboarded guards, but
+  // this keeps the irreversible action from ever losing its gate.
+  if (!user) return null;
+
   const exportHref = `${baseUrl}/account/export`;
 
   return (
@@ -66,7 +71,7 @@ export function DataPanel() {
           title="Delete your account?"
           description="This permanently removes your account and all records and revokes every connected agent. It cannot be undone."
           confirmLabel="Delete account"
-          typePhrase={user?.email ?? ""}
+          typePhrase={user.email}
           isBusy={state.status === "deleting"}
           onConfirm={actions.deleteAccount}
           onCancel={() => setIsConfirming(false)}

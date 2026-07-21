@@ -1,12 +1,10 @@
 import { useState } from "react";
 
+import { isSameArchivedItem } from "../constants";
 import { useArchive } from "../hooks/useArchive";
-import type { ArchivedItem, ArchivedItemKey } from "../types";
+import type { ArchivedItem } from "../types";
 import { ArchivedItemRow } from "./ArchivedItemRow";
 import { ConfirmDestructiveDialog } from "./ConfirmDestructiveDialog";
-
-const isSameItem = (key: ArchivedItemKey, item: ArchivedItem): boolean =>
-  key.entityType === item.entityType && key.id === item.id;
 
 /**
  * The Archive & Trash section: archived worklog entries, sources, and bullets
@@ -26,7 +24,7 @@ export function ArchivePanel() {
   };
 
   const isPending = (item: ArchivedItem): boolean =>
-    state.pending !== null && isSameItem(state.pending, item);
+    state.pending !== null && isSameArchivedItem(state.pending, item);
 
   return (
     <div className="flex flex-col gap-3">

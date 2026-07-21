@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useSessionClient, type SessionClient } from "@/api";
 
+import { isSameArchivedItem } from "../constants";
 import type { ArchivedItem, ArchivedItemKey } from "../types";
 import { deleteArchivedItem, loadArchivedItems, restoreArchivedItem } from "./archiveApi";
 
@@ -34,9 +35,6 @@ interface UseArchive {
   state: ArchiveState;
   actions: ArchiveActions;
 }
-
-const isSameItem = (key: ArchivedItemKey, item: ArchivedItem): boolean =>
-  key.entityType === item.entityType && key.id === item.id;
 
 /**
  * Drives the Archive & Trash panel: loads archived worklog entries, sources, and
@@ -85,7 +83,7 @@ export function useArchive(): UseArchive {
           setState((prev) => ({
             ...prev,
             pending: null,
-            items: prev.items.filter((existing) => !isSameItem(existing, item)),
+            items: prev.items.filter((existing) => !isSameArchivedItem(item, existing)),
           }));
         })
         .catch(() => {
