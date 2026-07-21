@@ -22,6 +22,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 
 from floresu.core.db import fetch_optional, is_unique_violation
+from floresu.library.models import Bulletpoint, BulletWorklog
 from floresu.profile.models import Source
 from floresu.worklog.models import Tag, WorklogEntry, WorklogSource, WorklogTag
 
@@ -175,7 +176,22 @@ class SqlAlchemyWorklogRepository:
         return sources
 
     async def bullet_ids_by_worklog(self, worklog_ids: Sequence[int]) -> dict[int, list[int]]:
-        # The bulletpoints and their ``bullet_worklog`` edges do not exist yet, so
-        # no entry has framing bullets. This resolves the real edges once the
-        # Library table lands; until then every entry's list is empty.
-        return {}
+        # The canonical bullets whose ``bullet_worklog`` edges point at each entry.
+        # Archived bullets are excluded so a worklog entry's framing list matches
+        # library reads (an archived bullet leaves them). Empty for an entry no
+        # bullet frames.
+        if not worklog_ids:
+            return {}
+        result = await self._session.execute(
+            select(BulletWorklog.worklog_id, BulletWorklog.bullet_id)
+            .join(Bulletpoint, Bulletpoint.id == BulletWorklog.bullet_id)
+            .where(
+                BulletWorklog.worklog_id.in_(worklog_ids),
+                Bulletpoint.archived_at.is_(None),
+            )
+            .order_by(BulletWorklog.bullet_id)
+        )
+        bullets: dict[int, list[int]] = {}
+        for worklog_id, bullet_id in result.all():
+            bullets.setdefault(worklog_id, []).append(bullet_id)
+        return bullets
