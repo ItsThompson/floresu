@@ -56,6 +56,7 @@ def test_search_experience_forwards_query_and_filters_with_date_alias() -> None:
     body = json.loads(harness.captured[0].content)
     assert body["query"] == "impact"
     assert body["filters"]["kinds"] == ["role"]
+    assert body["filters"]["tags"] == ["backend"]
     assert body["filters"]["layer"] == "library"
     # The date window is sent under the wire alias "from", never the Python "from_".
     assert body["filters"]["date_range"] == {"from": "2025-01-01", "to": "2025-12-31"}
