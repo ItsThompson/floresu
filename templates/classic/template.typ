@@ -71,6 +71,9 @@
 #let resume(data) = {
   set document(author: data.full_name, title: data.full_name)
   set page(paper: "us-letter", margin: (x: 1.5cm, top: 1.3cm, bottom: 1.3cm))
+  // Single-page target. Content that exceeds one page flows onto a natural
+  // additional page with its structure and selectable text intact; automatic
+  // density reduction on overflow is not applied.
   set text(font: _body-font, size: 10pt, lang: "en")
   set par(leading: 0.6em)
 

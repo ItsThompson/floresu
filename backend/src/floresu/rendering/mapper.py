@@ -8,8 +8,9 @@ resolved to text) and the header carrying an :class:`IdentitySnapshot`. The resu
 render service performs that resolution before calling render; a stray unresolved
 reference is skipped rather than rendered as a blank line.
 
-Optionality is resolved here, not in the template: absent contact fields and empty
-sections/items are dropped, so the template never emits placeholder text.
+Optionality is resolved here for the header: absent contact fields and links are
+dropped, so the template never emits placeholder text. Sections pass through as-is;
+the template skips a section that ends up with no items.
 """
 
 from __future__ import annotations

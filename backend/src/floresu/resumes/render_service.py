@@ -104,6 +104,9 @@ class ResumeRenderService:
         resolved = await self._resolve_frozen(pk, document)
         pdf = await self._render.render(resolved, document.template_id)
         key = revision_pdf_key(pk, resume_id, revision.revision_no)
+        # Put to R2 before recording the key, so a recorded key never points at a
+        # missing object. If the record transaction fails the object is orphaned but
+        # harmless: the revision-keyed name makes a re-export overwrite it (self-healing).
         await self._store.put(key, pdf, PDF_MEDIA_TYPE)
         async with transaction(self._session):
             await self._repo.set_revision_pdf_key(resume_id, revision.revision_no, key)
@@ -125,8 +128,9 @@ class ResumeRenderService:
         texts = await self._bullets.resolve(pk, ref_ids) if ref_ids else {}
         missing = [bullet_id for bullet_id in ref_ids if bullet_id not in texts]
         if missing:
+            missing_ids = ", ".join(str(bullet_id) for bullet_id in missing)
             raise RenderError(
-                f"This resume references a bulletpoint that no longer exists: {missing}."
+                f"This resume references a bulletpoint that no longer exists: {missing_ids}."
             )
         resolved = resolve_document(document, texts)
         return await self._with_identity(pk, document, resolved)

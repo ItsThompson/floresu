@@ -4,9 +4,9 @@
 :class:`TemplateInputs` is the fully-mapped view of a resolved resume document the
 pure input mapper produces; it is serialized to JSON and handed to Typst via
 ``sys.inputs`` (never as source), so it is the single contract the mapper and the
-``.typ`` template agree on. Every field is required and present after mapping:
-optionality was already resolved (absent contact fields and empty items dropped),
-so the template never renders a placeholder.
+``.typ`` template agree on. Header optionality is already resolved (absent contact
+fields and links are dropped, so the template renders no placeholder); a section may
+carry an empty ``items`` list, which the template omits at render time.
 """
 
 from __future__ import annotations
