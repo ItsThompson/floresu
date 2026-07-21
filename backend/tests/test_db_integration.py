@@ -81,10 +81,12 @@ def test_alembic_upgrade_head_creates_users_and_enables_pgvector(
             await engine.dispose()
 
     result = asyncio.run(_inspect())
-    # Migration head after adding the resume Output layer (0010), chained onto
-    # skills + identity_variants (0009), the library domain (0008), the worklog
-    # domain (0007), the sources supertable (0006), audit (0004), and OAuth (0005).
-    assert result["version"] == "0010_resumes"
+    # Migration head after the wave integration: the embeddings slice
+    # (0011_embeddings) chained onto the resume Output layer (0010_resumes), which
+    # chains onto skills + identity_variants (0009), the library domain (0008), the
+    # worklog domain (0007), the sources supertable (0006), audit (0004), and OAuth
+    # (0005).
+    assert result["version"] == "0011_embeddings"
     assert result["has_vector"] == 1
     # Deterministic constraint-naming convention (ix_/uq_/ck_/fk_/pk_).
     assert result["constraints"] == ["pk_users", "uq_users_email"]

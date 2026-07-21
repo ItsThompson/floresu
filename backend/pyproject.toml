@@ -30,6 +30,16 @@ dependencies = [
     # the bounded replay buffer the SSE endpoint reconnect-replays from. redis-py
     # ships py.typed and an asyncio interface (redis.asyncio).
     "redis>=5.0.0,<7",
+    # Semantic-search vector storage: pgvector's SQLAlchemy ``Vector`` column type
+    # backs the ``embeddings`` table (dimension pinned to the P0 provider). The
+    # Postgres image bundles the extension; this is the typed ORM binding.
+    "pgvector>=0.3.0,<1",
+    # arq is the Redis-backed job queue: the external app enqueues one embed job
+    # per content-changing write onto the queue the worker drains.
+    "arq>=0.26.0,<1",
+    # httpx backs the OpenAI embedding provider on the synchronous fast-path (an
+    # injected AsyncClient, faked in tests so no live OpenAI call is made).
+    "httpx>=0.27.0,<1",
 ]
 
 [project.scripts]

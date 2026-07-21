@@ -66,6 +66,15 @@ class Bulletpoint(Base):
     __table_args__ = (
         # Serves the per-user library list, newest-first (scanned backward for id DESC).
         Index("ix_bulletpoints_user_id_id", "user_id", "id"),
+        # Lexical full-text search over the bullet text. The explicit 'english'
+        # regconfig keeps to_tsvector immutable, so the GIN expression index is
+        # valid. Written in Postgres's canonical rendered form so it round-trips
+        # through reflection and autogenerate emits no diff. Mirrors migration 0010.
+        Index(
+            "ix_bulletpoints_fts",
+            sql("to_tsvector('english'::regconfig, text)"),
+            postgresql_using="gin",
+        ),
     )
 
 

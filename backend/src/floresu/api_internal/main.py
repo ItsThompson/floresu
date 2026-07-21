@@ -10,6 +10,7 @@ layered on by the internal-boundary slice.
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
 from floresu.audit.wiring import build_write_event_publisher
@@ -19,6 +20,14 @@ from floresu.core.db import create_database, create_db_lifespan, db_readiness_ch
 from floresu.core.errors import build_exception_handlers
 from floresu.core.identity import require_internal_user
 from floresu.core.settings import INTERNAL_PORT, INTERNAL_SERVICE, build_app_settings
+from floresu.embedding.enqueue import build_sync_embed_fastpath_consumer
+from floresu.embedding.router import create_embedding_router
+from floresu.embedding.wiring import (
+    build_embedding_service_provider,
+    create_embedding_provider,
+    create_openai_http_client,
+    embedding_resolver,
+)
 from floresu.library.router import create_bullets_router
 from floresu.library.wiring import build_bullet_service_provider
 from floresu.profile.router import create_sources_router
@@ -33,10 +42,18 @@ from floresu.worklog.router import create_worklog_router
 from floresu.worklog.wiring import build_worklog_service_provider
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     from fastapi import FastAPI
 
 settings = build_app_settings(service=INTERNAL_SERVICE, port=INTERNAL_PORT)
 db = create_database(settings.database_url)
+
+# The one embedding provider (the only external AI dependency), injected into both
+# the worker-facing embed routes and the synchronous fast-path. Its httpx client is
+# closed on shutdown by the lifespan below.
+openai_client = create_openai_http_client(settings)
+embedding_provider = create_embedding_provider(openai_client)
 
 # Product routers, mounted with the trusted-header identity and the named-agent
 # actor. The same routers mount on the external app with the human boundary; the
@@ -71,6 +88,24 @@ resumes_router = create_resumes_router(
     identity=require_internal_user,
     actor=resolve_internal_actor,
 )
+# Worker-facing embed routes (internal app only): the arq worker reads an item's
+# text and writes its vector back over these. The gate, provider call, and
+# transaction live in the service.
+embed_router = create_embedding_router(
+    build_embedding_service_provider(embedding_provider),
+    identity=require_internal_user,
+)
+
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Dispose the DB pool on shutdown and close the embedding provider client."""
+    async with create_db_lifespan(db.engine)(app):
+        try:
+            yield
+        finally:
+            await openai_client.aclose()
+
 
 app: FastAPI = create_app(
     settings,
@@ -81,15 +116,24 @@ app: FastAPI = create_app(
         skills_router,
         variants_router,
         resumes_router,
+        embed_router,
     ],
     readiness_checks=[db_readiness_check(db.engine)],
     exception_handlers=build_exception_handlers(),
-    lifespan=create_db_lifespan(db.engine),
+    lifespan=_lifespan,
 )
 app.state.db = db
-# The write-event seam, composed with the audit consumer as the sole transactional
-# consumer. The internal app's domain slices publish agent writes through this.
-app.state.events = build_write_event_publisher()
+# The write-event seam. The audit consumer is the transactional consumer; the
+# synchronous embed fast-path is the post-commit side channel, so an agent's
+# write-then-search in one turn sees the semantic vector without waiting on the
+# worker. A rolled-back write embeds nothing; a failed embed never fails the write.
+app.state.events = build_write_event_publisher(
+    post_commit=[
+        build_sync_embed_fastpath_consumer(
+            db.sessionmaker, embedding_resolver(), embedding_provider
+        )
+    ]
+)
 
 
 def main() -> None:  # pragma: no cover - process entrypoint

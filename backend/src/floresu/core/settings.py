@@ -91,6 +91,14 @@ class EnvSettings(BaseSettings):
     # reaped client's grant + refresh chain). A non-positive interval disables it.
     oauth_client_cleanup_interval_seconds: int = 21_600
     oauth_stale_client_max_age_seconds: int = 2_592_000
+    # Embedding provider (the only external AI dependency). The API key is empty by
+    # default so a dev/test box needs no OpenAI account: the synchronous fast-path
+    # then fails soft (best-effort) and items stay lexically searchable. The base
+    # URL is overridable for a proxy or a stub. The model + dimension are pinned in
+    # ``floresu.embedding.config`` (changing them is a migration), so they are not
+    # tunable settings.
+    openai_api_key: SecretStr = SecretStr("")
+    openai_base_url: str = "https://api.openai.com"
 
 
 class AppSettings(BaseModel):
@@ -120,6 +128,10 @@ class AppSettings(BaseModel):
     oauth_refresh_ttl_seconds: int = 2_592_000
     oauth_client_cleanup_interval_seconds: int = 21_600
     oauth_stale_client_max_age_seconds: int = 2_592_000
+    # Embedding provider knobs (see EnvSettings). Defaulted so the shared test
+    # settings factory and any non-embedding caller need not supply them.
+    openai_api_key: SecretStr = SecretStr("")
+    openai_base_url: str = "https://api.openai.com"
 
     @property
     def is_dev(self) -> bool:
@@ -155,4 +167,6 @@ def build_app_settings(*, service: str, port: int, env: EnvSettings | None = Non
         oauth_refresh_ttl_seconds=env.oauth_refresh_ttl_seconds,
         oauth_client_cleanup_interval_seconds=env.oauth_client_cleanup_interval_seconds,
         oauth_stale_client_max_age_seconds=env.oauth_stale_client_max_age_seconds,
+        openai_api_key=env.openai_api_key,
+        openai_base_url=env.openai_base_url,
     )

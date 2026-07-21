@@ -215,7 +215,11 @@ async def test_archive_drops_from_the_active_list_and_audits(migrated_url: str) 
             actions = (
                 (
                     await session.execute(
-                        select(AuditLog.action).where(AuditLog.entity_id == created.id)
+                        select(AuditLog.action).where(
+                            AuditLog.user_id == user_id,
+                            AuditLog.entity_type == "worklog",
+                            AuditLog.entity_id == created.id,
+                        )
                     )
                 )
                 .scalars()
@@ -251,7 +255,12 @@ async def test_reembed_trigger_only_fires_when_content_changes(migrated_url: str
                 (
                     await session.execute(
                         select(AuditLog.event_metadata)
-                        .where(AuditLog.entity_id == created.id, AuditLog.action == "update")
+                        .where(
+                            AuditLog.user_id == user_id,
+                            AuditLog.entity_type == "worklog",
+                            AuditLog.entity_id == created.id,
+                            AuditLog.action == "update",
+                        )
                         .order_by(AuditLog.id)
                     )
                 )

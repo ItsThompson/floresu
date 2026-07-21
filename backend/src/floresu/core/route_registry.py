@@ -177,6 +177,12 @@ INTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("POST", "/resumes/{resume_id}/items"): AccessLevel.INTERNAL_TRUSTED,
     RouteKey("POST", "/resumes/{resume_id}/items/{item_id}/remove"): AccessLevel.INTERNAL_TRUSTED,
     RouteKey("POST", "/resumes/{resume_id}/reorder"): AccessLevel.INTERNAL_TRUSTED,
+    # Embedding pipeline (internal app only): the arq worker reads an item's text
+    # and writes its vector back over these trusted-header routes. Purge is a POST
+    # (not a DELETE): the agent-facing internal app exposes no DELETE routes.
+    RouteKey("GET", "/embed/items/{kind}/{item_id}"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("PUT", "/embed/items/{kind}/{item_id}"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("POST", "/embed/items/{kind}/{item_id}/purge"): AccessLevel.INTERNAL_TRUSTED,
 }
 
 

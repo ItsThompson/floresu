@@ -34,6 +34,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -65,6 +66,20 @@ class WorklogEntry(Base):
     __table_args__ = (
         # Serves the per-user timeline read, ordered by date.
         Index("ix_worklog_entries_user_id_entry_date", "user_id", "entry_date"),
+        # Lexical full-text search over the entry's embeddable text (title +
+        # description). The explicit 'english' regconfig keeps to_tsvector
+        # immutable, so the GIN expression index is valid; coalesce guards the
+        # nullable description. The expression is written in Postgres's canonical
+        # rendered form (explicit casts + parens) so it round-trips through
+        # reflection and autogenerate emits no diff. Mirrors migration 0010.
+        Index(
+            "ix_worklog_entries_fts",
+            text(
+                "to_tsvector('english'::regconfig, "
+                "(title || ' '::text) || COALESCE(description, ''::text))"
+            ),
+            postgresql_using="gin",
+        ),
     )
 
 

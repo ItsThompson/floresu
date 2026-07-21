@@ -95,6 +95,19 @@ class Source(Base):
         UniqueConstraint("id", "kind", name="uq_sources_id_kind"),
         # Serves the per-user, per-kind ordered section list.
         Index("ix_sources_user_id_kind_sort_order", "user_id", "kind", "sort_order"),
+        # Lexical full-text search over the base source text (label + summary); the
+        # role subtype's company/title are indexed on the ``roles`` table. The
+        # explicit 'english' regconfig keeps to_tsvector immutable. Written in
+        # Postgres's canonical rendered form so reflection round-trips and
+        # autogenerate emits no diff. Mirrors migration 0010.
+        Index(
+            "ix_sources_fts",
+            text(
+                "to_tsvector('english'::regconfig, "
+                "(display_label || ' '::text) || COALESCE(summary, ''::text))"
+            ),
+            postgresql_using="gin",
+        ),
     )
 
 
@@ -132,7 +145,17 @@ class Role(Base):
     )
     location: Mapped[str | None] = mapped_column(Text)
 
-    __table_args__ = _kind_locked_args("roles", SourceKind.ROLE)
+    __table_args__ = (
+        *_kind_locked_args("roles", SourceKind.ROLE),
+        # Lexical full-text search over the role's company + job title, the role
+        # fields of the source corpus text. Written in Postgres's canonical
+        # rendered form so reflection round-trips. Mirrors migration 0010.
+        Index(
+            "ix_roles_fts",
+            text("to_tsvector('english'::regconfig, (company || ' '::text) || job_title)"),
+            postgresql_using="gin",
+        ),
+    )
 
 
 class Project(Base):
