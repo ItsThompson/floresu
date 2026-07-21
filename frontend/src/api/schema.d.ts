@@ -694,6 +694,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/resumes/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Templates */
+        get: operations["list_templates_resumes_templates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/resumes/{resume_id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview Resume */
+        post: operations["preview_resume_resumes__resume_id__preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/resumes/{resume_id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Export Resume */
+        post: operations["export_resume_resumes__resume_id__export_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/resumes": {
         parameters: {
             query?: never;
@@ -1089,6 +1140,20 @@ export interface components {
             field?: string | null;
         };
         /**
+         * ExportResult
+         * @description Where a persisted resume PDF lives, plus a time-limited URL to download it.
+         */
+        ExportResult: {
+            /** Resume Id */
+            resume_id: number;
+            /** Revision */
+            revision: number;
+            /** Object Key */
+            object_key: string;
+            /** Download Url */
+            download_url: string;
+        };
+        /**
          * FromResumeSource
          * @description Seed content from an existing resume (the copies may later diverge in shape).
          */
@@ -1263,6 +1328,14 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /**
+         * PreviewRequest
+         * @description A preview render, optionally with a template override (not persisted).
+         */
+        PreviewRequest: {
+            /** Template Id */
+            template_id?: string | null;
         };
         /** ProjectDetail */
         ProjectDetail: {
@@ -1594,6 +1667,18 @@ export interface components {
             id: number;
             /** Label */
             label: string;
+        };
+        /**
+         * TemplateInfo
+         * @description A template registry entry the selector lists.
+         */
+        TemplateInfo: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -3203,6 +3288,92 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditEntry"][];
+                };
+            };
+        };
+    };
+    list_templates_resumes_templates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateInfo"][];
+                };
+            };
+        };
+    };
+    preview_resume_resumes__resume_id__preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                resume_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PreviewRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_resume_resumes__resume_id__export_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                resume_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

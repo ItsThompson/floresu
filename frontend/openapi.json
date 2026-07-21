@@ -2102,6 +2102,130 @@
         }
       }
     },
+    "/resumes/templates": {
+      "get": {
+        "tags": [
+          "resumes"
+        ],
+        "summary": "List Templates",
+        "operationId": "list_templates_resumes_templates_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TemplateInfo"
+                  },
+                  "type": "array",
+                  "title": "Response List Templates Resumes Templates Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/resumes/{resume_id}/preview": {
+      "post": {
+        "tags": [
+          "resumes"
+        ],
+        "summary": "Preview Resume",
+        "operationId": "preview_resume_resumes__resume_id__preview_post",
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Resume Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/PreviewRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/resumes/{resume_id}/export": {
+      "post": {
+        "tags": [
+          "resumes"
+        ],
+        "summary": "Export Resume",
+        "operationId": "export_resume_resumes__resume_id__export_post",
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Resume Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/resumes": {
       "post": {
         "tags": [
@@ -3330,6 +3454,36 @@
         ],
         "title": "EducationWrite"
       },
+      "ExportResult": {
+        "properties": {
+          "resume_id": {
+            "type": "integer",
+            "title": "Resume Id"
+          },
+          "revision": {
+            "type": "integer",
+            "title": "Revision"
+          },
+          "object_key": {
+            "type": "string",
+            "title": "Object Key"
+          },
+          "download_url": {
+            "type": "string",
+            "title": "Download Url"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "resume_id",
+          "revision",
+          "object_key",
+          "download_url"
+        ],
+        "title": "ExportResult",
+        "description": "Where a persisted resume PDF lives, plus a time-limited URL to download it."
+      },
       "FromResumeSource": {
         "properties": {
           "mode": {
@@ -3711,6 +3865,25 @@
         ],
         "title": "LoginRequest",
         "description": "Login input. ``email`` is a plain string (not ``EmailStr``) so a malformed\naddress takes the same generic 401 path as a wrong password, never leaking\nwhether the address is even well-formed vs. registered."
+      },
+      "PreviewRequest": {
+        "properties": {
+          "template_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PreviewRequest",
+        "description": "A preview render, optionally with a template override (not persisted)."
       },
       "ProjectDetail": {
         "properties": {
@@ -4686,6 +4859,31 @@
         ],
         "title": "TagRead",
         "description": "A tag for the reuse list; color is derived from the label, not carried."
+      },
+      "TemplateInfo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description"
+        ],
+        "title": "TemplateInfo",
+        "description": "A template registry entry the selector lists."
       },
       "ValidationError": {
         "properties": {
