@@ -781,6 +781,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/resumes/bullet-edit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bullet Edit */
+        post: operations["bullet_edit_resumes_bullet_edit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/resumes/{resume_id}/items/{item_id}/promote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Promote Item */
+        post: operations["promote_item_resumes__resume_id__items__item_id__promote_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1057,6 +1091,18 @@ export interface components {
             /** Duplicate Id */
             duplicate_id: number;
         };
+        /**
+         * EditedEverywhereResult
+         * @description The canonical bullet was edited in place; every reference resolves the new text.
+         */
+        EditedEverywhereResult: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            outcome: "edited_everywhere";
+            bullet: components["schemas"]["BulletpointRecord"];
+        };
         /** EducationDetail */
         EducationDetail: {
             /** Institution */
@@ -1087,6 +1133,18 @@ export interface components {
             degree?: string | null;
             /** Field */
             field?: string | null;
+        };
+        /**
+         * ForkedThisResumeResult
+         * @description A resume-local copy was forked; the canonical bullet is unchanged.
+         */
+        ForkedThisResumeResult: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            outcome: "forked_this_resume";
+            resume: components["schemas"]["ResumeRecord"];
         };
         /**
          * FromResumeSource
@@ -1339,6 +1397,12 @@ export interface components {
             sections?: components["schemas"]["ResumeSection"][];
         };
         /**
+         * ResumeEditScope
+         * @description The intent a scoped bullet edit carries: fork here, or edit the canonical.
+         * @enum {string}
+         */
+        ResumeEditScope: "this_resume" | "everywhere";
+        /**
          * ResumeHeader
          * @description The header: a living resume references a variant; a finalized one inlines a snapshot.
          */
@@ -1496,6 +1560,46 @@ export interface components {
             title_aliases?: string[];
             /** Location */
             location?: string | null;
+        };
+        /**
+         * ScopeEditRequest
+         * @description Edit a canonical bullet a resume item resolves to, with copy-on-write scope.
+         *
+         *     ``scope`` is required on the agent (MCP) boundary and optional on the web
+         *     boundary, where it is prompted for only when the bullet is shared (used in two
+         *     or more resumes). The two ``if_match`` tokens guard the record each scope
+         *     mutates: ``if_match_resume_revision`` guards the resume a ``this_resume`` fork
+         *     writes, and ``if_match_bullet_revision`` guards the canonical bullet an
+         *     ``everywhere`` edit writes. The service requires the one the resolved scope
+         *     needs, so a stale edit is a recoverable conflict rather than a silent overwrite.
+         */
+        ScopeEditRequest: {
+            /** Bullet Id */
+            bullet_id: number;
+            /** New Text */
+            new_text: string;
+            scope?: components["schemas"]["ResumeEditScope"] | null;
+            /** Resume Id */
+            resume_id?: number | null;
+            /** If Match Resume Revision */
+            if_match_resume_revision?: number | null;
+            /** If Match Bullet Revision */
+            if_match_bullet_revision?: number | null;
+        };
+        /**
+         * ScopePromptResult
+         * @description Web-only: the bullet is shared, so the UI must prompt before the edit applies.
+         */
+        ScopePromptResult: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            outcome: "prompt";
+            /** Bullet Id */
+            bullet_id: number;
+            /** Used In Count */
+            used_in_count: number;
         };
         /**
          * SectionKind
@@ -3427,6 +3531,73 @@ export interface operations {
                 "application/json": components["schemas"]["ResumeReorderRequest"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResumeRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bullet_edit_resumes_bullet_edit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScopeEditRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScopePromptResult"] | components["schemas"]["EditedEverywhereResult"] | components["schemas"]["ForkedThisResumeResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    promote_item_resumes__resume_id__items__item_id__promote_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": number;
+            };
+            path: {
+                resume_id: number;
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
