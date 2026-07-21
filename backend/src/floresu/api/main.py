@@ -61,6 +61,7 @@ from floresu.profile.skills.wiring import build_skill_service_provider
 from floresu.profile.variants.router import create_variants_router
 from floresu.profile.variants.wiring import build_variant_service_provider
 from floresu.profile.wiring import build_source_service_provider
+from floresu.resumes.cow import EditChannel
 from floresu.resumes.router import create_resumes_router
 from floresu.resumes.wiring import build_resume_service_provider
 from floresu.search.router import create_search_router
@@ -166,6 +167,7 @@ resumes_router = create_resumes_router(
     build_resume_service_provider(),
     identity=require_user,
     actor=resolve_web_actor,
+    channel=EditChannel.WEB,
 )
 
 

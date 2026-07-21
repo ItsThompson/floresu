@@ -15,15 +15,19 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from floresu.core.events import WriteEvent, WriteEventPublisher
+from floresu.library.cow import LibraryCanonicalBulletWriter
 from floresu.resumes.models import Resume, ResumeKind, ResumeRevision
 from floresu.resumes.schemas import (
     AddItemRequest,
     ResumeCreateRequest,
     ResumeUpdate,
 )
+from tests.library_fakes import InMemoryLibraryRepository
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class FakeSession:
@@ -128,6 +132,44 @@ class InMemoryBulletTextResolver:
             if text is not None:
                 resolved[bullet_id] = text
         return resolved
+
+
+class LibraryRepoTextResolver:
+    """A sociable :class:`BulletTextResolver` reading canonical text from the library repo.
+
+    Copy-on-write and promote tests wire this over the same in-memory library
+    repository the real :class:`LibraryCanonicalBulletWriter` writes to, so a bullet
+    the writer creates or edits resolves for the resume snapshot exactly as it would
+    against a shared Postgres, without a second seeded store to keep in sync.
+    """
+
+    def __init__(self, repo: InMemoryLibraryRepository) -> None:
+        self._repo = repo
+
+    async def resolve(self, user_id: int, bullet_ids: Sequence[int]) -> dict[int, str]:
+        resolved: dict[int, str] = {}
+        for bullet_id in bullet_ids:
+            bullet = await self._repo.get(user_id, bullet_id)
+            if bullet is not None:
+                resolved[bullet_id] = bullet.text
+        return resolved
+
+
+def build_bullet_writer(
+    session: AsyncSession,
+    publisher: WriteEventPublisher,
+    *,
+    library_repo: InMemoryLibraryRepository | None = None,
+) -> LibraryCanonicalBulletWriter:
+    """The real canonical-bullet writer over an in-memory library repo.
+
+    Tests that do not exercise copy-on-write pass this so the service has a writer
+    it never calls; copy-on-write tests pass a shared ``library_repo`` (paired with
+    :class:`LibraryRepoTextResolver`) so the writer's bullets resolve in snapshots.
+    """
+    return LibraryCanonicalBulletWriter(
+        session, library_repo or InMemoryLibraryRepository(), publisher
+    )
 
 
 def capturing_publisher() -> tuple[WriteEventPublisher, list[WriteEvent]]:

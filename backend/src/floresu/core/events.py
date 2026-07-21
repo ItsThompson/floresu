@@ -55,6 +55,13 @@ _log = get_logger("floresu-events")
 # bullets publish it today, and any other embeddable domain uses this same key.
 REEMBED_CONTENT_HASH_KEY = "content_hash"
 
+# The write-event ``metadata`` key that carries the copy-on-write scope of a
+# bulletpoint edit (``this_resume`` | ``everywhere``). Recorded on the audit row so
+# per-item history and the activity feed can show an edit's blast radius. Like the
+# re-embed key it is a cross-domain audit-metadata contract, so it lives with the
+# write-event contract rather than in the resume or library domain.
+SCOPE_METADATA_KEY = "scope"
+
 
 class Action(StrEnum):
     """The closed set of content-write actions an audit row records.

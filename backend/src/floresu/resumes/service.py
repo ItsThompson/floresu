@@ -30,41 +30,62 @@ from typing import TYPE_CHECKING, Any
 from floresu.core.conflicts import conflict_on_duplicate
 from floresu.core.db import transaction
 from floresu.core.errors import Validation
-from floresu.core.events import Action, WriteEvent
+from floresu.core.events import SCOPE_METADATA_KEY, Action, WriteEvent
 from floresu.core.observability import track_failures
 from floresu.resumes.config import DEFAULT_LIST_LIMIT, ENTITY_TYPE
+from floresu.resumes.cow import (
+    EditChannel,
+    ResumeEditScope,
+    ScopeResolution,
+    resolve_edit_scope,
+)
 from floresu.resumes.creation import (
     JOB_APPLICATION_TAKEN_MESSAGE,
     require_free_job_application,
     seed_document,
     validate_creation_contract,
 )
-from floresu.resumes.document import ResumeDocument, referenced_bullet_ids, resolve_document
+from floresu.resumes.document import (
+    LocalItemSourceRefs,
+    ResumeDocument,
+    referenced_bullet_ids,
+    resolve_document,
+)
 from floresu.resumes.injection import Clock, IdFactory, new_item_id, utcnow
 from floresu.resumes.models import Resume, ResumeKind, ResumeRevision, ResumeStatus
 from floresu.resumes.operations import (
     apply_item_order,
     apply_section_order,
     build_item,
+    bullet_forked_summary,
     created_summary,
     edited_summary,
     find_item_section,
+    find_local_item,
     find_section,
+    fork_bullet_reference,
     guard_editable,
     guard_revision,
     item_added_summary,
     item_removed_summary,
+    promoted_summary,
     reordered_summary,
     require_user_pk,
     resume_not_found,
     revalidate_document,
+    swap_item_to_reference,
 )
 from floresu.resumes.schemas import (
     AddItemRequest,
+    EditedEverywhereResult,
+    ForkedThisResumeResult,
     ResumeCreateRequest,
     ResumeReorderRequest,
     ResumeSummary,
     ResumeUpdate,
+    ScopeEditRequest,
+    ScopeEditResult,
+    ScopePromptResult,
     to_record,
     to_summary,
 )
@@ -83,6 +104,7 @@ if TYPE_CHECKING:
 
     from floresu.core.actor import Actor
     from floresu.core.events import WriteEventPublisher
+    from floresu.library.cow import CanonicalBulletWriter
     from floresu.resumes.repository import ResumeRepository
     from floresu.resumes.resolver import BulletTextResolver
     from floresu.resumes.schemas import ResumeRecord
@@ -98,6 +120,7 @@ class ResumeService:
         repo: ResumeRepository,
         resolver: BulletTextResolver,
         publisher: WriteEventPublisher,
+        bullet_writer: CanonicalBulletWriter,
         *,
         clock: Clock = utcnow,
         id_factory: IdFactory = new_item_id,
@@ -106,6 +129,7 @@ class ResumeService:
         self._repo = repo
         self._resolver = resolver
         self._publisher = publisher
+        self._bullet_writer = bullet_writer
         self._clock = clock
         self._id_factory = id_factory
 
@@ -261,6 +285,117 @@ class ResumeService:
         """
         require_user_pk(user_id)
         return await self._repo.used_in_count(bullet_id)
+
+    async def bullet_update(
+        self, user_id: str, actor: Actor, channel: EditChannel, request: ScopeEditRequest
+    ) -> ScopeEditResult:
+        """Edit a canonical bullet a resume item resolves to, resolving copy-on-write scope.
+
+        The scope is intent-driven: an agent (MCP) edit carries an explicit scope; a
+        web edit prompts only when the bullet is shared (used in two or more
+        resumes) and otherwise applies everywhere. ``everywhere`` edits the canonical
+        bullet in place (guarded by the bullet ``revision``, re-embedded, every
+        reference updates); ``this_resume`` forks a resume-local copy (guarded by the
+        resume ``revision``, canonical bullet untouched).
+        """
+        pk = require_user_pk(user_id)
+        used_in = await self._repo.used_in_count(request.bullet_id)
+        resolution = resolve_edit_scope(
+            channel=channel, requested=request.scope, used_in_count=used_in
+        )
+        if resolution is ScopeResolution.PROMPT:
+            return ScopePromptResult(bullet_id=request.bullet_id, used_in_count=used_in)
+        if resolution is ScopeResolution.EVERYWHERE:
+            return await self._edit_everywhere(pk, actor, request, used_in)
+        return await self._fork_this_resume(pk, actor, request)
+
+    async def promote(
+        self, user_id: str, resume_id: int, actor: Actor, if_match: int, item_id: str
+    ) -> ResumeRecord:
+        """Promote a resume-local item into a canonical, searchable library bullet.
+
+        Creates a canonical bullet from the local item's text and provenance
+        (enqueuing embedding so it enters the corpus), swaps the item to reference
+        the new bullet, reindexes ``resume_bullet_ref``, snapshots the resume, and
+        records a ``promote``. The bullet create and the resume write commit in one
+        transaction, so a promoted item can never point at an uncommitted bullet.
+        """
+        pk = require_user_pk(user_id)
+        resume = await self._prepare_write(pk, resume_id, if_match)
+        document = load_document(resume.document)
+        local = find_local_item(document, item_id)
+        refs = local.source_refs or LocalItemSourceRefs()
+        async with transaction(self._session):
+            bullet_id = await self._bullet_writer.create_from_local(
+                pk,
+                actor,
+                text=local.text,
+                source_ids=list(refs.source_ids),
+                worklog_ids=list(refs.worklog_ids),
+            )
+            swap_item_to_reference(document, item_id, bullet_id)
+            document = revalidate_document(document)
+            await self._apply_save(
+                pk,
+                resume,
+                document,
+                actor,
+                Action.PROMOTE,
+                summary=promoted_summary(resume),
+                metadata={"bullet_id": bullet_id, "item_id": item_id},
+            )
+        return to_record(resume, document)
+
+    async def _edit_everywhere(
+        self, pk: int, actor: Actor, request: ScopeEditRequest, used_in: int
+    ) -> EditedEverywhereResult:
+        """Apply an ``everywhere`` edit: overwrite the canonical bullet, guarded by its revision."""
+        if request.if_match_bullet_revision is None:
+            raise Validation(
+                "An 'everywhere' edit must carry the bullet revision to guard against a "
+                "stale edit.",
+                fields={"if_match_bullet_revision": "required for scope=everywhere"},
+            )
+        async with transaction(self._session):
+            record = await self._bullet_writer.edit_text_everywhere(
+                pk,
+                actor,
+                request.bullet_id,
+                new_text=request.new_text,
+                if_match_revision=request.if_match_bullet_revision,
+            )
+        return EditedEverywhereResult(bullet=record.model_copy(update={"used_in_count": used_in}))
+
+    async def _fork_this_resume(
+        self, pk: int, actor: Actor, request: ScopeEditRequest
+    ) -> ForkedThisResumeResult:
+        """Apply a ``this_resume`` edit: fork a resume-local copy, guarded by the resume."""
+        if request.resume_id is None:
+            raise Validation(
+                "A 'this_resume' edit must name the resume to fork in.",
+                fields={"resume_id": "required for scope=this_resume"},
+            )
+        if request.if_match_resume_revision is None:
+            raise Validation(
+                "A 'this_resume' edit must carry the resume revision to guard against a "
+                "stale edit.",
+                fields={"if_match_resume_revision": "required for scope=this_resume"},
+            )
+        resume = await self._prepare_write(pk, request.resume_id, request.if_match_resume_revision)
+        document = load_document(resume.document)
+        fork_bullet_reference(document, request.bullet_id, request.new_text)
+        document = revalidate_document(document)
+        async with transaction(self._session):
+            await self._apply_save(
+                pk,
+                resume,
+                document,
+                actor,
+                Action.UPDATE,
+                summary=bullet_forked_summary(resume),
+                metadata={SCOPE_METADATA_KEY: ResumeEditScope.THIS_RESUME.value},
+            )
+        return ForkedThisResumeResult(resume=to_record(resume, document))
 
     async def _prepare_write(self, pk: int, resume_id: int, if_match: int) -> Resume:
         """Load the resume and enforce the write preconditions (editable + fresh revision)."""

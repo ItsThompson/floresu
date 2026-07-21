@@ -26,6 +26,7 @@ from floresu.audit.wiring import build_write_event_publisher
 from floresu.core.actor import Actor, ActorType
 from floresu.core.db import create_db_engine, create_sessionmaker, transaction
 from floresu.core.errors import Conflict
+from floresu.library.cow import LibraryCanonicalBulletWriter
 from floresu.library.repository import SqlAlchemyLibraryRepository
 from floresu.library.schemas import BulletpointWrite
 from floresu.library.service import LibraryService
@@ -100,11 +101,13 @@ async def _edit_bullet(
 
 
 def _resumes(session: AsyncSession) -> ResumeService:
+    publisher = build_write_event_publisher()
     return ResumeService(
         session,
         SqlAlchemyResumeRepository(session),
         SqlAlchemyBulletTextResolver(session),
-        build_write_event_publisher(),
+        publisher,
+        LibraryCanonicalBulletWriter(session, SqlAlchemyLibraryRepository(session), publisher),
     )
 
 

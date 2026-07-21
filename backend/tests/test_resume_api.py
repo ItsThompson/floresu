@@ -23,12 +23,14 @@ from floresu.core.events import WriteEvent
 from floresu.core.headers import ACTOR_HEADER, INTERNAL_API_TOKEN_HEADER, USER_ID_HEADER
 from floresu.core.identity import SESSION_COOKIE_NAME, require_internal_user, require_user
 from floresu.core.settings import AppSettings
+from floresu.resumes.cow import EditChannel
 from floresu.resumes.router import create_resumes_router
 from floresu.resumes.service import ResumeService
 from tests.resumes_fakes import (
     FakeSession,
     InMemoryBulletTextResolver,
     InMemoryResumeRepository,
+    build_bullet_writer,
     capturing_publisher,
 )
 
@@ -53,17 +55,30 @@ def _client(
     publisher, captured = capturing_publisher()
 
     def provider(request: Request) -> ResumeService:
+        session = cast("AsyncSession", FakeSession())
         return ResumeService(
-            cast("AsyncSession", FakeSession()), repo, resolver, request.app.state.events
+            session,
+            repo,
+            resolver,
+            request.app.state.events,
+            build_bullet_writer(session, request.app.state.events),
         )
 
     if internal:
         router = create_resumes_router(
-            provider, identity=require_internal_user, actor=resolve_internal_actor
+            provider,
+            identity=require_internal_user,
+            actor=resolve_internal_actor,
+            channel=EditChannel.MCP,
         )
         settings = make_settings(service="floresu-internal", internal_api_token=_INTERNAL_TOKEN)
     else:
-        router = create_resumes_router(provider, identity=require_user, actor=resolve_web_actor)
+        router = create_resumes_router(
+            provider,
+            identity=require_user,
+            actor=resolve_web_actor,
+            channel=EditChannel.WEB,
+        )
         settings = make_settings(service="floresu-external", environment="development")
 
     app = create_app(settings, routers=[router], exception_handlers=build_exception_handlers())

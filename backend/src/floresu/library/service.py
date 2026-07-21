@@ -32,6 +32,12 @@ from floresu.library.hashing import compute_content_hash
 from floresu.library.injection import Clock, utcnow
 from floresu.library.models import Bulletpoint
 from floresu.library.schemas import BulletpointRecord, to_record
+from floresu.library.summaries import (
+    archived_summary,
+    created_summary,
+    edited_summary,
+    restored_summary,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -79,7 +85,7 @@ class LibraryService:
                 actor,
                 bullet.id,
                 Action.CREATE,
-                summary=_created_summary(write),
+                summary=created_summary(write.text),
                 metadata={REEMBED_CONTENT_HASH_KEY: content_hash},
             )
         return await self._record_after_write(bullet, source_ids, worklog_ids)
@@ -131,7 +137,7 @@ class LibraryService:
                 actor,
                 bullet.id,
                 Action.UPDATE,
-                summary=_edited_summary(bullet),
+                summary=edited_summary(bullet.text),
                 metadata=metadata,
             )
         return await self._record_after_write(bullet, source_ids, worklog_ids)
@@ -147,7 +153,7 @@ class LibraryService:
         async with transaction(self._session):
             bullet.archived_at = self._clock()
             await self._publish(
-                pk, actor, bullet.id, Action.ARCHIVE, summary=_archived_summary(bullet)
+                pk, actor, bullet.id, Action.ARCHIVE, summary=archived_summary(bullet.text)
             )
         return await self._record_after_write(bullet)
 
@@ -162,7 +168,7 @@ class LibraryService:
         async with transaction(self._session):
             bullet.archived_at = None
             await self._publish(
-                pk, actor, bullet.id, Action.RESTORE, summary=_restored_summary(bullet)
+                pk, actor, bullet.id, Action.RESTORE, summary=restored_summary(bullet.text)
             )
         return await self._record_after_write(bullet)
 
@@ -249,30 +255,3 @@ def _not_found(bullet_id: int) -> NotFound:
     # 404-over-403: a bullet another account owns is scoped out of the read, so a
     # miss is indistinguishable from "does not exist" (no existence leak).
     return NotFound(f"No bulletpoint with id {bullet_id}.")
-
-
-def _created_summary(write: BulletpointWrite) -> str:
-    return f"Added bulletpoint “{_preview(write.text)}”"
-
-
-def _edited_summary(bullet: Bulletpoint) -> str:
-    return f"Edited bulletpoint “{_preview(bullet.text)}”"
-
-
-def _archived_summary(bullet: Bulletpoint) -> str:
-    return f"Archived bulletpoint “{_preview(bullet.text)}”"
-
-
-def _restored_summary(bullet: Bulletpoint) -> str:
-    return f"Restored bulletpoint “{_preview(bullet.text)}”"
-
-
-_PREVIEW_LIMIT = 60
-
-
-def _preview(text: str) -> str:
-    """A short single-line preview of the bullet text for the audit summary line."""
-    single_line = " ".join(text.split())
-    if len(single_line) <= _PREVIEW_LIMIT:
-        return single_line
-    return f"{single_line[: _PREVIEW_LIMIT - 1]}…"

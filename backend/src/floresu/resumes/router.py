@@ -21,6 +21,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Header
 
 from floresu.core.actor import Actor
+from floresu.resumes.cow import EditChannel
 from floresu.resumes.models import ResumeKind
 from floresu.resumes.schemas import (
     AddItemRequest,
@@ -29,6 +30,8 @@ from floresu.resumes.schemas import (
     ResumeReorderRequest,
     ResumeSummary,
     ResumeUpdate,
+    ScopeEditRequest,
+    ScopeEditResult,
 )
 from floresu.resumes.service import ResumeService
 
@@ -46,8 +49,14 @@ def create_resumes_router(
     *,
     identity: Identity,
     actor: ActorResolver,
+    channel: EditChannel,
 ) -> APIRouter:
-    """Build the /resumes router, injecting the service, identity, and actor."""
+    """Build the /resumes router, injecting the service, identity, actor, and edit channel.
+
+    ``channel`` selects the copy-on-write scope rule for :func:`bullet_update`: the
+    external app passes :attr:`EditChannel.WEB` (prompt when a bullet is shared),
+    the internal app passes :attr:`EditChannel.MCP` (an explicit scope is required).
+    """
     router = APIRouter(prefix=RESUMES_PATH, tags=["resumes"])
 
     @router.post("", status_code=201)
@@ -119,5 +128,25 @@ def create_resumes_router(
         if_match: int = Header(alias="If-Match"),
     ) -> ResumeRecord:
         return await service.reorder(user_id, resume_id, actor_, if_match, body)
+
+    @router.post("/bullet-edit")
+    async def bullet_edit(
+        body: ScopeEditRequest,
+        user_id: str = Depends(identity),
+        actor_: Actor = Depends(actor),
+        service: ResumeService = Depends(service_provider),
+    ) -> ScopeEditResult:
+        return await service.bullet_update(user_id, actor_, channel, body)
+
+    @router.post("/{resume_id}/items/{item_id}/promote")
+    async def promote_item(
+        resume_id: int,
+        item_id: str,
+        user_id: str = Depends(identity),
+        actor_: Actor = Depends(actor),
+        service: ResumeService = Depends(service_provider),
+        if_match: int = Header(alias="If-Match"),
+    ) -> ResumeRecord:
+        return await service.promote(user_id, resume_id, actor_, if_match, item_id)
 
     return router
