@@ -22,6 +22,9 @@ dist/
 .env
 .env.*
 !.env.example
+# .env.prod is the COMMITTED, non-secret half of the production config (see the
+# file header). Real secrets live only in GitHub Actions, never here.
+!.env.prod
 
 # Editor / OS
 .DS_Store

@@ -1,0 +1,110 @@
+{
+  "annotations": { "list": [] },
+  "editable": false,
+  "graphTooltip": 0,
+  "schemaVersion": 39,
+  "tags": ["floresu"],
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "title": "Floresu Overview",
+  "uid": "floresu-overview",
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "title": "HTTP request rate (by status)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "floresu-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "floresu-prometheus" },
+          "expr": "sum(rate(http_requests_total[5m])) by (status)",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "5xx error ratio",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "floresu-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1 }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "floresu-prometheus" },
+          "expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))",
+          "legendFormat": "5xx ratio"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "DB query latency p95",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "floresu-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "floresu-prometheus" },
+          "expr": "histogram_quantile(0.95, sum(rate(db_query_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Embed queue depth",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "floresu-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "floresu-prometheus" },
+          "expr": "embed_queue_depth",
+          "legendFormat": "queue depth"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Embed jobs completed (by status)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "floresu-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "floresu-prometheus" },
+          "expr": "sum(rate(embed_jobs_completed_total[5m])) by (status)",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "OAuth tokens issued (by grant type)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "floresu-prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "floresu-prometheus" },
+          "expr": "sum(rate(oauth_tokens_issued_total[15m])) by (grant_type)",
+          "legendFormat": "{{grant_type}}"
+        }
+      ]
+    }
+  ]
+}

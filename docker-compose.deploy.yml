@@ -1,0 +1,75 @@
+# =============================================================================
+# Deploy overlay — layered by scripts/deploy.sh ON TOP of docker-compose.yml and
+# docker-compose.tunnel.yml at DEPLOY TIME ONLY (never local dev).
+#
+#   docker --context floresu compose \
+#     -f docker-compose.yml -f docker-compose.tunnel.yml -f docker-compose.deploy.yml \
+#     --profile tunnels up -d
+#
+# Delivers the production APP config + secrets to the backend, mcp and worker
+# containers over the Docker Context WITHOUT any box file:
+#   - Non-secret prod config: the committed .env.prod, read CLI-side via env_file
+#     (resolved by the Compose CLI in the runner and transmitted to the daemon, so
+#     nothing lands on the VPS). Layered ON TOP of the base file's
+#     `env_file: .env` (later file wins), so a deploy sources its config from
+#     .env.prod, never a stray local dev .env.
+#   - App secrets (SESSION_JWT_SECRET, INTERNAL_API_TOKEN): passed through from
+#     the runner environment (GitHub Actions secrets); `environment:` overrides
+#     env_file, so these win regardless of any .env/.env.prod contents.
+#   - Optional secrets (DISCORD_WEBHOOK_URL, OPENAI_API_KEY): passed through when
+#     set. Embedding fails soft without OPENAI_API_KEY (items stay lexically
+#     searchable), so it is not hard-required here; document it as a go-live
+#     secret. cd.yml hard-requires DISCORD_WEBHOOK_URL (Alertmanager exits on a
+#     blank webhook).
+# =============================================================================
+name: floresu
+
+services:
+  # Redis gains a password in production (defense-in-depth: it is dual-homed onto
+  # app-net so every app-net service can reach it). Local dev stays auth-free
+  # (base file), so this override is deploy-only. REDIS_PASSWORD is a GitHub
+  # secret; the app services below authenticate with it via their REDIS_URL.
+  redis:
+    command: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$REDIS_PASSWORD\""]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required for a deploy}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$REDIS_PASSWORD\" ping | grep -q PONG"]
+
+  backend:
+    env_file:
+      - path: .env.prod
+        required: true
+    environment:
+      SESSION_JWT_SECRET: ${SESSION_JWT_SECRET:?SESSION_JWT_SECRET is required for a deploy}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?INTERNAL_API_TOKEN is required for a deploy}
+      # Authenticate to the password-protected redis (see the redis override above).
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      # Optional (:-): the embedding fast-path fails soft when unset. Wire the
+      # real key at go-live (spec lists the embedding API key as required infra).
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+
+  mcp:
+    env_file:
+      - path: .env.prod
+        required: true
+    environment:
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?INTERNAL_API_TOKEN is required for a deploy}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+
+  worker:
+    env_file:
+      - path: .env.prod
+        required: true
+    environment:
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?INTERNAL_API_TOKEN is required for a deploy}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      # Optional (:-): an embed job retries when the provider key is unset. Wire
+      # the real key at go-live.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+
+  grafana:
+    environment:
+      # Provisioned but non-gating; still, set a real admin password at deploy so
+      # the internal dashboard is not admin/admin.
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:?GF_SECURITY_ADMIN_PASSWORD is required for a deploy}

@@ -1,0 +1,102 @@
+name: Healthcheck
+
+# =============================================================================
+# External production uptime check for Floresu.
+#
+# An EXTERNALLY-originated probe that runs from GitHub's public runners and hits
+# the same public surfaces a browser would. It complements the in-cluster
+# Prometheus/Alertmanager `ServiceDown` alert by catching failures internal
+# scraping cannot see: DNS, the Cloudflare edge, the tunnel, and per-host ingress
+# routing. If floresu.com is unreachable to a browser while the containers are
+# healthy on app-net, only an external probe notices.
+#
+# Three already-public, unauthenticated, static surfaces are probed for HTTP 200
+# (deliberately NOT the edge-blocked /healthz|/readyz|/metrics observability
+# path, per deployments/cloudflare/config.yml):
+#   - https://floresu.com/                                              (SPA via nginx)
+#   - https://api.floresu.com/.well-known/oauth-authorization-server    (OAuth AS metadata)
+#   - https://mcp.floresu.com/.well-known/oauth-protected-resource      (MCP PRM discovery)
+#
+# On failure (after retries) it posts one message to the P0 Discord webhook and
+# fails the job, so GitHub's native failure email/UI also fires.
+# =============================================================================
+on:
+  schedule:
+    - cron: "0 */12 * * *"
+  workflow_dispatch:
+
+# One in-flight run at a time; an uptime heartbeat is never cancelled mid-flight.
+concurrency:
+  group: healthcheck
+  cancel-in-progress: false
+
+# Read-only: no repo checkout is needed and Discord uses a secret, not GITHUB_TOKEN.
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe production surfaces
+        id: probe
+        run: |
+          # GitHub's default run: shell is `bash --noprofile --norc -eo pipefail`,
+          # so errexit is ON. Disable it explicitly so a non-200 curl cannot abort
+          # the retry loop mid-flight; the final pass/fail is driven by `exit`.
+          set +e
+
+          # Single source of truth for the probed surfaces. The MCP PRM path is
+          # trailing-slash sensitive (the tunnel ingress allow-list has no optional
+          # slash), so keep it exactly as written.
+          urls=(
+            "https://floresu.com/"
+            "https://api.floresu.com/.well-known/oauth-authorization-server"
+            "https://mcp.floresu.com/.well-known/oauth-protected-resource"
+          )
+
+          # Probe one URL up to 3 times with linear backoff (5s, 10s). Returns 0
+          # (UP) on the first HTTP 200, 1 (DOWN) only after all attempts fail.
+          check() {
+            local url="$1" attempt code
+            for attempt in 1 2 3; do
+              code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "$url")" || code=000
+              echo "attempt ${attempt}: ${code}  ${url}"
+              [ "$code" = "200" ] && return 0
+              [ "$attempt" -lt 3 ] && sleep $(( attempt * 5 ))
+            done
+            return 1
+          }
+
+          failed=()
+          for url in "${urls[@]}"; do
+            if ! check "$url"; then
+              failed+=("$url")
+            fi
+          done
+
+          # Write the DOWN list BEFORE exiting non-zero so the failure-guarded
+          # notify step can read it from this step's output.
+          echo "failed=${failed[*]}" >> "$GITHUB_OUTPUT"
+
+          if (( ${#failed[@]} )); then
+            echo "DOWN after retries: ${failed[*]}"
+            exit 1
+          fi
+          echo "All surfaces UP."
+
+      # notify: only on a failed probe. Posts exactly one Discord message naming
+      # the DOWN surface(s) and linking the run. The secret is passed via a
+      # step-level env: block and referenced as $DISCORD_WEBHOOK_URL (masked),
+      # never interpolated into the run: text. The payload is built with jq --arg
+      # so a target string can never break out of the JSON.
+      - name: Notify Discord on failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          FAILED: ${{ steps.probe.outputs.failed }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          payload="$(jq -n --arg content "🚨 Floresu uptime check failed: ${FAILED:-unknown} (run: ${RUN_URL})" '{content: $content}')"
+          curl -sS -H 'Content-Type: application/json' -d "$payload" "$DISCORD_WEBHOOK_URL"

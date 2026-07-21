@@ -1,0 +1,31 @@
+# Build-context ignore for the BACKEND image, which builds from the repo root
+# (it needs backend/ + scripts/serve-backend.sh). Everything the backend image
+# does not need is excluded to keep the context lean. This file applies ONLY to
+# the repo-root build context; the frontend/mcp/worker images have their own
+# .dockerignore in their package dirs.
+
+.git/
+.github/
+node_modules/
+
+# Sibling packages and non-backend dirs never ship in the backend image.
+frontend/
+mcp/
+worker/
+e2e/
+contract/
+deployments/
+
+# NOTE: templates/ is intentionally NOT excluded: the backend IS the render
+# image and the Typst templates under templates/ must ship in it.
+
+# Local dev / tooling artifacts.
+**/.venv/
+**/__pycache__/
+**/*.py[cod]
+**/.mypy_cache/
+**/.pytest_cache/
+**/.ruff_cache/
+**/.coverage
+**/dist/
+*.md

@@ -1,0 +1,107 @@
+# =============================================================================
+# Cloudflare Tunnel overlay.
+#
+# Layered ON TOP of docker-compose.yml at DEPLOY TIME ONLY, driven by
+# scripts/deploy.sh over a Docker Context (the Compose CLI runs in CI, the engine
+# on the VPS):
+#   docker --context floresu compose \
+#     -f docker-compose.yml -f docker-compose.tunnel.yml -f docker-compose.deploy.yml \
+#     --profile tunnels up -d
+#
+# The tunnel is the ONLY ingress on the VPS; locally the stack runs without it
+# (the base file defines no cloudflared), and the `tunnels` profile keeps
+# cloudflared + alertmanager from ever starting outside a deploy. Every
+# config/secret this overlay adds is environment-sourced (read CLI-side in CI,
+# transmitted to the daemon); nothing here bind-mounts a box file.
+# =============================================================================
+name: floresu
+
+services:
+  cloudflared:
+    # Pinned third-party image; review quarterly and check release notes.
+    image: cloudflare/cloudflared:2026.7.1
+    profiles: [tunnels]
+    command: tunnel --config /etc/cloudflared/config.yml run
+    # Ingress config (non-secret) and named-tunnel credentials (secret) are both
+    # sourced CLI-side in CI and transmitted to the daemon: the ingress as an
+    # environment-sourced Compose config, the credentials as an environment-
+    # sourced secret. No rendered file or credentials file lives on the box.
+    configs:
+      - source: cloudflared_ingress
+        target: /etc/cloudflared/config.yml
+    secrets:
+      - source: cloudflared_credentials
+        target: /etc/cloudflared/credentials.json
+        uid: "${FLORESU_CLOUDFLARED_UID:-65532}"
+        gid: "${FLORESU_CLOUDFLARED_GID:-65532}"
+        mode: 0400
+    networks:
+      - app-net
+    depends_on:
+      - frontend
+      - backend
+      - mcp
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+    restart: unless-stopped
+
+  # The OAuth AS signing key is an environment-sourced Compose secret: CI reads
+  # the PEM from the FLORESU_OAUTH_PRIVATE_KEY GitHub secret and transmits it to
+  # the daemon, which materializes it as a 0400 file at the container path below.
+  # The backend reads that path via OAUTH_PRIVATE_KEY_PATH (.env.prod), so the box
+  # never holds the key. Deploy-only: local dev runs ENVIRONMENT=development and
+  # generates an ephemeral in-memory key, so the base file mounts nothing.
+  backend:
+    environment:
+      OAUTH_PRIVATE_KEY_PATH: /run/secrets/oauth_private_key
+    secrets:
+      - source: oauth_private_key
+        target: /run/secrets/oauth_private_key
+        uid: "${FLORESU_BACKEND_UID:-999}"
+        gid: "${FLORESU_BACKEND_GID:-999}"
+        mode: 0400
+
+  alertmanager:
+    secrets:
+      - source: alertmanager_config
+        target: /etc/alertmanager/alertmanager.yml
+        uid: "${FLORESU_ALERTMANAGER_UID:-65534}"
+        gid: "${FLORESU_ALERTMANAGER_GID:-65534}"
+        mode: 0400
+
+# app-net is auto-assigned in the base/local stacks; it is PINNED here in the
+# tunnel (deploy) overlay ONLY, so cloudflared's container IP lands in a known
+# range inside the trusted-proxy CIDR the apps honor (MCP_TRUSTED_PROXIES, same
+# APP_NET_SUBNET source). The default subnet sits outside Docker's default
+# auto-allocation pool (172.16/12, 192.168/16) so it can never overlap a sibling
+# network. Compose deep-merges this ipam onto the base app-net definition.
+networks:
+  app-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${APP_NET_SUBNET:-10.89.0.0/24}
+
+# All sources are environment: (never file:). Over an SSH Docker Context a file:
+# source resolves on the daemon host (the VPS, which has no checkout) and fails;
+# environment sources are read CLI-side in CI and transmitted to the daemon at
+# deploy time, and honor the per-service uid/gid/mode above. CI exports each var
+# (a GitHub secret, or envsubst-rendered from a committed file) before any
+# compose call.
+secrets:
+  oauth_private_key:
+    environment: FLORESU_OAUTH_PRIVATE_KEY
+  cloudflared_credentials:
+    environment: FLORESU_CLOUDFLARED_CREDENTIALS
+  alertmanager_config:
+    environment: FLORESU_ALERTMANAGER_CONFIG
+
+configs:
+  # Non-secret Cloudflare ingress (the path allow-list is a security control that
+  # stays in git); envsubst-rendered in CI from deployments/cloudflare/config.yml
+  # into FLORESU_CLOUDFLARED_INGRESS.
+  cloudflared_ingress:
+    environment: FLORESU_CLOUDFLARED_INGRESS

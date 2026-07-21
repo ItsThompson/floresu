@@ -10,13 +10,27 @@ default:
 
 # --- local dev services ---
 
-# Start local Postgres (pgvector) and Redis.
+# The production-shaped base file (docker-compose.yml) is expose-only and sources
+# the Prometheus scrape/alert configs from the environment (never a bind mount,
+# for box-less deploy parity). Populate those from the committed files so the
+# base file parses locally, and layer the dev overlay for host-published
+# Postgres/Redis. `dev` is the base+dev compose prefix every local recipe uses.
+export FLORESU_PROMETHEUS_CONFIG := `cat deployments/prometheus/prometheus.yml`
+export FLORESU_PROMETHEUS_ALERTS := `cat deployments/prometheus/alerts.yml`
+
+dev := "docker compose -f docker-compose.yml -f docker-compose.dev.yml"
+
+# Start local Postgres (pgvector) + Redis, host-published for the inner loop.
 up:
-    docker compose up -d postgres redis
+    {{dev}} up -d postgres redis
 
 # Stop local dev services.
 down:
-    docker compose down
+    {{dev}} down
+
+# Bring up the FULL stack locally (built images + dev env + host-published data).
+up-dev:
+    {{dev}} up -d --build
 
 # --- backend apps ---
 
@@ -125,3 +139,31 @@ fmt:
     done
     echo "== prettier frontend =="
     (cd frontend && npm run fmt)
+
+# --- deploy / ops (see deployments/README.md) ---
+
+# Run the deploy.sh test harness (pure-bash; no daemon or VPS needed).
+test-deploy:
+    bash scripts/tests/deploy_test.sh
+
+# Validate every Compose layer parses: base, base+dev, and the full deploy shape
+# (base+tunnel+deploy under the tunnels profile). Dummy secrets prove the
+# overlays parse; they are never used at rest.
+compose-config:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    docker compose -f docker-compose.yml config -q
+    {{dev}} config -q
+    export FLORESU_OAUTH_PRIVATE_KEY=dummy FLORESU_CLOUDFLARED_CREDENTIALS=dummy
+    export FLORESU_ALERTMANAGER_CONFIG=dummy FLORESU_CLOUDFLARED_INGRESS=dummy
+    export POSTGRES_PASSWORD=dummy SESSION_JWT_SECRET=dummy INTERNAL_API_TOKEN=dummy
+    export GF_SECURITY_ADMIN_PASSWORD=dummy
+    docker compose -f docker-compose.yml -f docker-compose.tunnel.yml -f docker-compose.deploy.yml \
+        --profile tunnels config -q
+    echo "all compose layers valid"
+
+# Print the deploy phase plan against a server WITHOUT executing (dry-run). Needs
+# the deploy secret env vars set (see scripts/deploy.sh); dummy values are fine
+# for a dry-run. Example: just deploy-dry-run 203.0.113.10
+deploy-dry-run server-ip:
+    DRY_RUN=1 ./scripts/deploy.sh {{server-ip}}

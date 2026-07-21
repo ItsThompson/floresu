@@ -133,3 +133,58 @@ jobs:
       # backend suite too; this named job makes it an explicit release gate.
       - name: Resume schema golden + hash-lock guard
         run: uv run pytest tests/test_resume_golden.py tests/test_resume_golden_guard.py --no-cov
+
+  # ---------------------------------------------------------------------------
+  # deploy-config: validate the deployment topology WITHOUT a live VPS. Runs the
+  # deploy.sh bash test harness, shellchecks the deploy script, parses every
+  # Compose layer with the official parser, and validates the Prometheus rules +
+  # Alertmanager config with promtool/amtool. Self-contained (no app deps).
+  # ---------------------------------------------------------------------------
+  deploy-config:
+    name: deploy config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy script tests (deploy_test.sh)
+        run: bash scripts/tests/deploy_test.sh
+
+      - name: Shellcheck the deploy script
+        run: shellcheck scripts/deploy.sh
+
+      # Compose configs are environment-sourced (never bind-mounted); populate
+      # them from the committed files, exactly as the justfile and deploy do.
+      - name: Validate Compose topology (base + dev + full deploy overlay)
+        run: |
+          set -euo pipefail
+          export FLORESU_PROMETHEUS_CONFIG="$(cat deployments/prometheus/prometheus.yml)"
+          export FLORESU_PROMETHEUS_ALERTS="$(cat deployments/prometheus/alerts.yml)"
+          # Base file (the deployable artifact) and the local-dev overlay.
+          docker compose -f docker-compose.yml config -q
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml config -q
+          # Full deploy shape: tunnel + deploy overlays under the tunnels profile.
+          # The overlays require app secrets/configs; dummy values prove the file
+          # parses (never used at rest).
+          export FLORESU_OAUTH_PRIVATE_KEY=dummy FLORESU_CLOUDFLARED_CREDENTIALS=dummy
+          export FLORESU_ALERTMANAGER_CONFIG=dummy FLORESU_CLOUDFLARED_INGRESS=dummy
+          export POSTGRES_PASSWORD=dummy SESSION_JWT_SECRET=dummy INTERNAL_API_TOKEN=dummy
+          export GF_SECURITY_ADMIN_PASSWORD=dummy
+          docker compose \
+            -f docker-compose.yml -f docker-compose.tunnel.yml -f docker-compose.deploy.yml \
+            --profile tunnels config -q
+
+      - name: Validate Prometheus config + alert rules (promtool)
+        run: |
+          docker run --rm -v "$PWD/deployments/prometheus:/cfg:ro" --entrypoint promtool \
+            prom/prometheus:v3.1.0 check config /cfg/prometheus.yml
+          docker run --rm -v "$PWD/deployments/prometheus:/cfg:ro" --entrypoint promtool \
+            prom/prometheus:v3.1.0 check rules /cfg/alerts.yml
+
+      - name: Validate Alertmanager config (amtool)
+        run: |
+          # Render the ${DISCORD_WEBHOOK_URL} placeholder to a dummy valid URL so
+          # amtool accepts it (Alertmanager rejects a non-URL webhook).
+          DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/0/dummy \
+            envsubst '$DISCORD_WEBHOOK_URL' < deployments/alertmanager/alertmanager.yml > /tmp/alertmanager.yml
+          docker run --rm -v /tmp/alertmanager.yml:/am.yml:ro --entrypoint amtool \
+            prom/alertmanager:v0.27.0 check-config /am.yml

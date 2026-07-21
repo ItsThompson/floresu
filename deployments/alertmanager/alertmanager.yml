@@ -1,0 +1,37 @@
+# =============================================================================
+# Alertmanager config for the Floresu stack.
+#
+# Every alert (critical + warning) fans to one Discord receiver with
+# send_resolved, so an operator sees both the firing and the recovery. There is
+# no Grafana gating at P0; Discord is the alerting sink.
+#
+# TEMPLATING: `${DISCORD_WEBHOOK_URL}` is a deploy-time placeholder. Alertmanager
+# does not expand environment variables, so CI renders this file with envsubst
+# (substituting ONLY that token) into the FLORESU_ALERTMANAGER_CONFIG env var,
+# which the compose alertmanager service receives as an environment-sourced
+# Compose secret (0400) at /etc/alertmanager/alertmanager.yml. The single-var
+# envsubst allow-list leaves the Go templating (`{{ ... }}`) in title/message
+# untouched, so those render at alert time. Keep the placeholder in this
+# committed file; no rendered file is written to the box; never commit a real
+# webhook.
+# =============================================================================
+
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: discord
+  # Group by the alert and its job so one Discord message covers a burst.
+  group_by: ["alertname", "job"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 1h
+
+receivers:
+  - name: discord
+    discord_configs:
+      - webhook_url: "${DISCORD_WEBHOOK_URL}"
+        send_resolved: true
+        title: '{{ if eq .Status "firing" }}🚨 FIRING{{ else }}✅ RESOLVED{{ end }}: {{ .GroupLabels.alertname }}'
+        message: '{{ range .Alerts }}{{ .Annotations.summary }}{{ if .Annotations.description }} — {{ .Annotations.description }}{{ end }}
+{{ end }}'

@@ -1,52 +1,409 @@
-# Local development services for Floresu.
+# =============================================================================
+# Floresu production-shaped stack.
 #
-# Postgres is a pgvector-enabled image so `CREATE EXTENSION vector` works; the
-# vector column and index in later slices depend on it. Redis backs the arq
-# queue, SSE pub/sub, and rate-limit counters.
+# Every first-party service is expose-only (NO host `ports:`): the Cloudflare
+# tunnel is the only ingress and is added by the tunnel overlay
+# (docker-compose.tunnel.yml) at deploy time. Locally the stack runs without it.
 #
-# This file is the local dev stack: both services publish a host port for
-# direct access from the host. The production topology (expose-only, no host
-# ports, three network tiers, Cloudflare Tunnel) is a separate deploy overlay.
-
+# Three network tiers plus an observability tier:
+#   edge     : frontend (nginx static SPA)
+#   compute  : backend (BOTH ASGI apps: :8000 external + :8001 internal), mcp, worker
+#   data     : postgres (pgvector), redis
+#   observ.  : prometheus, node-exporter, alertmanager, grafana
+#
+# Two bridge networks isolate the data tier: data-net carries postgres + redis;
+# only backend and worker BRIDGE app-net<->data-net. Postgres is data-net-only.
+# Redis is dual-homed (data-net + app-net) so the mcp rate limiter reaches it on
+# app-net WITHOUT joining data-net, keeping "only backend and worker bridge to
+# data-net" true while Postgres stays isolated.
+#
+# Local development layers docker-compose.dev.yml on top (host-published
+# Postgres/Redis for the host inner loop): `just dev-infra` / `just up-dev`. This
+# base file is the deployable artifact the deploy + monitoring tooling operate on.
+#
+# Third-party images are pinned to exact tags; review quarterly.
+# =============================================================================
 name: floresu
 
 services:
+  # ---------------------------------------------------------------------------
+  # Edge tier
+  # ---------------------------------------------------------------------------
+  frontend:
+    image: ghcr.io/${GHCR_OWNER:-floresu-platform}/floresu/frontend:${FLORESU_IMAGE_TAG:-latest}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Baked into the SPA bundle at build time. VITE_API_BASE_URL is the API
+        # origin the SPA calls cross-origin (api.floresu.com in prod; empty ->
+        # same-origin). VITE_MCP_URL is the MCP endpoint the onboarding wizard
+        # shows. cd.yml passes the prod values explicitly from .env.prod.
+        VITE_API_BASE_URL: ${PUBLIC_BASE_URL:-}
+        VITE_MCP_URL: ${MCP_PUBLIC_URL:-}
+    expose:
+      - "80"
+    networks:
+      - app-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:80/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Compute tier
+  # ---------------------------------------------------------------------------
+  backend:
+    image: ghcr.io/${GHCR_OWNER:-floresu-platform}/floresu/backend:${FLORESU_IMAGE_TAG:-latest}
+    build:
+      # Repo-root context so the build can bundle scripts/serve-backend.sh.
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file:
+      # Secrets, TTLs, pinned public URLs, CORS. Absent locally is fine: the
+      # in-network overrides below plus dev defaults keep the app bootable.
+      - path: .env
+        required: false
+    environment:
+      # In-network endpoints override any host-oriented .env values: inside the
+      # stack Postgres/Redis are reached by service name, never localhost.
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-floresu}:${POSTGRES_PASSWORD:-floresu}@postgres:5432/${POSTGRES_DB:-floresu}
+      REDIS_URL: redis://redis:6379/0
+      HOST: 0.0.0.0
+    expose:
+      - "8000"  # external app (tunnel-routed as api.floresu.com)
+      - "8001"  # internal app (app-net; never tunnel-routed, token-gated)
+    networks:
+      - app-net
+      - data-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # The venv interpreter probes BOTH apps' readiness (external :8000 +
+      # internal :8001): healthy only when both serve. urlopen raises on a 503
+      # (not-ready) or connection refusal -> unhealthy. serve-backend.sh also
+      # takes the container down if either app exits.
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/readyz', timeout=3); u.urlopen('http://127.0.0.1:8001/readyz', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 768M
+    restart: unless-stopped
+
+  mcp:
+    image: ghcr.io/${GHCR_OWNER:-floresu-platform}/floresu/mcp:${FLORESU_IMAGE_TAG:-latest}
+    build:
+      context: ./mcp
+      dockerfile: Dockerfile
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Tool calls forward to the internal app over app-net by service name; the
+      # rate limiter reaches redis over app-net (redis is dual-homed). Token
+      # issuer/audience (PUBLIC_BASE_URL / MCP_PUBLIC_URL) stay the pinned public
+      # URLs from .env/.env.prod.
+      BACKEND_INTERNAL_URL: http://backend:8001
+      REDIS_URL: redis://redis:6379/0
+      HOST: 0.0.0.0
+      # Trust the edge tier (cloudflared) for X-Forwarded-Proto behind the
+      # tunnel; matches the app-net subnet the tunnel overlay pins at deploy.
+      # Inert in local/e2e (no proxy fronts the app).
+      MCP_TRUSTED_PROXIES: ${APP_NET_SUBNET:-10.89.0.0/24}
+    expose:
+      - "9000"  # PRM + /mcp transport tunnel-routed; /metrics + health are not.
+    networks:
+      - app-net
+    depends_on:
+      backend:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:9000/readyz', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+    restart: unless-stopped
+
+  worker:
+    image: ghcr.io/${GHCR_OWNER:-floresu-platform}/floresu/worker:${FLORESU_IMAGE_TAG:-latest}
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # The arq broker is redis (data-net); the worker reads items / writes
+      # vectors over the internal app (app-net). It bridges both nets.
+      REDIS_URL: redis://redis:6379/0
+      BACKEND_INTERNAL_URL: http://backend:8001
+      WORKER_METRICS_PORT: "9100"
+    expose:
+      - "9100"  # Prometheus metrics (embed_jobs_completed_total, embed_queue_depth)
+    networks:
+      - app-net
+      - data-net
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:9100/metrics', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Data tier
+  # ---------------------------------------------------------------------------
   postgres:
+    # pgvector-enabled image (spec §12: pgvector in the Postgres image), so
+    # `CREATE EXTENSION vector` and the vector column work.
     image: pgvector/pgvector:pg17
     environment:
-      POSTGRES_USER: floresu
-      POSTGRES_PASSWORD: floresu
-      POSTGRES_DB: floresu
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-floresu}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-floresu}
+      POSTGRES_DB: ${POSTGRES_DB:-floresu}
+    expose:
+      - "5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - data-net  # data-net exclusively: never reachable from the edge.
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U floresu -d floresu"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-floresu} -d ${POSTGRES_DB:-floresu}"]
       interval: 5s
       timeout: 5s
       retries: 10
-    networks:
-      - data-net
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 1024M
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
     command: ["redis-server", "--appendonly", "yes"]
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
     volumes:
-      - redis-data:/data
+      - redisdata:/data
+    networks:
+      # Dual-homed: data-net (backend + worker) and app-net (mcp rate limiter).
+      # Postgres stays data-net-only; redis is a shared cache/queue/pubsub.
+      - data-net
+      - app-net
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 10
-    networks:
-      - data-net
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+    restart: unless-stopped
 
-volumes:
-  postgres-data:
-  redis-data:
+  # ---------------------------------------------------------------------------
+  # Observability tier (on app-net; /metrics stays non-tunnel-reachable via the
+  # cloudflared ingress path allow-list, not network isolation). The scrape /
+  # alert config lives in deployments/prometheus and deployments/alertmanager;
+  # Grafana provisioning is baked into its first-party image.
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=3d"
+      - "--storage.tsdb.retention.size=2GB"
+      - "--query.max-concurrency=5"
+      - "--query.timeout=30s"
+    expose:
+      - "9090"
+    configs:
+      - source: prometheus_config
+        target: /etc/prometheus/prometheus.yml
+      - source: prometheus_alerts
+        target: /etc/prometheus/alerts.yml
+    volumes:
+      - promdata:/prometheus
+    networks:
+      - app-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 1024M
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    expose:
+      - "9100"
+    networks:
+      - app-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9100/metrics"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    # Gated behind the `tunnels` profile (the only profile the deploy activates).
+    # Alertmanager v0.27 EXITS on config load if webhook_url is not a valid URL,
+    # and the committed alertmanager.yml keeps the unrendered
+    # ${DISCORD_WEBHOOK_URL} placeholder, so CI renders it (envsubst) into
+    # FLORESU_ALERTMANAGER_CONFIG delivered as an environment-sourced Compose
+    # secret. Without the profile gate, local `just up-dev` (no profile) would
+    # crash-loop this restart:unless-stopped + healthchecked container. In a real
+    # deploy the profile is active and the rendered config supplies a valid
+    # webhook, so it boots; local dev skips it (Prometheus + node-exporter run).
+    profiles: ["tunnels"]
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    expose:
+      - "9093"
+    networks:
+      - app-net
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9093/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+    restart: unless-stopped
+
+  grafana:
+    # First-party image: stock Grafana OSS with the Prometheus datasource + the
+    # Floresu overview dashboard baked in (deployments/grafana). Provisioned but
+    # NON-GATING (spec §12): never a release gate. The admin password is supplied
+    # at runtime (a GitHub secret at deploy; the stock default for local dev).
+    image: ghcr.io/${GHCR_OWNER:-floresu-platform}/floresu/grafana:${FLORESU_IMAGE_TAG:-latest}
+    build:
+      context: ./deployments/grafana
+      dockerfile: Dockerfile
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:-admin}
+    expose:
+      - "3000"
+    volumes:
+      - grafanadata:/var/lib/grafana
+    networks:
+      - app-net
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+    restart: unless-stopped
 
 networks:
+  # app-net carries every first-party service (and, dual-homed, redis). Left
+  # auto-assigned in the base/local stacks (NO ipam here): a base-file pin would
+  # force every project onto the SAME fixed subnet, and Docker subnets are
+  # daemon-global, so two stacks up at once could not both allocate it. It is
+  # pinned ONLY by the tunnel overlay at deploy, where cloudflared needs a known
+  # IP inside the trusted-proxy CIDR (MCP_TRUSTED_PROXIES, from APP_NET_SUBNET).
+  app-net:
+    driver: bridge
+  # data-net isolates the data tier: only backend and worker bridge to it, plus
+  # the dual-homed redis. Postgres is reachable ONLY here.
   data-net:
+    driver: bridge
+
+volumes:
+  pgdata:
+  redisdata:
+  promdata:
+  grafanadata:
+
+# -----------------------------------------------------------------------------
+# Configs (environment-sourced; delivered CLI-side, never bind-mounted).
+#
+# Over an SSH Docker Context a file:/bind source resolves on the daemon host (the
+# VPS has no checkout). The Prometheus config + alerts are non-secret but must
+# reach the container without a bind mount, so their content is read CLI-side and
+# transmitted to the daemon. The justfile recipes and CI populate
+# FLORESU_PROMETHEUS_CONFIG/_ALERTS from the committed deployments/prometheus/*.yml
+# files before any compose call, so the stack stays bootable locally.
+# -----------------------------------------------------------------------------
+configs:
+  prometheus_config:
+    environment: FLORESU_PROMETHEUS_CONFIG
+  prometheus_alerts:
+    environment: FLORESU_PROMETHEUS_ALERTS

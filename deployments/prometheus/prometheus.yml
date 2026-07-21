@@ -1,0 +1,57 @@
+# =============================================================================
+# Prometheus scrape + alerting config for the Floresu stack.
+#
+# Prometheus runs on app-net; backend, mcp, worker and node-exporter are all
+# reachable there by service name. Retention (3d / 2GB) and the query
+# concurrency/timeout guards are set as command flags in docker-compose.yml
+# (--storage.tsdb.retention.time/.size, --query.max-concurrency, --query.timeout);
+# this file owns the scrape targets, the alert rule files, and the Alertmanager
+# wiring.
+#
+# The alert rules live in alerts.yml (delivered alongside this file as an
+# environment-sourced Compose config). Metric names/labels follow a stable
+# convention so rules/dashboards drop in later.
+# =============================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Backend exposes /metrics on both the external (:8000) and internal (:8001)
+  # apps; both are on app-net. /metrics is refused at the tunnel edge.
+  - job_name: backend
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["backend:8000", "backend:8001"]
+
+  # MCP /metrics is scraped here over app-net, never via the tunnel:
+  # mcp.floresu.com only path-exposes the PRM doc + /mcp transport at ingress,
+  # so /metrics is unreachable publicly.
+  - job_name: mcp
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["mcp:9000"]
+
+  # The arq embed worker exposes its metrics (embed_jobs_completed_total,
+  # embed_queue_depth) on WORKER_METRICS_PORT (:9100) over app-net.
+  - job_name: worker
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["worker:9100"]
+
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]
