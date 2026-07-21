@@ -45,6 +45,14 @@ class InMemoryJobApplicationRepository:
         """Seed the 1:1 application->resume link the real query reads off ``resumes``."""
         self._links[application_id] = resume_id
 
+    def applications_for_resume(self, resume_id: int) -> list[JobApplication]:
+        """The applications linked to a resume (public reverse lookup for test doubles)."""
+        return [
+            self._applications[application_id]
+            for application_id, linked in self._links.items()
+            if linked == resume_id and application_id in self._applications
+        ]
+
     async def add(self, application: JobApplication) -> None:
         application.id = self._next_id
         self._next_id += 1
@@ -89,11 +97,8 @@ class RecordingFinalizer:
         from floresu.resumes.schemas import FinalizeResult
 
         self.calls.append((user_id, resume_id))
-        for application_id, linked in self._repo._links.items():
-            if linked == resume_id:
-                application = self._repo._applications.get(application_id)
-                if application is not None:
-                    application.status = JobApplicationStatus.SUBMITTED
+        for application in self._repo.applications_for_resume(resume_id):
+            application.status = JobApplicationStatus.SUBMITTED
         return FinalizeResult(
             resume_id=resume_id,
             status=ResumeStatus.FINALIZED,

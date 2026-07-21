@@ -382,3 +382,39 @@ async def test_finalized_resume_is_read_only(migrated_url: str) -> None:
                 )
     finally:
         await engine.dispose()
+
+
+async def test_finalize_remaps_a_revision_pk_race_to_a_recoverable_conflict(
+    migrated_url: str,
+) -> None:
+    engine = create_db_engine(migrated_url)
+    sessionmaker = create_sessionmaker(engine)
+    store = FakeObjectStore()
+    try:
+        user_id = await _insert_user(sessionmaker, "fin-race@example.com")
+        application_id = await _insert_job_application(sessionmaker, user_id)
+        variant_id = await _insert_variant(sessionmaker, user_id)
+        bullet_id = await _create_bullet(sessionmaker, user_id, "Raced bullet.")
+        resume_id = await _application_resume_with_ref(
+            sessionmaker, user_id, application_id, bullet_id, variant_id
+        )
+        # Simulate a writer that committed the next revision first (a concurrent draft
+        # edit or a double-submit), so finalize's snapshot insert collides on the
+        # (resume_id, revision_no) PK.
+        async with sessionmaker() as session, transaction(session):
+            resume = await session.get(Resume, resume_id)
+            assert resume is not None
+            session.add(
+                ResumeRevision(
+                    resume_id=resume_id,
+                    revision_no=resume.revision + 1,
+                    document={"schema_version": 1, "template_id": "classic", "sections": []},
+                    schema_version=1,
+                )
+            )
+
+        async with sessionmaker() as session:
+            with pytest.raises(Conflict):
+                await _finalizer(session, store).finalize(str(user_id), resume_id, _HUMAN)
+    finally:
+        await engine.dispose()

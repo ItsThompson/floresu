@@ -32,7 +32,7 @@ from floresu.core.db import transaction
 from floresu.core.errors import Validation
 from floresu.core.events import SCOPE_METADATA_KEY, Action, WriteEvent
 from floresu.core.observability import track_failures
-from floresu.resumes.config import DEFAULT_LIST_LIMIT, ENTITY_TYPE
+from floresu.resumes.config import CONCURRENT_WRITE_CONFLICT, DEFAULT_LIST_LIMIT, ENTITY_TYPE
 from floresu.resumes.cow import (
     EditChannel,
     ResumeEditScope,
@@ -90,14 +90,6 @@ from floresu.resumes.schemas import (
     to_summary,
 )
 from floresu.resumes.upcast import CURRENT_SCHEMA_VERSION, load_document
-
-# Recoverable message for a genuine simultaneous write that the optimistic revision
-# guard passed (both writers read the same revision) and the ``resume_revisions``
-# primary key then serialized: the loser's snapshot insert breaches the PK. Remapped
-# to a Conflict so a real race reads as "re-read and retry", not a 500.
-_CONCURRENT_WRITE_CONFLICT = (
-    "This resume was modified concurrently; re-read the latest revision and retry."
-)
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -452,7 +444,7 @@ class ResumeService:
             )
         resolved = resolve_document(document, texts)
         await self._repo.set_bullet_refs(resume.id, sorted(ref_ids))
-        async with conflict_on_duplicate(_CONCURRENT_WRITE_CONFLICT):
+        async with conflict_on_duplicate(CONCURRENT_WRITE_CONFLICT):
             await self._repo.add_revision(
                 ResumeRevision(
                     resume_id=resume.id,
