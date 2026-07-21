@@ -3,11 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 
+import { DEFAULT_MCP_URL } from "@/lib/mcpUrl";
 import { buildAuthUser } from "@/mocks/data";
 import { server } from "@/mocks/server";
 import { renderApp } from "@/test/renderWithProviders";
-
-import { DEFAULT_MCP_URL } from "./constants";
 
 /** Resume-on-mount authenticates a user who has not finished onboarding yet. */
 function startNotOnboarded() {

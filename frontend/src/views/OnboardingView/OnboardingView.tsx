@@ -2,13 +2,13 @@ import type { ReactNode } from "react";
 import { Navigate, useNavigate } from "react-router";
 
 import { useAuth } from "@/auth";
+import { resolveMcpUrl } from "@/lib/mcpUrl";
 
 import { ChoosePathStep } from "./components/ChoosePathStep";
 import { ConnectAgentStep } from "./components/ConnectAgentStep";
 import { HowItWorksStep } from "./components/HowItWorksStep";
 import { OnboardingStepFrame } from "./components/OnboardingStepFrame";
 import { WelcomeStep } from "./components/WelcomeStep";
-import { DEFAULT_MCP_URL } from "./constants";
 import { useOnboarding } from "./hooks/useOnboarding";
 import type { OnboardingStep } from "./types";
 
@@ -31,7 +31,7 @@ export function OnboardingView() {
     return <Navigate to="/" replace />;
   }
 
-  const mcpUrl = import.meta.env.VITE_MCP_URL ?? DEFAULT_MCP_URL;
+  const mcpUrl = resolveMcpUrl();
   const isBusy = state.phase === "submitting";
 
   const steps: Record<OnboardingStep, ReactNode> = {
