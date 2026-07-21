@@ -7,6 +7,7 @@ import { AuthView } from "@/views/AuthView";
 import { ConsentView } from "@/views/ConsentView";
 import { HomeView } from "@/views/HomeView";
 import { OnboardingView } from "@/views/OnboardingView";
+import { WorklogView } from "@/views/WorklogView";
 
 /**
  * The application route tree. Kept separate from `App` (the provider
@@ -41,7 +42,10 @@ export const appRoutes: RouteObject[] = [
           {
             path: "/",
             element: <AppShell />,
-            children: [{ index: true, element: <HomeView /> }],
+            children: [
+              { index: true, element: <HomeView /> },
+              { path: "worklog", element: <WorklogView /> },
+            ],
           },
         ],
       },
