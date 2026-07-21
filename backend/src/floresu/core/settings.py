@@ -99,6 +99,16 @@ class EnvSettings(BaseSettings):
     # tunable settings.
     openai_api_key: SecretStr = SecretStr("")
     openai_base_url: str = "https://api.openai.com"
+    # Cloudflare R2 object storage for rendered PDFs (sections 10 and 12). R2 is
+    # S3-compatible: ``r2_endpoint_url`` is the account endpoint
+    # (https://<account>.r2.cloudflarestorage.com), and the key id/secret authenticate
+    # the S3 API. Empty by default so a dev/test box needs no bucket: preview still
+    # renders and streams bytes, and only export persists, which is faked in tests.
+    # Delivered box-less like the other secrets (section 12).
+    r2_endpoint_url: str = ""
+    r2_access_key_id: SecretStr = SecretStr("")
+    r2_secret_access_key: SecretStr = SecretStr("")
+    r2_bucket: str = ""
 
 
 class AppSettings(BaseModel):
@@ -132,6 +142,12 @@ class AppSettings(BaseModel):
     # settings factory and any non-embedding caller need not supply them.
     openai_api_key: SecretStr = SecretStr("")
     openai_base_url: str = "https://api.openai.com"
+    # R2 object-store knobs (see EnvSettings). Defaulted so the shared test settings
+    # factory and any non-rendering caller need not supply them.
+    r2_endpoint_url: str = ""
+    r2_access_key_id: SecretStr = SecretStr("")
+    r2_secret_access_key: SecretStr = SecretStr("")
+    r2_bucket: str = ""
 
     @property
     def is_dev(self) -> bool:
@@ -169,4 +185,8 @@ def build_app_settings(*, service: str, port: int, env: EnvSettings | None = Non
         oauth_stale_client_max_age_seconds=env.oauth_stale_client_max_age_seconds,
         openai_api_key=env.openai_api_key,
         openai_base_url=env.openai_base_url,
+        r2_endpoint_url=env.r2_endpoint_url,
+        r2_access_key_id=env.r2_access_key_id,
+        r2_secret_access_key=env.r2_secret_access_key,
+        r2_bucket=env.r2_bucket,
     )
