@@ -306,7 +306,8 @@ export interface paths {
         /** Update Source */
         put: operations["update_source_sources__source_id__put"];
         post?: never;
-        delete?: never;
+        /** Delete Source */
+        delete: operations["delete_source_sources__source_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -393,7 +394,8 @@ export interface paths {
         /** Update Entry */
         put: operations["update_entry_worklog__worklog_id__put"];
         post?: never;
-        delete?: never;
+        /** Delete Worklog */
+        delete: operations["delete_worklog_worklog__worklog_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -463,7 +465,8 @@ export interface paths {
         /** Update Bullet */
         put: operations["update_bullet_bullets__bullet_id__put"];
         post?: never;
-        delete?: never;
+        /** Delete Bullet */
+        delete: operations["delete_bullet_bullets__bullet_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -724,7 +727,8 @@ export interface paths {
         /** Update Resume */
         put: operations["update_resume_resumes__resume_id__put"];
         post?: never;
-        delete?: never;
+        /** Delete Resume */
+        delete: operations["delete_resume_resumes__resume_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -781,10 +785,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/account/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Account */
+        get: operations["export_account_account_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Account */
+        delete: operations["delete_account_account_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AccountDeletionReceipt
+         * @description The result of an account deletion: the account is gone and agents are revoked.
+         */
+        AccountDeletionReceipt: {
+            /** Deleted */
+            deleted: boolean;
+            /** Revoked Agent Count */
+            revoked_agent_count: number;
+        };
         /**
          * ActorType
          * @description Who performed a write.
@@ -1043,6 +1091,18 @@ export interface components {
         DecisionResult: {
             /** Redirect Uri */
             redirect_uri: string;
+        };
+        /**
+         * DeletionReceipt
+         * @description The result of a permanent delete: what was removed, and whether a vector went with it.
+         */
+        DeletionReceipt: {
+            /** Entity Type */
+            entity_type: string;
+            /** Entity Id */
+            entity_id: number;
+            /** Embedding Purged */
+            embedding_purged: boolean;
         };
         /**
          * DuplicateSource
@@ -2284,6 +2344,40 @@ export interface operations {
             };
         };
     };
+    delete_source_sources__source_id__delete: {
+        parameters: {
+            query: {
+                /** @description Must be true. This action is permanent and cannot be undone. */
+                confirm: boolean;
+            };
+            header?: never;
+            path: {
+                source_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletionReceipt"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     archive_source_sources__source_id__archive_post: {
         parameters: {
             query?: never;
@@ -2496,6 +2590,40 @@ export interface operations {
             };
         };
     };
+    delete_worklog_worklog__worklog_id__delete: {
+        parameters: {
+            query: {
+                /** @description Must be true. This action is permanent and cannot be undone. */
+                confirm: boolean;
+            };
+            header?: never;
+            path: {
+                worklog_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletionReceipt"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     archive_entry_worklog__worklog_id__archive_post: {
         parameters: {
             query?: never;
@@ -2675,6 +2803,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BulletpointRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_bullet_bullets__bullet_id__delete: {
+        parameters: {
+            query: {
+                /** @description Must be true. This action is permanent and cannot be undone. */
+                confirm: boolean;
+            };
+            header?: never;
+            path: {
+                bullet_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletionReceipt"];
                 };
             };
             /** @description Validation Error */
@@ -3340,6 +3502,40 @@ export interface operations {
             };
         };
     };
+    delete_resume_resumes__resume_id__delete: {
+        parameters: {
+            query: {
+                /** @description Must be true. This action is permanent and cannot be undone. */
+                confirm: boolean;
+            };
+            header?: never;
+            path: {
+                resume_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletionReceipt"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     add_item_resumes__resume_id__items_post: {
         parameters: {
             query?: never;
@@ -3435,6 +3631,58 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResumeRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_account_account_export_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    delete_account_account_delete: {
+        parameters: {
+            query: {
+                /** @description Must be true. This action is permanent and cannot be undone. */
+                confirm: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountDeletionReceipt"];
                 };
             };
             /** @description Validation Error */
