@@ -160,6 +160,12 @@ INTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("PUT", "/identity-variants/{variant_id}"): AccessLevel.INTERNAL_TRUSTED,
     RouteKey("POST", "/identity-variants/{variant_id}/archive"): AccessLevel.INTERNAL_TRUSTED,
     RouteKey("POST", "/identity-variants/{variant_id}/restore"): AccessLevel.INTERNAL_TRUSTED,
+    # Embedding pipeline (internal app only): the arq worker reads an item's text
+    # and writes its vector back over these trusted-header routes. Purge is a POST
+    # (not a DELETE): the agent-facing internal app exposes no DELETE routes.
+    RouteKey("GET", "/embed/items/{kind}/{item_id}"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("PUT", "/embed/items/{kind}/{item_id}"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey("POST", "/embed/items/{kind}/{item_id}/purge"): AccessLevel.INTERNAL_TRUSTED,
 }
 
 

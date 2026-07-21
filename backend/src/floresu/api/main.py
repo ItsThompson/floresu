@@ -34,6 +34,8 @@ from floresu.core.errors import build_exception_handlers
 from floresu.core.identity import StripInboundIdentityMiddleware, deny_all_sessions, require_user
 from floresu.core.redis import create_redis_client
 from floresu.core.settings import EXTERNAL_PORT, EXTERNAL_SERVICE, build_app_settings
+from floresu.embedding.enqueue import build_async_embed_enqueue_consumer
+from floresu.embedding.wiring import build_embed_queue
 from floresu.feed.api import create_feed_router
 from floresu.feed.store import RedisFeedStore
 from floresu.feed.wiring import FEED_STORE_ATTR, build_sse_feed_consumer
@@ -69,6 +71,9 @@ db = create_database(settings.database_url)
 # is the first consumer; later slices reuse it for the queue and rate limits.
 redis_client = create_redis_client(settings.redis_url)
 feed_store = RedisFeedStore(redis_client)
+# The arq queue the embed jobs are enqueued onto (worker-drained). Human/web writes
+# take this asynchronous path; the agent path uses the internal app's fast-path.
+embed_queue = build_embed_queue(settings.redis_url)
 
 # Human session cookies: HS256 codec + bcrypt hasher wired into the /auth router
 # and the real cookie verifier behind require_user.
@@ -166,6 +171,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             yield
         finally:
             await stop_stale_client_cleanup(cleanup_task)
+            await embed_queue.aclose()
             await redis_client.aclose()
 
 
@@ -188,9 +194,15 @@ app: FastAPI = create_app(
 )
 app.state.db = db
 # The write-event seam, composed with the audit consumer as the sole transactional
-# consumer and the SSE feed publish as a post-commit side channel: a committed
-# write fans out to the user's Redis feed channel, and a rolled-back write does not.
-app.state.events = build_write_event_publisher(post_commit=[build_sse_feed_consumer(feed_store)])
+# consumer and two post-commit side channels: the SSE feed publish and the async
+# embed enqueue. A committed content write fans out to the user's Redis feed
+# channel and enqueues one embed job; a rolled-back write does neither.
+app.state.events = build_write_event_publisher(
+    post_commit=[
+        build_sse_feed_consumer(feed_store),
+        build_async_embed_enqueue_consumer(embed_queue),
+    ]
+)
 # The feed store the SSE endpoint streams from (resolved via get_feed_store).
 setattr(app.state, FEED_STORE_ATTR, feed_store)
 # Replace the deny-all default with the real signed-JWT + sid-blacklist verifier.
