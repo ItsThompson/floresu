@@ -100,6 +100,8 @@ def route_write_backend(request: httpx.Request) -> httpx.Response:
         return _ok(render_reference())
     if path.endswith("/remove"):
         return _ok(resume_record())
+    if method == "POST" and path.endswith("/tags"):
+        return _ok(worklog_record())
     if path == "/sources/reorder":
         return _ok([role_summary()])
     if path == "/skills/reorder":
