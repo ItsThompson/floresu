@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from floresu_mcp.tools_jobapp import register_jobapp_read_tools
 from floresu_mcp.tools_library import register_library_read_tools
 from floresu_mcp.tools_profile import register_profile_read_tools
 from floresu_mcp.tools_resume import register_resume_read_tools
@@ -37,3 +38,4 @@ def register_read_tools(mcp: FastMCP, client: InternalApiClient, limiter: RateLi
     register_library_read_tools(mcp, client, limiter)
     register_resume_read_tools(mcp, client, limiter)
     register_search_read_tools(mcp, client, limiter)
+    register_jobapp_read_tools(mcp, client, limiter)

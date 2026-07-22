@@ -8,9 +8,8 @@ composes the production graph (httpx-backed JWKS discovery + internal client +
 Redis-backed limiter) and manages their lifecycle.
 
 The MCP tool transport that sits behind the bearer boundary is routed here: the
-read tools via :func:`register_read_tools` and the foundation smoke tools via
-:func:`register_smoke_tools`. The write tool surface registers onto the same
-server in a later ticket.
+read tools via :func:`register_read_tools` and the write tools via
+:func:`register_write_tools`, composed onto one shared server.
 """
 
 from __future__ import annotations
@@ -43,7 +42,7 @@ from floresu_mcp.state import RsDeps, set_rs_deps
 from floresu_mcp.tokens import AgentTokenVerifier
 from floresu_mcp.tool_metrics import TOOL_METRICS_REGISTRY
 from floresu_mcp.tools_read import register_read_tools
-from floresu_mcp.tools_smoke import register_smoke_tools
+from floresu_mcp.tools_write import register_write_tools
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -116,16 +115,14 @@ def create_rs_app(
 
     verifier = AgentTokenVerifier(key_provider, issuer=settings.issuer, resource=settings.resource)
 
-    # The MCP tool surface: register the read tools plus the foundation smoke tools
-    # onto the shared server, then route its Streamable HTTP transport under the
-    # bearer-guarded MCP prefix. The write tool surface registers here too in a
-    # later ticket. Calling streamable_http_app() has the side effect of creating
-    # the session manager (its property raises otherwise); the returned sub-app is
-    # not mounted (a Mount would 307-redirect /mcp -> /mcp/, see the explicit
-    # routes below).
+    # The MCP tool surface: register the read + write tools onto the shared server,
+    # then route its Streamable HTTP transport under the bearer-guarded MCP prefix.
+    # Calling streamable_http_app() has the side effect of creating the session
+    # manager (its property raises otherwise); the returned sub-app is not mounted
+    # (a Mount would 307-redirect /mcp -> /mcp/, see the explicit routes below).
     mcp = create_mcp_server(settings)
     register_read_tools(mcp, internal_client, rate_limiter)
-    register_smoke_tools(mcp, internal_client, rate_limiter)
+    register_write_tools(mcp, internal_client, rate_limiter)
     mcp.streamable_http_app()
     transport = StreamableHTTPASGIApp(mcp.session_manager)
 
