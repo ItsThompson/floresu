@@ -9,8 +9,9 @@ included) or removed (an id omitted). IDs, timestamps, the content hash, and the
 
 A read (:class:`BulletpointRecord`) is one shape for both the list and the single
 read: the bullet plus its resolved provenance edges, its ``revision`` token, and
-``used_in_count`` (how many resumes reference it). The count is a resume concept;
-resumes do not exist yet, so it reads 0 until they do.
+``used_in_count`` (how many resumes reference it). The list and get reads supply the
+real count from the :class:`~floresu.library.usage.BulletUsageCounter` port; write
+responses leave it at 0 (the client refetches the list, which is truthful).
 """
 
 from __future__ import annotations
@@ -20,10 +21,6 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 from floresu.library.models import Bulletpoint
-
-# The "used in N" count is powered by resume references, which are not built yet.
-# Library reads carry this placeholder until resumes exist and supply the real one.
-PLACEHOLDER_USED_IN_COUNT = 0
 
 
 class BulletpointWrite(BaseModel):
@@ -58,9 +55,13 @@ def to_record(
     source_ids: list[int],
     worklog_ids: list[int],
     *,
-    used_in_count: int = PLACEHOLDER_USED_IN_COUNT,
+    used_in_count: int = 0,
 ) -> BulletpointRecord:
-    """Project a bullet plus its resolved edge lists onto the read shape."""
+    """Project a bullet plus its resolved edge lists onto the read shape.
+
+    ``used_in_count`` defaults to 0; the list and get reads pass the real count from
+    the usage port.
+    """
     return BulletpointRecord(
         id=bullet.id,
         text=bullet.text,

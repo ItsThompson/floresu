@@ -46,6 +46,7 @@ if TYPE_CHECKING:
     from floresu.core.events import WriteEventPublisher
     from floresu.library.repository import LibraryRepository
     from floresu.library.schemas import BulletpointWrite
+    from floresu.library.usage import BulletUsageCounter
 
 
 @track_failures("library")
@@ -57,12 +58,14 @@ class LibraryService:
         session: AsyncSession,
         repo: LibraryRepository,
         publisher: WriteEventPublisher,
+        usage: BulletUsageCounter,
         *,
         clock: Clock = utcnow,
     ) -> None:
         self._session = session
         self._repo = repo
         self._publisher = publisher
+        self._usage = usage
         self._clock = clock
 
     async def create(
@@ -91,12 +94,13 @@ class LibraryService:
         return await self._record_after_write(bullet, source_ids, worklog_ids)
 
     async def get(self, user_id: str, bullet_id: int) -> BulletpointRecord:
-        """Read one bullet with its framed sources and worklog entries."""
+        """Read one bullet with its framed sources, worklog entries, and usage count."""
         pk = _require_user_pk(user_id)
         bullet = await self._repo.get(pk, bullet_id)
         if bullet is None:
             raise _not_found(bullet_id)
-        return await self._record_after_write(bullet)
+        counts = await self._usage.used_in_counts([bullet_id])
+        return await self._record_after_write(bullet, used_in_count=counts.get(bullet_id, 0))
 
     async def list_bullets(
         self, user_id: str, *, include_archived: bool = False, limit: int = DEFAULT_LIST_LIMIT
@@ -107,8 +111,16 @@ class LibraryService:
         ids = [bullet.id for bullet in bullets]
         sources = await self._repo.source_ids_by_bullet(ids)
         worklogs = await self._repo.worklog_ids_by_bullet(ids)
+        # One batched grouped count for the whole page: no per-bullet N+1. An id no
+        # resume references is absent, so it defaults to 0 here.
+        counts = await self._usage.used_in_counts(ids)
         return [
-            to_record(bullet, sources.get(bullet.id, []), worklogs.get(bullet.id, []))
+            to_record(
+                bullet,
+                sources.get(bullet.id, []),
+                worklogs.get(bullet.id, []),
+                used_in_count=counts.get(bullet.id, 0),
+            )
             for bullet in bullets
         ]
 
@@ -201,18 +213,23 @@ class LibraryService:
         bullet: Bulletpoint,
         source_ids: list[int] | None = None,
         worklog_ids: list[int] | None = None,
+        *,
+        used_in_count: int = 0,
     ) -> BulletpointRecord:
         """Build the read record after a write, reflecting the bullet's current edges.
 
         Archive/restore/get do not change edges, so they re-read them; create/update
-        pass the sets they just wrote to avoid a redundant round trip.
+        pass the sets they just wrote to avoid a redundant round trip. ``used_in_count``
+        defaults to 0 (create/update/archive/restore); get passes the real count.
         """
         bullet_id = bullet.id
         if source_ids is None:
             source_ids = (await self._repo.source_ids_by_bullet([bullet_id])).get(bullet_id, [])
         if worklog_ids is None:
             worklog_ids = (await self._repo.worklog_ids_by_bullet([bullet_id])).get(bullet_id, [])
-        return to_record(bullet, sorted(source_ids), sorted(worklog_ids))
+        return to_record(
+            bullet, sorted(source_ids), sorted(worklog_ids), used_in_count=used_in_count
+        )
 
     async def _publish(
         self,

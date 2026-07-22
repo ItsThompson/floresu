@@ -59,6 +59,8 @@ class ResumeRepository(Protocol):
 
     async def used_in_count(self, bullet_id: int) -> int: ...
 
+    async def used_in_counts(self, bullet_ids: Sequence[int]) -> dict[int, int]: ...
+
 
 class SqlAlchemyResumeRepository:
     """The production repository over a request-scoped :class:`AsyncSession`."""
@@ -127,3 +129,17 @@ class SqlAlchemyResumeRepository:
             .where(ResumeBulletRef.bullet_id == bullet_id)
         )
         return result.scalar_one()
+
+    async def used_in_counts(self, bullet_ids: Sequence[int]) -> dict[int, int]:
+        # The batched form of used_in_count: one grouped count for a whole page of
+        # bullets, so a library list read never issues one query per bullet. Ids with
+        # no reference row are simply absent from the grouped result.
+        if not bullet_ids:
+            return {}
+        result = await self._session.execute(
+            select(ResumeBulletRef.bullet_id, func.count())
+            .where(ResumeBulletRef.bullet_id.in_(bullet_ids))
+            .group_by(ResumeBulletRef.bullet_id)
+        )
+        # The grouped (bullet_id, count) rows map directly to the returned dict.
+        return dict(result.tuples().all())
