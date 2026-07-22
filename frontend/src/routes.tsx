@@ -7,6 +7,7 @@ import { AuthView } from "@/views/AuthView";
 import { ConsentView } from "@/views/ConsentView";
 import { HomeView } from "@/views/HomeView";
 import { IdentityVariantsView } from "@/views/IdentityVariantsView";
+import { LibraryView } from "@/views/LibraryView";
 import { OnboardingView } from "@/views/OnboardingView";
 import { ProfileHubView } from "@/views/ProfileHubView";
 import { ProfileSourceDetailView } from "@/views/ProfileSourceDetailView";
@@ -49,6 +50,7 @@ export const appRoutes: RouteObject[] = [
             children: [
               { index: true, element: <HomeView /> },
               { path: "worklog", element: <WorklogView /> },
+              { path: "library", element: <LibraryView /> },
               // Career Profile: hub, source detail, skills, identities.
               { path: "profile", element: <ProfileHubView /> },
               { path: "profile/skills", element: <SkillsView /> },
