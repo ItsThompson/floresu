@@ -7,6 +7,7 @@ import { server } from "@/mocks/server";
 import { renderWithProviders } from "@/test/renderWithProviders";
 
 import { LibraryView } from "./LibraryView";
+import { SAVE_ERROR_FALLBACK } from "./constants";
 import { installLibraryApi } from "./__tests__/api";
 import {
   buildBullet,
@@ -327,5 +328,102 @@ describe("LibraryView", () => {
     const tagCheckbox = screen.getByRole("checkbox", { name: "backend" });
     await user.click(tagCheckbox);
     expect(tagCheckbox).toBeChecked();
+  });
+
+  it("sends If-Match with the loaded bullet revision on an edit save", async () => {
+    installLibraryApi({
+      sources: [acme],
+      bullets: [buildBullet({ id: 10, text: "Old framing", source_ids: [1], revision: 4 })],
+    });
+    let sentIfMatch: string | null = null;
+    server.use(
+      http.put("*/bullets/:id", async ({ request }) => {
+        sentIfMatch = request.headers.get("If-Match");
+        return HttpResponse.json(
+          buildBullet({ id: 10, text: "Refined framing", source_ids: [1], revision: 5 }),
+        );
+      }),
+    );
+
+    renderWithProviders(<LibraryView />);
+    await screen.findByText("Old framing");
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.clear(screen.getByLabelText("Statement"));
+    await user.type(screen.getByLabelText("Statement"), "Refined framing");
+    await user.click(screen.getByRole("button", { name: "Save bullet" }));
+
+    // The successful save closes the editor; assert the sent optimistic token.
+    await waitFor(() =>
+      expect(screen.queryByRole("form", { name: "Edit bullet" })).not.toBeInTheDocument(),
+    );
+    expect(sentIfMatch).toBe("4");
+  });
+
+  it("opens the stale prompt on a 409 and does not report success", async () => {
+    const handle = installLibraryApi({
+      sources: [acme],
+      bullets: [buildBullet({ id: 10, text: "Loaded framing", source_ids: [1], revision: 1 })],
+    });
+
+    renderWithProviders(<LibraryView />);
+    await screen.findByText("Loaded framing");
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    // A concurrent writer changes the bullet after we loaded it.
+    handle.recordExternalEdit(10, "Changed by someone else");
+
+    await user.clear(screen.getByLabelText("Statement"));
+    await user.type(screen.getByLabelText("Statement"), "My local edit");
+    await user.click(screen.getByRole("button", { name: "Save bullet" }));
+
+    // The recoverable prompt appears; the edit was not applied.
+    expect(
+      await screen.findByRole("dialog", { name: "This bulletpoint changed" }),
+    ).toBeInTheDocument();
+    // No false success: the editor stays open and no generic save error shows.
+    expect(screen.getByRole("form", { name: "Edit bullet" })).toBeInTheDocument();
+    expect(screen.queryByText(SAVE_ERROR_FALLBACK)).not.toBeInTheDocument();
+    // The stored bullet still holds the concurrent writer's text (no overwrite).
+    expect(handle.getBullets().find((entry) => entry.id === 10)?.text).toBe(
+      "Changed by someone else",
+    );
+  });
+
+  it("re-reads the current bullet and lets a retried save succeed", async () => {
+    const handle = installLibraryApi({
+      sources: [acme],
+      bullets: [buildBullet({ id: 10, text: "Loaded framing", source_ids: [1], revision: 1 })],
+    });
+
+    renderWithProviders(<LibraryView />);
+    await screen.findByText("Loaded framing");
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    handle.recordExternalEdit(10, "Server's newer text");
+
+    await user.clear(screen.getByLabelText("Statement"));
+    await user.type(screen.getByLabelText("Statement"), "My stale edit");
+    await user.click(screen.getByRole("button", { name: "Save bullet" }));
+
+    await screen.findByRole("dialog", { name: "This bulletpoint changed" });
+
+    // Re-read reopens the editor on the server's current text, not the stale edit.
+    await user.click(screen.getByRole("button", { name: "Re-read latest" }));
+    await waitFor(() =>
+      expect(screen.getByLabelText("Statement")).toHaveValue("Server's newer text"),
+    );
+    expect(
+      screen.queryByRole("dialog", { name: "This bulletpoint changed" }),
+    ).not.toBeInTheDocument();
+
+    // A retried save now matches the current revision and succeeds.
+    await user.clear(screen.getByLabelText("Statement"));
+    await user.type(screen.getByLabelText("Statement"), "Reconciled edit");
+    await user.click(screen.getByRole("button", { name: "Save bullet" }));
+
+    await screen.findByText("Reconciled edit");
+    expect(screen.queryByRole("form", { name: "Edit bullet" })).not.toBeInTheDocument();
+    expect(handle.getBullets().find((entry) => entry.id === 10)?.text).toBe("Reconciled edit");
   });
 });
