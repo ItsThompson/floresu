@@ -13,6 +13,7 @@ import { ProfileHubView } from "@/views/ProfileHubView";
 import { ProfileSourceDetailView } from "@/views/ProfileSourceDetailView";
 import { ResumeEditorView } from "@/views/ResumeEditorView";
 import { ResumesListView } from "@/views/ResumesListView";
+import { settingsRoute } from "@/views/SettingsView";
 import { SkillsView } from "@/views/SkillsView";
 import { WorklogView } from "@/views/WorklogView";
 
@@ -61,6 +62,7 @@ export const appRoutes: RouteObject[] = [
               { path: "profile/identities", element: <IdentityVariantsView /> },
               { path: "profile/sources/new", element: <ProfileSourceDetailView /> },
               { path: "profile/sources/:sourceId", element: <ProfileSourceDetailView /> },
+              settingsRoute,
             ],
           },
         ],
