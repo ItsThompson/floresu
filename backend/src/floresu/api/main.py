@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 from fastapi.middleware.cors import CORSMiddleware
 
+from floresu import models_registry as _models_registry  # noqa: F401
 from floresu.accounts.api import create_accounts_router
 from floresu.accounts.config import (
     build_cookie_config,

@@ -18,24 +18,16 @@ from typing import TYPE_CHECKING
 
 from alembic import context
 
-# Import every domain's ORM models so their tables attach to ``Base.metadata``
-# and ``--autogenerate`` diffs the real schema. Without this import the accounts
-# tables would be absent from the metadata and autogenerate would emit a spurious
-# ``DROP TABLE users`` / ``DROP TABLE revoked_sessions``. Add new domains here as
-# their slices land.
-from floresu.accounts import models as _accounts_models  # noqa: F401
-from floresu.audit import models as _audit_models  # noqa: F401
+# Import every domain's ORM models (via the shared registry) so their tables
+# attach to ``Base.metadata`` and ``--autogenerate`` diffs the real schema.
+# Without this the accounts tables would be absent from the metadata and
+# autogenerate would emit a spurious ``DROP TABLE users`` / ``DROP TABLE
+# revoked_sessions``. The same registry is imported by both ASGI apps so no
+# process runs with a partial metadata.
+from floresu import models_registry as _models_registry  # noqa: F401
 from floresu.core.db import create_db_engine
 from floresu.core.orm import Base
 from floresu.core.settings import EnvSettings
-from floresu.embedding import models as _embedding_models  # noqa: F401
-from floresu.library import models as _library_models  # noqa: F401
-from floresu.oauth import models as _oauth_models  # noqa: F401
-from floresu.profile import models as _profile_models  # noqa: F401
-from floresu.profile.skills import models as _skill_models  # noqa: F401
-from floresu.profile.variants import models as _variant_models  # noqa: F401
-from floresu.resumes import models as _resume_models  # noqa: F401
-from floresu.worklog import models as _worklog_models  # noqa: F401
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import Connection

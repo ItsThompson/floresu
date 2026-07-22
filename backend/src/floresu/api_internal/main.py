@@ -13,6 +13,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
+from floresu import models_registry as _models_registry  # noqa: F401
 from floresu.audit.wiring import build_write_event_publisher
 from floresu.core.actor import resolve_internal_actor
 from floresu.core.app_factory import create_app
