@@ -2,6 +2,12 @@ import type { components } from "@/api";
 
 type AuthUser = components["schemas"]["AuthenticatedUser"];
 type FeedEvent = components["schemas"]["AuditEntry"];
+type SourceSummary = components["schemas"]["SourceSummary"];
+type SourceRecord = components["schemas"]["SourceRecord"];
+type SkillRead = components["schemas"]["SkillRead"];
+type IdentityVariantRead = components["schemas"]["IdentityVariantRead"];
+type BulletpointRecord = components["schemas"]["BulletpointRecord"];
+type WorklogSummary = components["schemas"]["WorklogSummary"];
 
 /**
  * Build an authenticated-user fixture. Defaults to a completed-onboarding demo
@@ -53,3 +59,83 @@ export const mockFeedHistory: FeedEvent[] = [
   }),
   buildFeedEvent({ id: 1, action: "create", entity_type: "worklog", entity_id: 12 }),
 ];
+
+// --- Career Profile fixtures (Ticket 26) ---------------------------------
+
+/** Build a source list-row (common columns only). Defaults to an ongoing role. */
+export function buildSourceSummary(overrides?: Partial<SourceSummary>): SourceSummary {
+  return {
+    id: 100,
+    kind: "role",
+    display_label: "Acme — Engineer",
+    date_start: "2024-01-01",
+    date_end: null,
+    summary: null,
+    sort_order: 0,
+    archived_at: null,
+    ...overrides,
+  };
+}
+
+/** Build a full source record with its typed subtype detail joined in. */
+export function buildSourceRecord(overrides?: Partial<SourceRecord>): SourceRecord {
+  return {
+    id: 100,
+    kind: "role",
+    display_label: "Acme — Engineer",
+    date_start: "2024-01-01",
+    date_end: null,
+    summary: "Built things.",
+    sort_order: 0,
+    archived_at: null,
+    detail: { company: "Acme", job_title: "Engineer", title_aliases: [], location: null },
+    ...overrides,
+  };
+}
+
+/** Build a curated skill with a derived usage count. */
+export function buildSkill(overrides?: Partial<SkillRead>): SkillRead {
+  return { id: 200, name: "React", usage_count: 0, sort_order: 0, archived_at: null, ...overrides };
+}
+
+/** Build an identity variant. Defaults to a non-default variant with an email. */
+export function buildVariant(overrides?: Partial<IdentityVariantRead>): IdentityVariantRead {
+  return {
+    id: 300,
+    label: "Default",
+    full_name: "Taylor Dev",
+    contact: { email: "taylor@floresu.app", phone: null, location: null },
+    links: [],
+    is_default: false,
+    archived_at: null,
+    ...overrides,
+  };
+}
+
+/** Build a canonical bullet framing. */
+export function buildBullet(overrides?: Partial<BulletpointRecord>): BulletpointRecord {
+  return {
+    id: 400,
+    text: "Improved engagement 35%.",
+    source_ids: [100],
+    worklog_ids: [],
+    used_in_count: 1,
+    revision: 1,
+    archived_at: null,
+    ...overrides,
+  };
+}
+
+/** Build a worklog timeline row. */
+export function buildWorklogSummary(overrides?: Partial<WorklogSummary>): WorklogSummary {
+  return {
+    id: 500,
+    title: "Shipped payments migration",
+    entry_date: "2025-09-18",
+    description: null,
+    tags: [],
+    source_ids: [100],
+    archived_at: null,
+    ...overrides,
+  };
+}

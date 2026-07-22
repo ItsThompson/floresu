@@ -6,7 +6,11 @@ import { RequireOnboarded } from "@/components/RequireOnboarded";
 import { AuthView } from "@/views/AuthView";
 import { ConsentView } from "@/views/ConsentView";
 import { HomeView } from "@/views/HomeView";
+import { IdentityVariantsView } from "@/views/IdentityVariantsView";
 import { OnboardingView } from "@/views/OnboardingView";
+import { ProfileHubView } from "@/views/ProfileHubView";
+import { ProfileSourceDetailView } from "@/views/ProfileSourceDetailView";
+import { SkillsView } from "@/views/SkillsView";
 import { WorklogView } from "@/views/WorklogView";
 
 /**
@@ -45,6 +49,12 @@ export const appRoutes: RouteObject[] = [
             children: [
               { index: true, element: <HomeView /> },
               { path: "worklog", element: <WorklogView /> },
+              // Career Profile: hub, source detail, skills, identities.
+              { path: "profile", element: <ProfileHubView /> },
+              { path: "profile/skills", element: <SkillsView /> },
+              { path: "profile/identities", element: <IdentityVariantsView /> },
+              { path: "profile/sources/new", element: <ProfileSourceDetailView /> },
+              { path: "profile/sources/:sourceId", element: <ProfileSourceDetailView /> },
             ],
           },
         ],
