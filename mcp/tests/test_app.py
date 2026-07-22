@@ -172,7 +172,9 @@ def test_valid_token_lists_the_smoke_tools_on_both_paths() -> None:
         assert no_slash.status_code == 200, no_slash.text
         tools = harness.list_tools(client)
 
-    assert {tool["name"] for tool in tools} == _SMOKE_TOOLS
+    # The smoke tools remain registered; the read tools register alongside them
+    # (asserted in test_tools_read), so this foundation check is a subset.
+    assert {tool["name"] for tool in tools} >= _SMOKE_TOOLS
 
 
 def test_rs_dependency_facade_is_wired(make_settings: MakeSettings) -> None:
