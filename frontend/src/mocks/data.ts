@@ -17,7 +17,7 @@ type WorklogSummary = components["schemas"]["WorklogSummary"];
 export function buildAuthUser(overrides?: Partial<AuthUser>): AuthUser {
   return {
     id: 1,
-    email: "demo@floresu.app",
+    email: "demo@floresu.com",
     created_at: "2026-01-01T00:00:00Z",
     has_completed_onboarding: true,
     ...overrides,
@@ -104,7 +104,7 @@ export function buildVariant(overrides?: Partial<IdentityVariantRead>): Identity
     id: 300,
     label: "Default",
     full_name: "Taylor Dev",
-    contact: { email: "taylor@floresu.app", phone: null, location: null },
+    contact: { email: "taylor@floresu.com", phone: null, location: null },
     links: [],
     is_default: false,
     archived_at: null,

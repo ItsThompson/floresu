@@ -14,7 +14,7 @@ import { formatDate } from "./constants";
  * to Account, and the Account section, driven through the real route tree.
  */
 
-const USER = buildAuthUser({ email: "person@floresu.app", created_at: "2026-01-15T00:00:00Z" });
+const USER = buildAuthUser({ email: "person@floresu.com", created_at: "2026-01-15T00:00:00Z" });
 
 function authenticateOnResume() {
   server.use(http.post("*/auth/refresh", () => HttpResponse.json(USER)));

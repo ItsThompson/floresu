@@ -37,7 +37,7 @@ describe("useAuthSession", () => {
 
     let outcome;
     await act(async () => {
-      outcome = await result.current.login({ email: "demo@floresu.app", password: "Str0ngPass" });
+      outcome = await result.current.login({ email: "demo@floresu.com", password: "Str0ngPass" });
     });
     expect(outcome).toEqual({ ok: true });
     expect(result.current.status).toBe("authenticated");
@@ -58,7 +58,7 @@ describe("useAuthSession", () => {
 
     let outcome;
     await act(async () => {
-      outcome = await result.current.register({ email: "demo@floresu.app", password: "Str0ngPass" });
+      outcome = await result.current.register({ email: "demo@floresu.com", password: "Str0ngPass" });
     });
     expect(outcome).toEqual({
       ok: false,

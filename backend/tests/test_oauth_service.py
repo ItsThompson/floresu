@@ -237,7 +237,7 @@ async def test_start_authorization_parks_and_returns_the_consent_url() -> None:
             state="xyz",
         )
     )
-    assert consent_url.startswith("https://floresu.app/authorize?")
+    assert consent_url.startswith("https://floresu.com/authorize?")
     request_id = _query(consent_url)["auth_request_id"]
     assert await h.repo.get_auth_request(request_id) is not None
 

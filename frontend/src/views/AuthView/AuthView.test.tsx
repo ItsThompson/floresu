@@ -29,7 +29,7 @@ describe("AuthView", () => {
     // Default MSW login returns the demo user.
     renderApp(["/signin"]);
     const user = userEvent.setup();
-    await user.type(await screen.findByLabelText("Email"), "demo@floresu.app");
+    await user.type(await screen.findByLabelText("Email"), "demo@floresu.com");
     await user.type(screen.getByLabelText("Password"), "Str0ngPass");
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
@@ -44,13 +44,13 @@ describe("AuthView", () => {
     );
     renderApp(["/signin"]);
     const user = userEvent.setup();
-    await user.type(await screen.findByLabelText("Email"), "demo@floresu.app");
+    await user.type(await screen.findByLabelText("Email"), "demo@floresu.com");
     await user.type(screen.getByLabelText("Password"), "WrongPass9");
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Invalid email or password.");
     // Input is preserved for retry; the form never reports a false success.
-    expect(screen.getByLabelText("Email")).toHaveValue("demo@floresu.app");
+    expect(screen.getByLabelText("Email")).toHaveValue("demo@floresu.com");
     expect(screen.queryByRole("heading", { name: "Home" })).not.toBeInTheDocument();
   });
 });

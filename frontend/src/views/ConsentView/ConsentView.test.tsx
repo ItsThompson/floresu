@@ -202,7 +202,7 @@ describe("ConsentView", () => {
 
     // Default MSW login returns the demo user; sign-in should land back on consent.
     const user = userEvent.setup();
-    await user.type(screen.getByLabelText("Email"), "demo@floresu.app");
+    await user.type(screen.getByLabelText("Email"), "demo@floresu.com");
     await user.type(screen.getByLabelText("Password"), "Str0ngPass");
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 

@@ -65,7 +65,7 @@ describe("ConfirmDestructiveDialog", () => {
         title="Delete your account?"
         description="Irreversible."
         confirmLabel="Delete account"
-        typePhrase="me@floresu.app"
+        typePhrase="me@floresu.com"
         onConfirm={onConfirm}
         onCancel={vi.fn()}
       />,
@@ -77,7 +77,7 @@ describe("ConfirmDestructiveDialog", () => {
     expect(confirm).toBeDisabled();
 
     await userEvent.clear(screen.getByLabelText("Confirmation phrase"));
-    await userEvent.type(screen.getByLabelText("Confirmation phrase"), "me@floresu.app");
+    await userEvent.type(screen.getByLabelText("Confirmation phrase"), "me@floresu.com");
     expect(confirm).toBeEnabled();
   });
 

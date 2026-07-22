@@ -45,10 +45,10 @@ def test_cookie_is_insecure_and_host_only_in_dev(make_settings: MakeSettings) ->
 
 def test_cookie_is_secure_and_domain_pinned_in_prod(make_settings: MakeSettings) -> None:
     config = build_cookie_config(
-        make_settings(environment="production", cookie_domain=".floresu.app")
+        make_settings(environment="production", cookie_domain=".floresu.com")
     )
     assert config.secure is True
-    assert config.domain == ".floresu.app"
+    assert config.domain == ".floresu.com"
 
 
 def test_session_config_reads_the_settings_secret(make_settings: MakeSettings) -> None:

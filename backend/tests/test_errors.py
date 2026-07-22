@@ -92,7 +92,7 @@ def test_each_error_maps_to_its_status_and_code(path: str, status: int, code: st
     assert body["status"] == status
     assert body["code"] == code
     assert body["type"].endswith(f"/{code.lower().replace('_', '-')}")
-    assert body["type"].startswith("https://floresu.app/errors/")
+    assert body["type"].startswith("https://floresu.com/errors/")
     assert body["title"]
     assert body["detail"]
     assert body["instance"] == path
@@ -123,7 +123,7 @@ def test_request_validation_error_uses_the_same_field_map_shape() -> None:
     assert response.headers["content-type"] == "application/problem+json"
     body = response.json()
     assert body["code"] == "VALIDATION"
-    assert body["type"] == "https://floresu.app/errors/validation"
+    assert body["type"] == "https://floresu.com/errors/validation"
     assert "body.title" in body["fields"]
     assert "violations" not in body
 
@@ -154,7 +154,7 @@ def test_unhandled_exception_renders_generic_500_problem_json(make_settings: Mak
     assert response.status_code == 500
     assert response.headers["content-type"] == "application/problem+json"
     assert response.json() == {
-        "type": "https://floresu.app/errors/internal",
+        "type": "https://floresu.com/errors/internal",
         "title": "Internal server error",
         "status": 500,
         "code": "INTERNAL",

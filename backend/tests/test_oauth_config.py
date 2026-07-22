@@ -17,13 +17,13 @@ from tests.oauth_fakes import build_test_config
 
 def test_endpoint_urls_are_built_from_the_pinned_issuer() -> None:
     config = build_test_config()
-    assert config.endpoint(TOKEN_PATH) == "https://api.floresu.app/oauth/token"
-    assert config.endpoint(AUTHORIZE_PATH) == "https://api.floresu.app/oauth/authorize"
+    assert config.endpoint(TOKEN_PATH) == "https://api.floresu.com/oauth/token"
+    assert config.endpoint(AUTHORIZE_PATH) == "https://api.floresu.com/oauth/authorize"
 
 
 def test_consent_url_is_the_pinned_spa_origin() -> None:
     config = build_test_config()
-    assert config.consent_url == "https://floresu.app/authorize"
+    assert config.consent_url == "https://floresu.com/authorize"
 
 
 def test_single_full_scope_is_the_only_supported_scope() -> None:
@@ -38,7 +38,7 @@ def test_canonical_resource_defaults_missing_to_the_mcp_resource() -> None:
 
 def test_canonical_resource_matches_ignoring_trailing_slash() -> None:
     config = build_test_config()
-    assert config.canonical_resource("https://mcp.floresu.app/") == config.resource
+    assert config.canonical_resource("https://mcp.floresu.com/") == config.resource
 
 
 def test_canonical_resource_rejects_a_foreign_audience() -> None:
@@ -54,17 +54,17 @@ def test_build_oauth_config_reads_pinned_settings() -> None:
         log_level="info",
         host="0.0.0.0",
         database_url="postgresql+asyncpg://floresu:floresu@localhost:5432/floresu",
-        public_base_url="https://api.floresu.app",
-        app_public_url="https://floresu.app",
-        mcp_public_url="https://mcp.floresu.app",
+        public_base_url="https://api.floresu.com",
+        app_public_url="https://floresu.com",
+        mcp_public_url="https://mcp.floresu.com",
         oauth_key_id="prod-kid",
         oauth_access_ttl_seconds=600,
         oauth_refresh_ttl_seconds=1200,
     )
     config = build_oauth_config(settings)
-    assert config.issuer == "https://api.floresu.app"
-    assert config.consent_base_url == "https://floresu.app"
-    assert config.resource == "https://mcp.floresu.app"
+    assert config.issuer == "https://api.floresu.com"
+    assert config.consent_base_url == "https://floresu.com"
+    assert config.resource == "https://mcp.floresu.com"
     assert config.key_id == "prod-kid"
     assert config.access_ttl == timedelta(seconds=600)
     assert config.refresh_ttl == timedelta(seconds=1200)

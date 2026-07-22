@@ -31,7 +31,7 @@ class InMemoryRateLimitStore:
 def json_error(status: int, code: str, detail: str, **extra: Any) -> httpx.Response:
     """A backend RFC 9457 problem+json error response for the harness."""
     body = {
-        "type": f"https://floresu.app/errors/{code.lower()}",
+        "type": f"https://floresu.com/errors/{code.lower()}",
         "title": code,
         "status": status,
         "code": code,

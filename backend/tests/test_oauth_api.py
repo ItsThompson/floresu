@@ -77,7 +77,7 @@ def _build_client(make_settings: MakeSettings, **settings_overrides: object) -> 
         authorization_provider=auth_provider,
         token_provider=token_provider,
     )
-    settings = make_settings(cors_origin="https://floresu.app", **settings_overrides)
+    settings = make_settings(cors_origin="https://floresu.com", **settings_overrides)
     app: FastAPI = create_app(
         settings,
         routers=[router],
@@ -149,8 +149,8 @@ def test_as_metadata_urls_come_from_config_not_request_host(make_settings: MakeS
     )
     assert response.status_code == 200
     body = response.json()
-    assert body["issuer"] == "https://api.floresu.app"
-    assert body["token_endpoint"] == "https://api.floresu.app/oauth/token"
+    assert body["issuer"] == "https://api.floresu.com"
+    assert body["token_endpoint"] == "https://api.floresu.com/oauth/token"
     assert body["code_challenge_methods_supported"] == ["S256"]
     assert response.headers["cache-control"] == "no-store"
 
@@ -205,7 +205,7 @@ def test_authorize_redirects_to_the_spa_consent_url(make_settings: MakeSettings)
         follow_redirects=False,
     )
     assert response.status_code == 302
-    assert response.headers["location"].startswith("https://floresu.app/authorize?")
+    assert response.headers["location"].startswith("https://floresu.com/authorize?")
 
 
 def test_authorize_invalid_request_is_oauth_error_json(make_settings: MakeSettings) -> None:
@@ -407,8 +407,8 @@ def test_me_clients_lists_and_revokes_own_clients(make_settings: MakeSettings) -
 
 def test_cors_allows_the_configured_origin_with_credentials(make_settings: MakeSettings) -> None:
     fx = _build_client(make_settings)
-    response = fx.client.get("/oauth/jwks", headers={"origin": "https://floresu.app"})
-    assert response.headers["access-control-allow-origin"] == "https://floresu.app"
+    response = fx.client.get("/oauth/jwks", headers={"origin": "https://floresu.com"})
+    assert response.headers["access-control-allow-origin"] == "https://floresu.com"
     assert response.headers["access-control-allow-credentials"] == "true"
 
 

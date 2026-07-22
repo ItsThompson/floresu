@@ -29,9 +29,9 @@ from floresu.oauth.tokens import AccessTokenCodec
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-TEST_ISSUER = "https://api.floresu.app"
-TEST_APP_URL = "https://floresu.app"
-TEST_RESOURCE = "https://mcp.floresu.app"
+TEST_ISSUER = "https://api.floresu.com"
+TEST_APP_URL = "https://floresu.com"
+TEST_RESOURCE = "https://mcp.floresu.com"
 
 
 def build_test_config(

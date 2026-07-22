@@ -27,14 +27,14 @@ describe("RegisterForm", () => {
       ),
     );
     renderApp(["/signup"]);
-    await fillAndSubmit("taken@floresu.app", "Str0ngPass");
+    await fillAndSubmit("taken@floresu.com", "Str0ngPass");
 
     // Await the async error state before asserting the field wiring.
     expect(await screen.findByText("This email is already registered.")).toBeInTheDocument();
     const emailField = screen.getByLabelText("Email");
     expect(emailField).toHaveAttribute("aria-invalid", "true");
     // Entered value preserved for correction.
-    expect(emailField).toHaveValue("taken@floresu.app");
+    expect(emailField).toHaveValue("taken@floresu.com");
   });
 
   it("attaches a weak-password 422 to the password field", async () => {
@@ -47,7 +47,7 @@ describe("RegisterForm", () => {
       ),
     );
     renderApp(["/signup"]);
-    await fillAndSubmit("new@floresu.app", "weak");
+    await fillAndSubmit("new@floresu.com", "weak");
 
     expect(await screen.findByText("Password must be at least 8 characters.")).toBeInTheDocument();
     expect(screen.getByLabelText("Password")).toHaveAttribute("aria-invalid", "true");

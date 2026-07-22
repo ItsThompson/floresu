@@ -46,7 +46,7 @@ describe("ConnectedAgentsPanel", () => {
 
     renderApp(["/settings/agents"]);
 
-    expect(await screen.findByLabelText("MCP URL")).toHaveValue("https://mcp.floresu.app/mcp");
+    expect(await screen.findByLabelText("MCP URL")).toHaveValue("https://mcp.floresu.com/mcp");
     expect(screen.getByRole("button", { name: "Copy" })).toBeInTheDocument();
     expect(screen.getByText(/full read-write/i)).toBeInTheDocument();
   });

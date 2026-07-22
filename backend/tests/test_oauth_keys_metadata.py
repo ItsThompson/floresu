@@ -26,9 +26,9 @@ def test_mounted_pem_is_loaded_and_publishes_a_public_jwks(tmp_path: Path) -> No
     pem_path = tmp_path / "oauth-signing-key.pem"
     pem_path.write_bytes(RSAKey.generate_key(2048, private=True).as_pem(private=True))
     config = OAuthConfig(
-        issuer="https://api.floresu.app",
-        consent_base_url="https://floresu.app",
-        resource="https://mcp.floresu.app",
+        issuer="https://api.floresu.com",
+        consent_base_url="https://floresu.com",
+        resource="https://mcp.floresu.com",
         key_path=str(pem_path),
         key_id="prod-kid",
         access_ttl=timedelta(minutes=15),
@@ -65,11 +65,11 @@ def test_signing_header_binds_the_active_kid() -> None:
 def test_metadata_advertises_endpoints_scope_and_s256_only() -> None:
     config = build_test_config()
     metadata = build_as_metadata(config)
-    assert metadata["issuer"] == "https://api.floresu.app"
-    assert metadata["token_endpoint"] == "https://api.floresu.app/oauth/token"
-    assert metadata["jwks_uri"] == "https://api.floresu.app/oauth/jwks"
-    assert metadata["registration_endpoint"] == "https://api.floresu.app/oauth/register"
-    assert metadata["revocation_endpoint"] == "https://api.floresu.app/oauth/revoke"
+    assert metadata["issuer"] == "https://api.floresu.com"
+    assert metadata["token_endpoint"] == "https://api.floresu.com/oauth/token"
+    assert metadata["jwks_uri"] == "https://api.floresu.com/oauth/jwks"
+    assert metadata["registration_endpoint"] == "https://api.floresu.com/oauth/register"
+    assert metadata["revocation_endpoint"] == "https://api.floresu.com/oauth/revoke"
     assert metadata["code_challenge_methods_supported"] == ["S256"]
     assert metadata["token_endpoint_auth_methods_supported"] == ["none"]
     assert metadata["scopes_supported"] == ["floresu:full"]
