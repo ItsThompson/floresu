@@ -128,3 +128,43 @@ def test_engine_detects_injected_drift() -> None:
     joined = " ".join(report.violations)
     assert "label" in joined  # type drift caught
     assert "count" in joined and "total" in joined  # rename caught on both sides
+
+
+def test_engine_flags_requiredness_only_drift() -> None:
+    """A field differing only in required/optional (same, non-nullable type) is caught."""
+
+    class Mcp(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+
+        x: int  # required
+
+    class Backend(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+
+        x: int = 0  # optional, identical non-nullable type
+
+    report = compare(Mcp, MirrorSpec(Backend), backend_for)
+    assert not report.ok
+    joined = " ".join(report.violations)
+    assert "requiredness differs" in joined
+    assert "type mismatch" not in joined  # only requiredness drifted
+
+
+def test_engine_flags_nullability_only_drift() -> None:
+    """A field differing only in nullability (same requiredness) is caught."""
+
+    class Mcp(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+
+        y: str  # required, non-nullable
+
+    class Backend(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+
+        y: str | None  # required, nullable
+
+    report = compare(Mcp, MirrorSpec(Backend), backend_for)
+    assert not report.ok
+    joined = " ".join(report.violations)
+    assert "type mismatch" in joined  # nullability is carried in the type node
+    assert "requiredness differs" not in joined  # both required

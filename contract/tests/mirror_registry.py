@@ -23,11 +23,15 @@ deliberate:
 
 from __future__ import annotations
 
+import importlib
+import pkgutil
 from dataclasses import dataclass, field
+from types import ModuleType
 from typing import Any, get_args
 
 from pydantic import BaseModel
 
+import floresu_mcp
 from floresu.jobapps import schemas as be_jobapps
 from floresu.library import schemas as be_library
 from floresu.profile import schemas as be_profile
@@ -51,19 +55,23 @@ from floresu_mcp import schemas_resume_write as mcp_resume_write
 from floresu_mcp import schemas_search as mcp_search
 from tests.schema_compare import MirrorSpec
 
+
+def _discover_mcp_schema_modules() -> tuple[ModuleType, ...]:
+    """Every ``floresu_mcp.schemas*`` module, discovered from the package.
+
+    Auto-discovery (not a hardcoded list) so a newly added ``schemas_*`` module
+    cannot escape the completeness check: its wire types are enumerated the moment
+    it ships, and any type it declares must be classified in :data:`MIRRORS`.
+    """
+    modules: list[ModuleType] = []
+    for info in pkgutil.iter_modules(floresu_mcp.__path__):
+        if info.name == "schemas" or info.name.startswith("schemas_"):
+            modules.append(importlib.import_module(f"floresu_mcp.{info.name}"))
+    return tuple(modules)
+
+
 # The MCP schema modules the completeness test enumerates every wire type from.
-MCP_SCHEMA_MODULES = (
-    mcp_worklog,
-    mcp_profile,
-    mcp_search,
-    mcp_library,
-    mcp_resume,
-    mcp_render,
-    mcp_jobapp,
-    mcp_profile_write,
-    mcp_library_write,
-    mcp_resume_write,
-)
+MCP_SCHEMA_MODULES = _discover_mcp_schema_modules()
 
 MIRRORS: dict[type[BaseModel], MirrorSpec] = {
     # --- worklog ---
