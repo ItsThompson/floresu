@@ -13,9 +13,11 @@
 #     nothing lands on the VPS). Layered ON TOP of the base file's
 #     `env_file: .env` (later file wins), so a deploy sources its config from
 #     .env.prod, never a stray local dev .env.
-#   - App secrets (SESSION_JWT_SECRET, INTERNAL_API_TOKEN): passed through from
-#     the runner environment (GitHub Actions secrets); `environment:` overrides
-#     env_file, so these win regardless of any .env/.env.prod contents.
+#   - App secrets (SESSION_JWT_SECRET, INTERNAL_API_TOKEN, R2_ACCESS_KEY_ID,
+#     R2_SECRET_ACCESS_KEY): passed through from the runner environment (GitHub
+#     Actions secrets); `environment:` overrides env_file, so these win regardless
+#     of any .env/.env.prod contents. R2's non-secret half (R2_ENDPOINT_URL,
+#     R2_BUCKET) is committed in .env.prod and arrives via env_file above.
 #   - Optional secrets (DISCORD_WEBHOOK_URL, OPENAI_API_KEY): passed through when
 #     set. Embedding fails soft without OPENAI_API_KEY (items stay lexically
 #     searchable), so it is not hard-required here; document it as a go-live
@@ -48,6 +50,13 @@ services:
       # Optional (:-): the embedding fast-path fails soft when unset. Wire the
       # real key at go-live (spec lists the embedding API key as required infra).
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # R2 object storage for rendered PDFs (export, finalize, published-version
+      # viewing). The endpoint URL and bucket are non-secret config from .env.prod
+      # (env_file above); the access key id and secret are GitHub secrets passed
+      # through the runner env and required for a deploy, like the app secrets
+      # above. Only the backend renders/persists PDFs, so worker/mcp need no R2.
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:?R2_ACCESS_KEY_ID is required for a deploy}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:?R2_SECRET_ACCESS_KEY is required for a deploy}
 
   mcp:
     env_file:

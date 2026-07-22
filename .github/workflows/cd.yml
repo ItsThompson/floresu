@@ -183,6 +183,8 @@ jobs:
           FLORESU_CLOUDFLARED_CREDENTIALS: ${{ secrets.FLORESU_CLOUDFLARED_CREDENTIALS }}
           DEPLOY_SERVER_IP: ${{ secrets.DEPLOY_SERVER_IP }}
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           DEPLOY_SHA: ${{ env.DEPLOY_SHA }}
         run: |
           set -euo pipefail
@@ -217,6 +219,8 @@ jobs:
           FLORESU_CLOUDFLARED_CREDENTIALS: ${{ secrets.FLORESU_CLOUDFLARED_CREDENTIALS }}
           DEPLOY_SERVER_IP: ${{ secrets.DEPLOY_SERVER_IP }}
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
           set -euo pipefail
           : "${DISCORD_WEBHOOK_URL:?DISCORD_WEBHOOK_URL is required}"

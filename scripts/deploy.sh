@@ -29,6 +29,7 @@
 #   FLORESU_ALERTMANAGER_CONFIG FLORESU_CLOUDFLARED_INGRESS
 #   FLORESU_PROMETHEUS_CONFIG FLORESU_PROMETHEUS_ALERTS
 #   POSTGRES_PASSWORD REDIS_PASSWORD SESSION_JWT_SECRET INTERNAL_API_TOKEN GF_SECURITY_ADMIN_PASSWORD
+#   R2_ENDPOINT_URL R2_BUCKET R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY
 #
 # Rollback is owned by CI (cd.yml): on a failed health gate this script exits
 # non-zero WITHOUT any internal re-deploy. cd.yml reads the previous SHA
@@ -78,6 +79,15 @@ REQUIRED_SECRET_ENV=(
   SESSION_JWT_SECRET
   INTERNAL_API_TOKEN
   GF_SECURITY_ADMIN_PASSWORD
+  # R2 object storage for rendered PDFs. The endpoint URL and bucket are the
+  # non-secret half (committed in .env.prod, sourced CLI-side); the access key id
+  # and secret are GitHub secrets. All four are asserted so a deploy fails fast
+  # instead of shipping a backend that cannot export, finalize, or serve a stored
+  # PDF. Only the backend consumes them (worker/mcp do not render).
+  R2_ENDPOINT_URL
+  R2_BUCKET
+  R2_ACCESS_KEY_ID
+  R2_SECRET_ACCESS_KEY
 )
 
 # --- Logging & execution helpers --------------------------------------------
