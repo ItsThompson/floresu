@@ -72,6 +72,8 @@ from floresu.resumes.finalize_router import create_resume_finalize_router
 from floresu.resumes.finalize_wiring import build_resume_finalize_service_provider
 from floresu.resumes.render_router import create_resume_render_router
 from floresu.resumes.render_wiring import build_resume_render_service_provider
+from floresu.resumes.revision_router import create_resume_revision_router
+from floresu.resumes.revision_wiring import build_resume_revision_service_provider
 from floresu.resumes.router import create_resumes_router
 from floresu.resumes.wiring import build_resume_service_provider
 from floresu.search.router import create_search_router
@@ -193,6 +195,15 @@ resume_render_router = create_resume_render_router(
     actor=resolve_web_actor,
 )
 
+# Resume revision history: list a resume's published versions and mint a presigned
+# URL for one version's stored PDF. Reads only: reuses the process-wide R2 object
+# store, carries no actor, and publishes no write event. The /revisions paths never
+# collide with GET /resumes/{resume_id}, so mounting order is irrelevant.
+resume_revision_router = create_resume_revision_router(
+    build_resume_revision_service_provider(object_store),
+    identity=require_user,
+)
+
 # Finalize an application resume (freeze references to inline read-only text, snapshot
 # the identity, render + store the frozen PDF, submit a linked application). Reuses the
 # process-wide render module and R2 object store. The suffix path never collides with
@@ -277,6 +288,7 @@ app: FastAPI = create_app(
         variants_router,
         feed_router,
         resume_render_router,
+        resume_revision_router,
         resume_finalize_router,
         jobapps_router,
         resumes_router,

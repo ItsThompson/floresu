@@ -45,6 +45,8 @@ from floresu.resumes.finalize_router import create_resume_finalize_router
 from floresu.resumes.finalize_wiring import build_resume_finalize_service_provider
 from floresu.resumes.render_router import create_resume_render_router
 from floresu.resumes.render_wiring import build_resume_render_service_provider
+from floresu.resumes.revision_router import create_resume_revision_router
+from floresu.resumes.revision_wiring import build_resume_revision_service_provider
 from floresu.resumes.router import create_resumes_router
 from floresu.resumes.wiring import build_resume_service_provider
 from floresu.search.router import create_search_router
@@ -111,6 +113,13 @@ resume_render_router = create_resume_render_router(
     identity=require_internal_user,
     actor=resolve_internal_actor,
 )
+# Resume revision history on the agent-facing internal app: trusted-header identity.
+# Reads only: reuses the process-wide R2 object store, no actor, no write event. The
+# /revisions paths never collide with GET /resumes/{resume_id}, so order is irrelevant.
+resume_revision_router = create_resume_revision_router(
+    build_resume_revision_service_provider(object_store),
+    identity=require_internal_user,
+)
 # Finalize an application resume on the agent-facing internal app: trusted-header
 # identity + agent actor (the agent's resume_finalize / jobapp submit path).
 resume_finalize_router = create_resume_finalize_router(
@@ -159,6 +168,7 @@ app: FastAPI = create_app(
         skills_router,
         variants_router,
         resume_render_router,
+        resume_revision_router,
         resume_finalize_router,
         jobapps_router,
         resumes_router,

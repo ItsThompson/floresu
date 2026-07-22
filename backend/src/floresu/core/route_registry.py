@@ -134,6 +134,12 @@ EXTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("GET", "/resumes/templates"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("POST", "/resumes/{resume_id}/preview"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("POST", "/resumes/{resume_id}/export"): AccessLevel.EXTERNAL_COOKIE,
+    # Resume revision history: list a resume's published versions (revisions with a
+    # stored PDF) and mint a presigned URL for one version's stored PDF. Reads only.
+    RouteKey("GET", "/resumes/{resume_id}/revisions"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey(
+        "GET", "/resumes/{resume_id}/revisions/{revision_no}/pdf"
+    ): AccessLevel.EXTERNAL_COOKIE,
     # Finalize an application resume: freeze references to inline read-only text,
     # snapshot the identity, store the frozen PDF, and submit a linked application.
     RouteKey("POST", "/resumes/{resume_id}/finalize"): AccessLevel.EXTERNAL_COOKIE,
@@ -216,6 +222,11 @@ INTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("GET", "/resumes/templates"): AccessLevel.INTERNAL_TRUSTED,
     RouteKey("POST", "/resumes/{resume_id}/preview"): AccessLevel.INTERNAL_TRUSTED,
     RouteKey("POST", "/resumes/{resume_id}/export"): AccessLevel.INTERNAL_TRUSTED,
+    # Resume revision history on the agent-facing internal app: trusted-header identity.
+    RouteKey("GET", "/resumes/{resume_id}/revisions"): AccessLevel.INTERNAL_TRUSTED,
+    RouteKey(
+        "GET", "/resumes/{resume_id}/revisions/{revision_no}/pdf"
+    ): AccessLevel.INTERNAL_TRUSTED,
     # Finalize an application resume on the agent-facing internal app: trusted-header
     # identity (the agent's resume_finalize / jobapp_update submit path).
     RouteKey("POST", "/resumes/{resume_id}/finalize"): AccessLevel.INTERNAL_TRUSTED,
