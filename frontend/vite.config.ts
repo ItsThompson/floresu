@@ -41,6 +41,16 @@ const PROXIED_PATHS = [
 const bypassSpaNavigation = (req: IncomingMessage): string | undefined =>
   req.headers.accept?.includes("text/html") ? req.url : undefined;
 
+// Proxy every API prefix to the backend. Shared by the dev server and `vite
+// preview` (the E2E suite serves the production build via preview) so both reach
+// the backend same-origin with the session cookie flowing.
+const apiProxy = Object.fromEntries(
+  PROXIED_PATHS.map((path) => [
+    path,
+    { target: BACKEND_ORIGIN, changeOrigin: true, bypass: bypassSpaNavigation },
+  ]),
+);
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
@@ -49,12 +59,10 @@ export default defineConfig({
     },
   },
   server: {
-    proxy: Object.fromEntries(
-      PROXIED_PATHS.map((path) => [
-        path,
-        { target: BACKEND_ORIGIN, changeOrigin: true, bypass: bypassSpaNavigation },
-      ]),
-    ),
+    proxy: apiProxy,
+  },
+  preview: {
+    proxy: apiProxy,
   },
   test: {
     globals: true,
