@@ -9,19 +9,23 @@ that triggers embedding, so they count against the tighter embed-write budget;
 archive is a soft, reversible state change and does not. Backend failures surface
 as model-recoverable :class:`ToolError`\\s (:mod:`floresu_mcp.tool_errors`).
 
-Tag add/remove is expressed through the full-representation ``tags`` list on
-create/update (set semantics): the backend reconciles the entry's tag edges to
-exactly the submitted labels, so there is no separate one-call tag mutation.
+Tag add/remove is expressed two ways that coexist. The full-representation ``tags``
+list on create/update carries set semantics (the backend reconciles the entry's tag
+edges to exactly the submitted labels). ``worklog_tag`` adds or removes exactly one
+label in a single idempotent call (one ``POST /worklog/{id}/tags`` for both actions,
+never a DELETE), for when the agent reconciles one tag without resending the whole
+entry. Tags do not change entry content, so ``worklog_tag`` does not trigger
+embedding and counts only against the request budget.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from mcp.types import ToolAnnotations
 
 from floresu_mcp.config import SCOPE_FULL
-from floresu_mcp.schemas import WorklogEntryInput, WorklogEntryRecord
+from floresu_mcp.schemas import WorklogEntryInput, WorklogEntryRecord, WorklogTagInput
 from floresu_mcp.scopes import AgentContext, require_scope
 from floresu_mcp.tool_errors import raise_for_problem
 from floresu_mcp.tool_registry import counted_tool_registrar
@@ -48,6 +52,13 @@ _WORKLOG_UPDATE = ToolAnnotations(
 )
 _WORKLOG_ARCHIVE = ToolAnnotations(
     title="Archive worklog entry",
+    readOnlyHint=False,
+    destructiveHint=False,
+    idempotentHint=True,
+    openWorldHint=False,
+)
+_WORKLOG_TAG = ToolAnnotations(
+    title="Tag worklog entry",
     readOnlyHint=False,
     destructiveHint=False,
     idempotentHint=True,
@@ -93,4 +104,18 @@ def register_worklog_write_tools(
         user_id, actor = require_scope(ctx, SCOPE_FULL)
         await limiter.check(user_id)
         response = await client.worklog_archive(user_id, actor, worklog_id)
+        return WorklogEntryRecord.model_validate(raise_for_problem(response).json())
+
+    @tool(_WORKLOG_TAG)
+    async def worklog_tag(
+        worklog_id: int, label: str, action: Literal["add", "remove"], ctx: AgentContext
+    ) -> WorklogEntryRecord:
+        """Add or remove one tag label on a worklog entry in a single call, instead
+        of resending the whole entry via worklog_update. Adding a label the entry
+        already has, or removing one it does not, is an idempotent no-op success
+        that returns the current entry. Returns the updated entry."""
+        user_id, actor = require_scope(ctx, SCOPE_FULL)
+        await limiter.check(user_id)
+        body = WorklogTagInput(label=label, action=action).model_dump(mode="json")
+        response = await client.worklog_tag(user_id, actor, worklog_id, body)
         return WorklogEntryRecord.model_validate(raise_for_problem(response).json())

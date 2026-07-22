@@ -228,6 +228,18 @@ class InternalApiClient:
             "POST", f"/worklog/{worklog_id}/archive", user_id=user_id, actor=actor
         )
 
+    async def worklog_tag(
+        self, user_id: str, actor: str, worklog_id: int, body: Any
+    ) -> httpx.Response:
+        """Add or remove one worklog tag label (``POST /worklog/{id}/tags``).
+
+        One ``POST`` carries ``{label, action}`` for both add and remove; the agent
+        never issues a ``DELETE`` (the internal app exposes zero DELETE routes).
+        """
+        return await self._request(
+            "POST", f"/worklog/{worklog_id}/tags", user_id=user_id, actor=actor, json=body
+        )
+
     async def source_create(self, user_id: str, actor: str, body: Any) -> httpx.Response:
         """Create a profile source of a kind (``POST /sources``)."""
         return await self._request("POST", "/sources", user_id=user_id, actor=actor, json=body)
