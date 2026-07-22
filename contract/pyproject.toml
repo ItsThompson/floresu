@@ -41,14 +41,5 @@ files = ["tests"]
 explicit_package_bases = true
 namespace_packages = true
 
-[[tool.mypy.overrides]]
-# The backend and MCP packages are installed editable but ship no py.typed marker,
-# so mypy sees them as untyped at import. The contract tests reach their wire types
-# by reflection (model_fields + annotations), not typed use; --strict here guards
-# the diff engine and the registry/test logic. Treat the two first-party packages
-# as untyped imports rather than weaken the whole gate.
-module = ["floresu.*", "floresu_mcp.*"]
-ignore_missing_imports = true
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
