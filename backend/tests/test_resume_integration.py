@@ -103,7 +103,10 @@ async def _edit_bullet(
             build_write_event_publisher(),
             SqlAlchemyResumeRepository(session),
         )
-        await service.update(str(user_id), bullet_id, _HUMAN, BulletpointWrite(text=text))
+        current = await service.get(str(user_id), bullet_id)
+        await service.update(
+            str(user_id), bullet_id, _HUMAN, BulletpointWrite(text=text), current.revision
+        )
 
 
 def _resumes(session: AsyncSession) -> ResumeService:

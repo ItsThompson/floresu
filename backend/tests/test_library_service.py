@@ -207,7 +207,11 @@ async def test_edit_records_an_update_and_reembeds_on_text_change() -> None:
     service, _, _, captured = _service()
     created = await service.create(_USER, _HUMAN, build_bullet_write())
     await service.update(
-        _USER, created.id, _HUMAN, build_bullet_write(text="A materially different framing.")
+        _USER,
+        created.id,
+        _HUMAN,
+        build_bullet_write(text="A materially different framing."),
+        created.revision,
     )
     assert captured[-1].action.value == "update"
     assert REEMBED_CONTENT_HASH_KEY in (captured[-1].metadata or {})
@@ -217,10 +221,14 @@ async def test_edit_that_leaves_the_text_unchanged_publishes_no_reembed() -> Non
     service, repo, _, captured = _service()
     repo.own_source(1, 100)
     created = await service.create(_USER, _HUMAN, build_bullet_write())
-    # Same text; only the source edges change -> hash unchanged, no re-embed.
-    await service.update(_USER, created.id, _HUMAN, build_bullet_write(source_ids=[100]))
+    # Same text; only the source edges change -> hash unchanged, no re-embed. The
+    # CAS still runs, so the token advances (any successful write bumps it).
+    edited = await service.update(
+        _USER, created.id, _HUMAN, build_bullet_write(source_ids=[100]), created.revision
+    )
     assert captured[-1].action.value == "update"
     assert captured[-1].metadata is None
+    assert edited.revision == created.revision + 1
 
 
 async def test_edit_reframes_the_edges() -> None:
@@ -230,27 +238,53 @@ async def test_edit_reframes_the_edges() -> None:
     repo.own_worklog(1, 11)
     created = await service.create(_USER, _HUMAN, build_bullet_write(worklog_ids=[10]))
     edited = await service.update(
-        _USER, created.id, _HUMAN, build_bullet_write(source_ids=[100], worklog_ids=[11])
+        _USER,
+        created.id,
+        _HUMAN,
+        build_bullet_write(source_ids=[100], worklog_ids=[11]),
+        created.revision,
     )
     assert edited.source_ids == [100]
     assert edited.worklog_ids == [11]
 
 
-async def test_edit_does_not_bump_the_revision_token() -> None:
+async def test_edit_advances_the_revision_token_by_one() -> None:
     service, _, _, _ = _service()
     created = await service.create(_USER, _HUMAN, build_bullet_write())
-    edited = await service.update(_USER, created.id, _HUMAN, build_bullet_write(text="Reworded."))
-    # The plain edit path leaves the optimistic token untouched (the guarded
-    # scope=everywhere increment lands later).
+    edited = await service.update(
+        _USER, created.id, _HUMAN, build_bullet_write(text="Reworded."), created.revision
+    )
+    # The CAS advances the optimistic token by exactly one on a successful write.
     assert created.revision == 1
-    assert edited.revision == 1
+    assert edited.revision == 2
+
+
+async def test_a_stale_if_match_is_a_recoverable_conflict_and_no_overwrite() -> None:
+    service, _, _, captured = _service()
+    created = await service.create(_USER, _HUMAN, build_bullet_write())
+    # Advance the token once, so the originally-loaded revision is now stale.
+    await service.update(
+        _USER, created.id, _HUMAN, build_bullet_write(text="First edit."), created.revision
+    )
+    events_before = len(captured)
+    with pytest.raises(Conflict):
+        await service.update(
+            _USER, created.id, _HUMAN, build_bullet_write(text="Stale edit."), created.revision
+        )
+    # The stale write published nothing and did not overwrite the current text.
+    assert len(captured) == events_before
+    current = await service.get(_USER, created.id)
+    assert current.text == "First edit."
+    assert current.revision == 2
 
 
 async def test_update_rejects_a_foreign_source() -> None:
     service, _, _, _ = _service()
     created = await service.create(_USER, _HUMAN, build_bullet_write())
     with pytest.raises(Validation):
-        await service.update(_USER, created.id, _HUMAN, build_bullet_write(source_ids=[999]))
+        await service.update(
+            _USER, created.id, _HUMAN, build_bullet_write(source_ids=[999]), created.revision
+        )
 
 
 async def test_archive_hides_from_active_reads_and_records_archive() -> None:
@@ -297,7 +331,7 @@ async def test_a_malformed_identity_is_unauthorized() -> None:
 async def test_update_archive_restore_of_a_missing_bullet_are_not_found() -> None:
     service, _, _, _ = _service()
     with pytest.raises(NotFound):
-        await service.update(_USER, 9_999, _HUMAN, build_bullet_write())
+        await service.update(_USER, 9_999, _HUMAN, build_bullet_write(), 1)
     with pytest.raises(NotFound):
         await service.archive(_USER, 9_999, _HUMAN)
     with pytest.raises(NotFound):

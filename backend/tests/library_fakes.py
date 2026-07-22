@@ -83,6 +83,21 @@ class InMemoryLibraryRepository:
         rows.sort(key=lambda bullet: bullet.id, reverse=True)
         return rows[:limit]
 
+    async def update_text_if_revision(
+        self, user_id: int, bullet_id: int, if_match: int, text: str, content_hash: str
+    ) -> bool:
+        # Mirror the real CAS: match on id + owner + the expected revision, and only
+        # then advance the token and rewrite text/hash. A miss (wrong owner, gone, or
+        # a revision that has moved on) returns False, the rowcount==0 the service
+        # turns into a recoverable conflict.
+        bullet = self._bullets.get(bullet_id)
+        if bullet is None or bullet.user_id != user_id or bullet.revision != if_match:
+            return False
+        bullet.text = text
+        bullet.content_hash = content_hash
+        bullet.revision += 1
+        return True
+
     async def owned_source_ids(self, user_id: int, source_ids: Sequence[int]) -> set[int]:
         owned = self._owned_sources.get(user_id, set())
         return {source_id for source_id in source_ids if source_id in owned}
