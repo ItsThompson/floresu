@@ -37,6 +37,36 @@ jobs:
       - name: Test (pytest)
         run: uv run pytest
 
+  contract:
+    name: contract (schema mirror + header constants)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contract
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      # Editable-installs the backend and MCP packages so both import in one
+      # interpreter: the only place the two re-declared wire contracts meet.
+      - name: Install dependencies (editable backend + mcp)
+        run: uv sync --frozen
+
+      - name: Lint (ruff)
+        run: uv run ruff check .
+
+      - name: Type-check (mypy --strict)
+        run: uv run mypy --strict
+
+      # Schema-mirror + header-constant drift guards: fail on any undeclared
+      # mcp<->backend wire divergence (release gate).
+      - name: Test (pytest)
+        run: uv run pytest
+
   frontend:
     name: frontend
     runs-on: ubuntu-latest
