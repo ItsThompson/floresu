@@ -1,0 +1,54 @@
+[project]
+name = "floresu-contract"
+version = "0.0.0"
+description = "Dev/test-only cross-package drift guards: the MCP<->backend schema mirror and the internal-boundary header constants. Never shipped; it editable-installs both packages so the contract tests import both in one interpreter."
+requires-python = ">=3.12"
+# The only interpreter where the backend and the MCP packages import together, so
+# the schema-mirror and header-constant tests can compare the two re-declared wire
+# contracts directly. Both are path-installed editable so a change on either side
+# is seen immediately (the committed uv.lock pins the shared transitive stack).
+dependencies = [
+    "floresu-backend",
+    "floresu-mcp",
+    "pydantic>=2.9.0,<3",
+]
+
+# Tests only: there is no importable package to build or ship here.
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+floresu-backend = { path = "../backend", editable = true }
+floresu-mcp = { path = "../mcp", editable = true }
+
+[dependency-groups]
+dev = [
+    "ruff>=0.9",
+    "mypy>=1.13",
+    "pytest>=8.3",
+]
+
+[tool.ruff]
+extend = "../ruff.toml"
+src = ["tests"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+# Tests are packaged (tests/__init__.py) so their support modules resolve as
+# ``tests.*``, mirroring the backend and MCP layout.
+files = ["tests"]
+explicit_package_bases = true
+namespace_packages = true
+
+[[tool.mypy.overrides]]
+# The backend and MCP packages are installed editable but ship no py.typed marker,
+# so mypy sees them as untyped at import. The contract tests reach their wire types
+# by reflection (model_fields + annotations), not typed use; --strict here guards
+# the diff engine and the registry/test logic. Treat the two first-party packages
+# as untyped imports rather than weaken the whole gate.
+module = ["floresu.*", "floresu_mcp.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
