@@ -18,15 +18,17 @@ interface EditorTopBarProps {
   onRefresh: () => void;
   /** Open the finalize confirm gate (application resumes only). */
   onRequestFinalize: () => void;
+  /** Open the revision-history dialog (lists this resume's published versions). */
+  onRequestHistory: () => void;
 }
 
 /**
  * The editor header: the editable title, the kind/status line, the template
- * selector, and the actions (export, refresh, finalize, and the gated history).
+ * selector, and the actions (export, refresh, finalize, and history).
  * Export renders and persists a PDF and surfaces a download link; finalize opens
  * a confirm gate (rendered by the orchestrator) and is shown only for an editable
- * application resume. Past-revision viewing is a gated seam (its backend route is
- * not available yet) and is shown disabled with an explanation.
+ * application resume. History opens the revision dialog, which lists the resume's
+ * published versions and serves each stored PDF read-only.
  */
 export function EditorTopBar({
   record,
@@ -38,6 +40,7 @@ export function EditorTopBar({
   onExport,
   onRefresh,
   onRequestFinalize,
+  onRequestHistory,
 }: EditorTopBarProps) {
   const [title, setTitle] = useState(record.title);
   const [lastTitle, setLastTitle] = useState(record.title);
@@ -98,12 +101,7 @@ export function EditorTopBar({
         <Button variant="ghost" size="sm" onClick={onRefresh}>
           <RefreshCw aria-hidden /> Refresh
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled
-          title="Viewing past revisions as PDFs is coming soon."
-        >
+        <Button variant="ghost" size="sm" onClick={onRequestHistory}>
           <History aria-hidden /> History
         </Button>
         {record.kind === "application" && !isReadOnly && (

@@ -6,6 +6,7 @@ import { RESUMES_PATH } from "@/lib/resumePaths";
 
 import { EditorTopBar } from "./components/EditorTopBar";
 import { FinalizeDialog } from "./components/FinalizeDialog";
+import { HistoryDialog } from "./components/HistoryDialog";
 import { PdfPreview } from "./components/PdfPreview";
 import { ScopeDialog } from "./components/ScopeDialog";
 import { SectionForm } from "./components/SectionForm";
@@ -30,6 +31,7 @@ export function ResumeEditorView() {
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [isFinalizeOpen, setIsFinalizeOpen] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   const confirmFinalize = useCallback(async () => {
     setIsFinalizing(true);
@@ -83,6 +85,7 @@ export function ResumeEditorView() {
             onExport={actions.exportPdf}
             onRefresh={() => setRefreshNonce((nonce) => nonce + 1)}
             onRequestFinalize={() => setIsFinalizeOpen(true)}
+            onRequestHistory={() => setIsHistoryOpen(true)}
           />
 
           {state.saveError && (
@@ -128,6 +131,12 @@ export function ResumeEditorView() {
         isOpen={state.isStale}
         onReload={actions.reload}
         onDismiss={actions.dismissStale}
+      />
+      <HistoryDialog
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        resumeId={resumeId}
+        renderPdf={renderPdfToCanvas}
       />
     </section>
   );
