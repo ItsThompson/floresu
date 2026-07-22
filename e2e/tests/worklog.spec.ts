@@ -1,12 +1,19 @@
 import { expect, test } from "@playwright/test";
 
-import { createRole, registerAndOnboard } from "../harness/support";
+import {
+  createLivingResume,
+  createRole,
+  placeBulletViaApi,
+  registerAndOnboard,
+  seedResumeSection,
+} from "../harness/support";
 
 /**
  * Anchor flow 2 — UPDATE THE WORKLOG. Add a worklog entry with a tag and a source
  * attachment, edit it, then create a library bullet linked to that source and
- * entry. The Library groups the bullet under its source and shows the correct
- * usage badge.
+ * entry. The Library groups the bullet under its source and shows an accurate
+ * usage badge: "Unused" while no resume references it, then a real "Used in 1"
+ * once one resume does.
  */
 test("add and edit worklog entries, then create a linked library bullet", async ({ page }) => {
   await registerAndOnboard(page);
@@ -50,4 +57,18 @@ test("add and edit worklog entries, then create a linked library bullet", async 
   await expect(page.getByText("Cut p95 checkout latency 40%")).toBeVisible();
   await expect(page.getByRole("heading", { name: new RegExp("Globex — Senior Engineer") })).toBeVisible();
   await expect(page.getByText("Unused").first()).toBeVisible();
+
+  // Reference the bullet from a resume, then reload the Library. The usage badge
+  // is driven by the live resume_bullet_ref count, so it must read a real,
+  // non-zero "Used in 1" for a bullet exactly one resume references.
+  const listed = (await (await page.request.get("/bullets")).json()) as { id: number; text: string }[];
+  const created = listed.find((bullet) => bullet.text.startsWith("Cut p95 checkout latency 40%"));
+  expect(created, "the created bullet should be in the library list").toBeTruthy();
+
+  const resumeId = await createLivingResume(page.request, "Checkout latency resume");
+  const { sectionId } = await seedResumeSection(page.request, resumeId);
+  await placeBulletViaApi(page.request, resumeId, sectionId, created!.id);
+
+  await page.goto("/library");
+  await expect(page.getByText("Used in 1", { exact: true })).toBeVisible();
 });
