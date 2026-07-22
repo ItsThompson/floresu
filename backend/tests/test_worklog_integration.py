@@ -275,3 +275,95 @@ async def test_reembed_trigger_only_fires_when_content_changes(migrated_url: str
     assert updates[1] == {
         REEMBED_CONTENT_HASH_KEY: compute_content_hash("Shipped the search API", "Now different.")
     }
+
+
+async def test_add_tag_records_one_update_without_a_reembed_trigger(migrated_url: str) -> None:
+    engine = create_db_engine(migrated_url)
+    sessionmaker = create_sessionmaker(engine)
+    try:
+        user_id = await _insert_user(sessionmaker, "wl-addtag@example.com")
+        async with sessionmaker() as session:
+            created = await _worklog(session).create(
+                str(user_id), _HUMAN, build_worklog_write(tags=[])
+            )
+        async with sessionmaker() as session:
+            record = await _worklog(session).add_tag(str(user_id), created.id, _HUMAN, "api")
+        async with sessionmaker() as session:
+            reread = await _worklog(session).get(str(user_id), created.id)
+            updates = (
+                (
+                    await session.execute(
+                        select(AuditLog.event_metadata)
+                        .where(
+                            AuditLog.user_id == user_id,
+                            AuditLog.entity_type == "worklog",
+                            AuditLog.entity_id == created.id,
+                            AuditLog.action == "update",
+                        )
+                        .order_by(AuditLog.id)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+    finally:
+        await engine.dispose()
+
+    assert record.tags == ["api"]
+    # The edge resolves from SQL on a fresh read, not just from the write's own data.
+    assert reread.tags == ["api"]
+    # Exactly one UPDATE row, and it carries no re-embed trigger (tags leave the hash).
+    assert updates == [None]
+
+
+async def test_remove_tag_drops_the_edge_but_keeps_a_tag_another_entry_uses(
+    migrated_url: str,
+) -> None:
+    engine = create_db_engine(migrated_url)
+    sessionmaker = create_sessionmaker(engine)
+    try:
+        user_id = await _insert_user(sessionmaker, "wl-removetag@example.com")
+        async with sessionmaker() as session:
+            first = await _worklog(session).create(
+                str(user_id), _HUMAN, build_worklog_write(tags=["api", "python"])
+            )
+        async with sessionmaker() as session:
+            await _worklog(session).create(str(user_id), _HUMAN, build_worklog_write(tags=["api"]))
+        async with sessionmaker() as session:
+            await _worklog(session).remove_tag(str(user_id), first.id, _HUMAN, "api")
+        async with sessionmaker() as session:
+            first_record = await _worklog(session).get(str(user_id), first.id)
+            labels = [tag.label for tag in await _worklog(session).list_tags(str(user_id))]
+            tag_count = await session.scalar(
+                select(func.count()).select_from(Tag).where(Tag.user_id == user_id)
+            )
+    finally:
+        await engine.dispose()
+
+    assert first_record.tags == ["python"]
+    assert "api" in labels  # the tag row survives; the second entry still uses it
+    assert tag_count == 2
+
+
+async def test_add_tag_reuses_an_existing_tag_row(migrated_url: str) -> None:
+    engine = create_db_engine(migrated_url)
+    sessionmaker = create_sessionmaker(engine)
+    try:
+        user_id = await _insert_user(sessionmaker, "wl-addtagreuse@example.com")
+        async with sessionmaker() as session:
+            await _worklog(session).create(str(user_id), _HUMAN, build_worklog_write(tags=["api"]))
+        async with sessionmaker() as session:
+            second = await _worklog(session).create(
+                str(user_id), _HUMAN, build_worklog_write(tags=[])
+            )
+        async with sessionmaker() as session:
+            await _worklog(session).add_tag(str(user_id), second.id, _HUMAN, "api")
+        async with sessionmaker() as session:
+            tag_count = await session.scalar(
+                select(func.count()).select_from(Tag).where(Tag.user_id == user_id)
+            )
+    finally:
+        await engine.dispose()
+
+    # "api" resolved to the existing row, so still one tag, not a duplicate.
+    assert tag_count == 1

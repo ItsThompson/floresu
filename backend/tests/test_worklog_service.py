@@ -245,6 +245,103 @@ async def test_list_tags_is_scoped_to_the_user_and_ordered() -> None:
     assert labels == ["alpha", "zeta"]
 
 
+async def test_add_tag_adds_a_new_label_and_records_an_update_without_reembed() -> None:
+    service, _, session, captured = _service()
+    created = await service.create(_USER, _HUMAN, build_worklog_write(tags=[]))
+    record = await service.add_tag(_USER, created.id, _HUMAN, "api")
+    assert record.tags == ["api"]
+    # One UPDATE event, and no re-embed trigger (a tag leaves the content hash).
+    assert captured[-1].action.value == "update"
+    assert captured[-1].metadata is None
+    # Each mutation commits in its own transaction: the create plus this add.
+    assert session.commits == 2
+
+
+async def test_add_tag_creates_a_new_tag_and_reuses_an_existing_one() -> None:
+    service, _, _, _ = _service()
+    await service.create(_USER, _HUMAN, build_worklog_write(tags=["api"]))
+    second = await service.create(_USER, _HUMAN, build_worklog_write(tags=[]))
+    await service.add_tag(_USER, second.id, _HUMAN, "api")
+    tags = await service.list_tags(_USER)
+    # "api" resolves to the one existing row, not a duplicate.
+    assert [tag.label for tag in tags] == ["api"]
+    assert len({tag.id for tag in tags}) == 1
+
+
+async def test_adding_an_existing_label_is_an_idempotent_noop_success() -> None:
+    service, _, _, captured = _service()
+    created = await service.create(_USER, _HUMAN, build_worklog_write(tags=["api"]))
+    record = await service.add_tag(_USER, created.id, _HUMAN, "api")
+    assert record.tags == ["api"]
+    # The no-op still records exactly one UPDATE, no re-embed.
+    assert captured[-1].action.value == "update"
+    assert captured[-1].metadata is None
+
+
+async def test_add_tag_normalizes_whitespace_the_same_way_update_does() -> None:
+    service, _, _, _ = _service()
+    created = await service.create(_USER, _HUMAN, build_worklog_write(tags=["python"]))
+    # A trailing-space label trims to the existing one, so the add is an idempotent
+    # no-op and reuses the same tag row (whitespace normalization, like update).
+    record = await service.add_tag(_USER, created.id, _HUMAN, "python ")
+    assert record.tags == ["python"]
+    assert [tag.label for tag in await service.list_tags(_USER)] == ["python"]
+
+
+async def test_remove_tag_drops_only_the_edge_and_keeps_the_tag_row() -> None:
+    service, _, _, captured = _service()
+    first = await service.create(_USER, _HUMAN, build_worklog_write(tags=["api", "python"]))
+    await service.create(_USER, _HUMAN, build_worklog_write(tags=["api"]))
+    record = await service.remove_tag(_USER, first.id, _HUMAN, "api")
+    assert record.tags == ["python"]
+    # The tag row survives because the second entry still uses it.
+    assert "api" in [tag.label for tag in await service.list_tags(_USER)]
+    assert captured[-1].action.value == "update"
+    assert captured[-1].metadata is None
+
+
+async def test_removing_an_absent_label_is_an_idempotent_noop_success() -> None:
+    service, _, _, captured = _service()
+    created = await service.create(_USER, _HUMAN, build_worklog_write(tags=["api"]))
+    record = await service.remove_tag(_USER, created.id, _HUMAN, "python")
+    assert record.tags == ["api"]
+    assert captured[-1].action.value == "update"
+
+
+async def test_a_blank_or_whitespace_tag_label_is_rejected() -> None:
+    service, _, session, _ = _service()
+    created = await service.create(_USER, _HUMAN, build_worklog_write())
+    with pytest.raises(Validation):
+        await service.add_tag(_USER, created.id, _HUMAN, "   ")
+    # Rejected before any tag write: only the create committed.
+    assert session.commits == 1
+
+
+async def test_tagging_an_unknown_entry_is_not_found() -> None:
+    service, _, _, _ = _service()
+    with pytest.raises(NotFound):
+        await service.add_tag(_USER, 9_999, _HUMAN, "api")
+    with pytest.raises(NotFound):
+        await service.remove_tag(_USER, 9_999, _HUMAN, "api")
+
+
+async def test_tagging_another_users_entry_is_not_found_no_existence_leak() -> None:
+    service, _, _, _ = _service()
+    mine = await service.create(_USER, _HUMAN, build_worklog_write())
+    with pytest.raises(NotFound):
+        await service.add_tag("2", mine.id, _HUMAN, "api")
+    with pytest.raises(NotFound):
+        await service.remove_tag("2", mine.id, _HUMAN, "api")
+
+
+async def test_agent_tag_mutations_carry_the_named_agent_actor() -> None:
+    service, _, _, captured = _service()
+    created = await service.create(_USER, _AGENT, build_worklog_write())
+    await service.add_tag(_USER, created.id, _AGENT, "api")
+    assert captured[-1].actor.type is ActorType.AGENT
+    assert captured[-1].actor.label == "claude"
+
+
 async def test_a_malformed_identity_is_unauthorized() -> None:
     service, _, _, _ = _service()
     with pytest.raises(Unauthorized):
