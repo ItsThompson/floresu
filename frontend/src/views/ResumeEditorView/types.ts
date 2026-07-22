@@ -10,6 +10,8 @@ export type TemplateInfo = components["schemas"]["TemplateInfo"];
 export type IdentityVariant = components["schemas"]["IdentityVariantRead"];
 export type ResumeEditScope = components["schemas"]["ResumeEditScope"];
 export type ResumeUpdate = components["schemas"]["ResumeUpdate"];
+export type PublishedVersion = components["schemas"]["PublishedVersion"];
+export type VersionPdfUrl = components["schemas"]["VersionPdfUrl"];
 
 /** The editor load lifecycle. */
 export type EditorStatus = "loading" | "ready" | "error";
