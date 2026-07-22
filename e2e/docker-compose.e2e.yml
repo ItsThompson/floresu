@@ -1,0 +1,58 @@
+# =============================================================================
+# Floresu E2E infrastructure overlay.
+#
+# A self-contained stack for the Playwright full-stack suite: Postgres
+# (pgvector), Redis, and MinIO (an S3-compatible stand-in for Cloudflare R2).
+# Its own project name (floresu-e2e) and non-default host ports keep it isolated
+# from any local dev stack (or host-installed Postgres/Redis) so the two can run
+# side by side.
+#
+# The app processes (both ASGI apps, the frontend, and the fake embedding
+# provider) are NOT containerized here: Playwright's `webServer` launches them as
+# host processes so the MinIO presigned download URL (minted for
+# http://localhost:9002) is reachable by the browser AND by the backend that
+# mints it. Embedding is faked by a local HTTP provider (see fakes/), and the
+# object store is MinIO, so no run ever calls OpenAI or real R2.
+# =============================================================================
+name: floresu-e2e
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: floresu
+      POSTGRES_PASSWORD: floresu
+      POSTGRES_DB: floresu
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U floresu -d floresu"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: ["server", "/data", "--console-address", ":9003"]
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9002:9000"
+      - "9003:9003"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
