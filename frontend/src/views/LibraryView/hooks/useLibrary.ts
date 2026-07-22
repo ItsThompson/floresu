@@ -53,6 +53,7 @@ export function useLibrary(): UseLibrary {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [archiveError, setArchiveError] = useState<string | null>(null);
+  const [isStale, setIsStale] = useState(false);
 
   const fetchAll = useCallback(async (): Promise<LibraryData | null> => {
     try {
@@ -141,21 +142,26 @@ export function useLibrary(): UseLibrary {
       };
       setIsSaving(true);
       setSaveError(null);
+      setIsStale(false);
       const request =
         editor?.mode === "edit"
           ? client.PUT("/bullets/{bullet_id}", {
               params: {
+                // Send the loaded revision so the backend CAS guards the write.
                 path: { bullet_id: editor.bullet.id },
-                // Send the loaded revision so the backend CAS guards the write. The
-                // recoverable 409 re-read/retry UX is a separate follow-up; here a
-                // stale save surfaces as a save error rather than a false success.
                 header: { "If-Match": editor.bullet.revision },
               },
               body,
             })
           : client.POST("/bullets", { body });
-      void request.then(async ({ data: saved, error }) => {
+      void request.then(async ({ data: saved, error, response }) => {
         setIsSaving(false);
+        if (editor?.mode === "edit" && response.status === 409) {
+          // The bullet changed since it was loaded: prompt to re-read and retry.
+          // The edit was not applied, so this is never reported as a success.
+          setIsStale(true);
+          return;
+        }
         if (error || !saved) {
           setSaveError(errorMessage(error, SAVE_ERROR_FALLBACK));
           return;
@@ -167,6 +173,23 @@ export function useLibrary(): UseLibrary {
     },
     [client, editor, refreshBullets, rerunActiveSearch],
   );
+
+  // Re-read the stale bullet on its current revision and reopen the editor so a
+  // retried save can match. Uses the single-bullet read; if the bullet is gone,
+  // close the editor and refresh the list rather than reopen on nothing.
+  const rereadStaleBullet = useCallback(() => {
+    if (editor?.mode !== "edit") return;
+    const bulletId = editor.bullet.id;
+    void client
+      .GET("/bullets/{bullet_id}", { params: { path: { bullet_id: bulletId } } })
+      .then(async ({ data: fresh, error }) => {
+        setIsStale(false);
+        setSaveError(null);
+        setEditor(error || !fresh ? null : { mode: "edit", bullet: fresh });
+        await refreshBullets();
+        rerunActiveSearch();
+      });
+  }, [client, editor, refreshBullets, rerunActiveSearch]);
 
   const archiveBullet = useCallback(
     (bulletId: number) => {
@@ -196,29 +219,34 @@ export function useLibrary(): UseLibrary {
       },
       openCreate: () => {
         setSaveError(null);
+        setIsStale(false);
         setEditor({ mode: "create" });
       },
       openEdit: (bullet) => {
         setSaveError(null);
+        setIsStale(false);
         setEditor({ mode: "edit", bullet });
       },
       closeEditor: () => {
         setEditor(null);
         setSaveError(null);
+        setIsStale(false);
       },
       saveBullet,
       archiveBullet,
+      rereadStaleBullet,
+      dismissStale: () => setIsStale(false),
       reload: () => {
         setData((prev) => ({ ...prev, status: "loading" }));
         void fetchAll().then((next) => setData((prev) => next ?? { ...prev, status: "error" }));
       },
     }),
-    [runSearch, query, filters, saveBullet, archiveBullet, fetchAll],
+    [runSearch, query, filters, saveBullet, archiveBullet, rereadStaleBullet, fetchAll],
   );
 
   const state = useMemo<LibraryState>(
-    () => ({ data, query, filters, search, editor, isSaving, saveError, archiveError }),
-    [data, query, filters, search, editor, isSaving, saveError, archiveError],
+    () => ({ data, query, filters, search, editor, isSaving, saveError, archiveError, isStale }),
+    [data, query, filters, search, editor, isSaving, saveError, archiveError, isStale],
   );
 
   return { state, actions };

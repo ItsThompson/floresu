@@ -100,6 +100,8 @@ export interface LibraryState {
   isSaving: boolean;
   saveError: string | null;
   archiveError: string | null;
+  /** True when an edit save was rejected as stale (409); drives the re-read prompt. */
+  isStale: boolean;
 }
 
 export interface LibraryActions {
@@ -113,6 +115,10 @@ export interface LibraryActions {
   saveBullet: (values: BulletFormValues) => void;
   archiveBullet: (bulletId: number) => void;
   reload: () => void;
+  /** Re-read the stale bullet and reopen the editor on its current revision. */
+  rereadStaleBullet: () => void;
+  /** Dismiss the stale-edit prompt without re-reading. */
+  dismissStale: () => void;
 }
 
 export interface LibraryToolbarProps {
