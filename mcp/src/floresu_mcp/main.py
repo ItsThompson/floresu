@@ -1,6 +1,6 @@
 """MCP server entrypoint (:9000).
 
-Internet-reachable via the tunnel host ``mcp.floresu.app``. Serves the PRM,
+Internet-reachable via the tunnel host ``mcp.floresu.com``. Serves the PRM,
 validates agent bearer tokens as an OAuth resource server, and forwards tool
 calls to the backend internal app. Built from :func:`build_app`.
 """
