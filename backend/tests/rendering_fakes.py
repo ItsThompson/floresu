@@ -10,8 +10,9 @@ mapper and the template without touching the write path.
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from floresu.resumes.document import (
     IdentitySnapshot,
@@ -24,6 +25,9 @@ from floresu.resumes.document import (
     SectionKind,
 )
 from floresu.resumes.models import Resume, ResumeRevision
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 class FakeTypstCompiler:
@@ -69,6 +73,20 @@ class InMemoryRenderRepository:
         for revision in self._revisions.get(resume_id, []):
             if revision.revision_no == revision_no:
                 revision.pdf_object_key = object_key
+
+    async def list_revisions_with_pdf(self, resume_id: int) -> Sequence[ResumeRevision]:
+        stored = [
+            revision
+            for revision in self._revisions.get(resume_id, [])
+            if revision.pdf_object_key is not None
+        ]
+        return sorted(stored, key=lambda revision: revision.revision_no, reverse=True)
+
+    async def get_revision(self, resume_id: int, revision_no: int) -> ResumeRevision | None:
+        for revision in self._revisions.get(resume_id, []):
+            if revision.revision_no == revision_no:
+                return revision
+        return None
 
 
 class InMemoryIdentityResolver:
@@ -150,13 +168,27 @@ def resume_row(*, resume_id: int, user_id: int, document: ResumeDocument) -> Res
     return Resume(id=resume_id, user_id=user_id, document=document.model_dump(mode="json"))
 
 
-def revision_row(*, resume_id: int, revision_no: int, document: ResumeDocument) -> ResumeRevision:
-    """A minimal ``resume_revisions`` row carrying a resolved snapshot document."""
+def revision_row(
+    *,
+    resume_id: int,
+    revision_no: int,
+    document: ResumeDocument,
+    pdf_object_key: str | None = None,
+    created_at: datetime | None = None,
+) -> ResumeRevision:
+    """A minimal ``resume_revisions`` row carrying a resolved snapshot document.
+
+    ``pdf_object_key`` marks the revision as a published version (an export or a
+    finalize stored its PDF); ``created_at`` stamps the snapshot for the
+    newest-first history list (the DB server-defaults it on a real insert).
+    """
     return ResumeRevision(
         resume_id=resume_id,
         revision_no=revision_no,
         document=document.model_dump(mode="json"),
         schema_version=document.schema_version,
+        pdf_object_key=pdf_object_key,
+        created_at=created_at,
     )
 
 
