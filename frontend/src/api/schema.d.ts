@@ -3374,7 +3374,9 @@ export interface operations {
     update_bullet_bullets__bullet_id__put: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "If-Match": number;
+            };
             path: {
                 bullet_id: number;
             };
