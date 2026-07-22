@@ -49,7 +49,7 @@ from floresu_mcp import schemas_render as mcp_render
 from floresu_mcp import schemas_resume as mcp_resume
 from floresu_mcp import schemas_resume_write as mcp_resume_write
 from floresu_mcp import schemas_search as mcp_search
-from tests.schema_diff import MirrorSpec
+from tests.schema_compare import MirrorSpec
 
 # The MCP schema modules the completeness test enumerates every wire type from.
 MCP_SCHEMA_MODULES = (

@@ -28,7 +28,7 @@ from tests.mirror_registry import (
     backend_for,
     union_members,
 )
-from tests.schema_diff import MirrorSpec, compare
+from tests.schema_compare import MirrorSpec, compare
 
 
 def _declared_mcp_wire_types() -> set[type[BaseModel]]:
