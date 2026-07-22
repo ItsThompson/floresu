@@ -7,6 +7,7 @@ import { AuthView } from "@/views/AuthView";
 import { ConsentView } from "@/views/ConsentView";
 import { HomeView } from "@/views/HomeView";
 import { IdentityVariantsView } from "@/views/IdentityVariantsView";
+import { JobApplicationsView } from "@/views/JobApplicationsView";
 import { LibraryView } from "@/views/LibraryView";
 import { OnboardingView } from "@/views/OnboardingView";
 import { ProfileHubView } from "@/views/ProfileHubView";
@@ -56,6 +57,7 @@ export const appRoutes: RouteObject[] = [
               { path: "library", element: <LibraryView /> },
               { path: "resumes", element: <ResumesListView /> },
               { path: "resumes/:resumeId", element: <ResumeEditorView /> },
+              { path: "applications", element: <JobApplicationsView /> },
               // Career Profile: hub, source detail, skills, identities.
               { path: "profile", element: <ProfileHubView /> },
               { path: "profile/skills", element: <SkillsView /> },

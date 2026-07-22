@@ -32,6 +32,18 @@ export function formatDay(iso: string): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 }
 
+/** A 'Jul 18, 2026' day label carrying the year (e.g. a job application's added date). */
+export function formatDayYear(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 /** A month bucket key ("2025-09") for grouping entries newest-month-first. */
 export function monthKey(iso: string): string {
   const date = new Date(iso);

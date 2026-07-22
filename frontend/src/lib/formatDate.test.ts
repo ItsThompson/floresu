@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { formatDateRange, formatDay, formatMonthYear, monthKey, monthKeyLabel } from "./formatDate";
+import {
+  formatDateRange,
+  formatDay,
+  formatDayYear,
+  formatMonthYear,
+  monthKey,
+  monthKeyLabel,
+} from "./formatDate";
 
 describe("formatMonthYear", () => {
   it("formats an ISO day as MMM YYYY in UTC", () => {
@@ -39,5 +46,10 @@ describe("month bucketing", () => {
 
   it("formats a day label", () => {
     expect(formatDay("2025-07-18")).toBe("Jul 18");
+  });
+
+  it("formats a day label carrying the year", () => {
+    expect(formatDayYear("2026-07-18T09:30:00Z")).toBe("Jul 18, 2026");
+    expect(formatDayYear("not-a-date")).toBe("not-a-date");
   });
 });

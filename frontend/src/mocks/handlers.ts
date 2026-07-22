@@ -10,6 +10,8 @@ import {
   mockAuthUser,
   mockFeedHistory,
 } from "./data";
+import { buildJobApplicationSummary } from "./jobAppsFixtures";
+import { buildResumeSummary } from "./resumeFixtures";
 import { worklogHandlers } from "./worklogHandlers";
 
 /**
@@ -57,7 +59,12 @@ export const handlers = [
     await delay(LATENCY_MS);
     return HttpResponse.json([
       buildSourceSummary({ id: 100, kind: "role", display_label: "Acme — Engineer" }),
-      buildSourceSummary({ id: 101, kind: "project", display_label: "StudyBoost", date_end: "2024-06-01" }),
+      buildSourceSummary({
+        id: 101,
+        kind: "project",
+        display_label: "StudyBoost",
+        date_end: "2024-06-01",
+      }),
       buildSourceSummary({ id: 102, kind: "education", display_label: "BSc CS, Bath" }),
     ]);
   }),
@@ -70,7 +77,9 @@ export const handlers = [
     HttpResponse.json(buildSourceRecord({ id: Number(params.id) })),
   ),
   http.post("*/sources/:id/archive", async ({ params }) =>
-    HttpResponse.json(buildSourceRecord({ id: Number(params.id), archived_at: "2026-07-21T00:00:00Z" })),
+    HttpResponse.json(
+      buildSourceRecord({ id: Number(params.id), archived_at: "2026-07-21T00:00:00Z" }),
+    ),
   ),
   http.get("*/skills", async () => {
     await delay(LATENCY_MS);
@@ -91,7 +100,9 @@ export const handlers = [
     await delay(LATENCY_MS);
     return HttpResponse.json([buildVariant({ id: 300, label: "Default", is_default: true })]);
   }),
-  http.post("*/identity-variants", async () => HttpResponse.json(buildVariant({ id: 399 }), { status: 201 })),
+  http.post("*/identity-variants", async () =>
+    HttpResponse.json(buildVariant({ id: 399 }), { status: 201 }),
+  ),
   http.put("*/identity-variants/:id", async ({ params }) =>
     HttpResponse.json(buildVariant({ id: Number(params.id) })),
   ),
@@ -104,4 +115,71 @@ export const handlers = [
   http.post("*/worklog", async () =>
     HttpResponse.json({ ...buildWorklogSummary({ id: 599 }), bullet_ids: [] }, { status: 201 }),
   ),
+
+  // --- Job Applications dev-harness handlers -----------------------------
+  // Non-stateful demo data: an added application with a linked draft resume, a
+  // submitted one with a finalized resume, and an added one with no resume yet
+  // (to exercise the fork flow); plus a living resume to fork from. Writes echo.
+  http.get("*/job-applications", async () => {
+    await delay(LATENCY_MS);
+    return HttpResponse.json([
+      buildJobApplicationSummary({
+        id: 1,
+        company: "Acme Corp",
+        role_title: "Senior Backend Engineer",
+        status: "added",
+        linked_resume_id: 11,
+      }),
+      buildJobApplicationSummary({
+        id: 2,
+        company: "Globex",
+        role_title: "Staff Engineer",
+        status: "submitted",
+        linked_resume_id: 12,
+        created_at: "2026-06-30T00:00:00Z",
+      }),
+      buildJobApplicationSummary({
+        id: 3,
+        company: "Initech",
+        role_title: "Platform Engineer",
+        status: "added",
+        linked_resume_id: null,
+        created_at: "2026-07-20T00:00:00Z",
+      }),
+    ]);
+  }),
+  http.post("*/job-applications", async () =>
+    HttpResponse.json(
+      buildJobApplicationSummary({ id: 99, status: "added", linked_resume_id: null }),
+      { status: 201 },
+    ),
+  ),
+  http.patch("*/job-applications/:id", async ({ params }) =>
+    HttpResponse.json(
+      buildJobApplicationSummary({
+        id: Number(params.id),
+        status: "submitted",
+        linked_resume_id: 11,
+      }),
+    ),
+  ),
+  http.get("*/resumes", async () => {
+    await delay(LATENCY_MS);
+    return HttpResponse.json([
+      buildResumeSummary({ id: 10, kind: "living", title: "Backend Engineer" }),
+      buildResumeSummary({
+        id: 11,
+        kind: "application",
+        title: "Acme — Senior Backend Engineer",
+        job_application_id: 1,
+      }),
+      buildResumeSummary({
+        id: 12,
+        kind: "application",
+        status: "finalized",
+        title: "Globex — Staff Engineer",
+        job_application_id: 2,
+      }),
+    ]);
+  }),
 ];
