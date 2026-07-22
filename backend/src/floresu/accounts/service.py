@@ -142,6 +142,21 @@ class AccountService:
             raise Unauthorized(_STALE_SESSION)
         return _to_authenticated(user)
 
+    async def complete_onboarding(self, user_id: str) -> AuthenticatedUser:
+        """Persist that the session-resolved account finished onboarding.
+
+        The wizard is client-driven, but the completion must survive a reload, so
+        the flag is persisted here and read back by ``/me`` and ``/auth/refresh``.
+        Idempotent: completing an already-onboarded account returns the same view.
+        A session resolving to a deleted account is a stale session, not a 404.
+        """
+        user = await self._repo.mark_onboarding_complete(user_id)
+        if user is None:
+            raise Unauthorized(_STALE_SESSION)
+        await self._repo.commit()
+        _log.info("onboarding_completed", user_id=user.id)
+        return _to_authenticated(user)
+
     def _start_session(self, user: User) -> Session:
         return Session(user=_to_authenticated(user), tokens=self._codec.mint_pair(str(user.id)))
 

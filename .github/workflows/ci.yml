@@ -218,3 +218,68 @@ jobs:
             envsubst '$DISCORD_WEBHOOK_URL' < deployments/alertmanager/alertmanager.yml > /tmp/alertmanager.yml
           docker run --rm -v /tmp/alertmanager.yml:/am.yml:ro --entrypoint amtool \
             prom/alertmanager:v0.27.0 check-config /am.yml
+
+  # ---------------------------------------------------------------------------
+  # e2e: the Playwright full-stack suite. Brings up the E2E infrastructure
+  # (Postgres, Redis, MinIO) from e2e/docker-compose.e2e.yml, then Playwright
+  # starts the app processes (both ASGI apps, the frontend production build, and
+  # the fake embedding provider) and drives the three anchor flows plus auth,
+  # feed, search, settings, and the agent boundary through a real browser. No run
+  # calls OpenAI or real R2 (embedding is a local fake; the object store is MinIO).
+  # ---------------------------------------------------------------------------
+  e2e:
+    name: e2e (playwright full-stack)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            e2e/package-lock.json
+
+      # poppler-utils supplies `pdftotext`, used to assert the exported PDF has
+      # selectable text.
+      - name: Install poppler-utils
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+
+      - name: Install backend deps (migrations + object-store bucket)
+        working-directory: backend
+        run: uv sync --frozen
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install e2e deps
+        working-directory: e2e
+        run: npm ci
+
+      - name: Install Playwright browser
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+
+      # Brings up the compose infrastructure, migrates, creates the bucket, then
+      # runs the suite (Playwright starts the app servers). CI is set by GitHub
+      # Actions, so servers are launched fresh (no reuse) and the run retries once.
+      - name: Run the full-stack suite
+        working-directory: e2e
+        run: npm test
+
+      - name: Upload the Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          retention-days: 7
+

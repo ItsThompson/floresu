@@ -40,4 +40,11 @@ def create_me_router(service_provider: AccountServiceProvider, *, identity: Iden
     ) -> AuthenticatedUser:
         return await service.me(user_id)
 
+    @router.post("/me/onboarding")
+    async def complete_onboarding(
+        user_id: str = Depends(identity),
+        service: AccountService = Depends(service_provider),
+    ) -> AuthenticatedUser:
+        return await service.complete_onboarding(user_id)
+
     return router

@@ -97,6 +97,26 @@ def test_register_then_me_returns_the_same_user(make_settings: MakeSettings) -> 
     assert me.json()["email"] == "ada@example.com"
 
 
+def test_complete_onboarding_persists_and_survives_refresh(make_settings: MakeSettings) -> None:
+    client, _ = _build_client(make_settings)
+    client.post("/auth/register", json={"email": "ada@example.com", "password": _PASSWORD})
+    assert client.get("/me").json()["has_completed_onboarding"] is False
+
+    completed = client.post("/me/onboarding")
+    assert completed.status_code == 200
+    assert completed.json()["has_completed_onboarding"] is True
+
+    # Persisted: a plain re-read and a fresh session (refresh) both see it set, so
+    # the wizard never reappears on reload.
+    assert client.get("/me").json()["has_completed_onboarding"] is True
+    assert client.post("/auth/refresh").json()["has_completed_onboarding"] is True
+
+
+def test_complete_onboarding_requires_a_session(make_settings: MakeSettings) -> None:
+    client, _ = _build_client(make_settings)
+    assert client.post("/me/onboarding").status_code == 401
+
+
 def test_duplicate_email_is_a_409_field_error_and_no_second_account(
     make_settings: MakeSettings,
 ) -> None:

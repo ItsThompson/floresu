@@ -80,20 +80,17 @@ export function useAuthSession(client: SessionClient): UseAuthSession {
   }, [client]);
 
   const completeOnboarding = useCallback(async (): Promise<AuthResult> => {
-    // Flip the session's onboarding flag so the route guard sends the user into
-    // the app and never re-shows the wizard for the rest of this session. The
-    // backend persistence endpoint does not exist yet (a later ticket owns it),
-    // so this is client-side only: a full reload re-reads the server value via
-    // resume-on-mount. Returning an AuthResult (never throwing) matches the
-    // login/register contract, so the completion flow already handles the
-    // failure branch the backend call will introduce.
-    setSession((current) =>
-      current.status === "authenticated" && current.user
-        ? { status: "authenticated", user: { ...current.user, has_completed_onboarding: true } }
-        : current,
-    );
-    return { ok: true };
-  }, []);
+    // Persist onboarding completion so the route guard sends the user into the
+    // app and the wizard never reappears on reload (a full reload re-reads the
+    // server value via resume-on-mount). On success adopt the returned user;
+    // on failure keep the user in the wizard with an inline error.
+    const { data, error } = await client.POST("/me/onboarding");
+    if (data) {
+      setSession({ status: "authenticated", user: data });
+      return { ok: true };
+    }
+    return toAuthResult(error);
+  }, [client]);
 
   return { ...session, register, login, logout, completeOnboarding };
 }

@@ -80,10 +80,13 @@ describe("useAuthSession", () => {
     expect(result.current.user).toBeNull();
   });
 
-  it("flips the onboarding flag on the session user when completing onboarding", async () => {
+  it("adopts the onboarded user from the server when completing onboarding", async () => {
     server.use(
       http.post("*/auth/refresh", () =>
         HttpResponse.json(buildAuthUser({ has_completed_onboarding: false })),
+      ),
+      http.post("*/me/onboarding", () =>
+        HttpResponse.json(buildAuthUser({ has_completed_onboarding: true })),
       ),
     );
     const { result } = renderSession();

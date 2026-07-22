@@ -48,6 +48,8 @@ class AccountRepository(Protocol):
 
     async def add_user(self, user: User) -> None: ...
 
+    async def mark_onboarding_complete(self, user_id: str) -> User | None: ...
+
     async def is_session_revoked(self, sid: str) -> bool: ...
 
     async def revoke_session(self, claims: RefreshClaims) -> None: ...
@@ -78,6 +80,15 @@ class SqlAlchemyAccountRepository:
         # unique-constraint breach surfaces as an IntegrityError now, inside the
         # service's try/except, rather than at commit time.
         await self._session.flush()
+
+    async def mark_onboarding_complete(self, user_id: str) -> User | None:
+        # Load the row and flip the flag; the dirty instance is persisted when the
+        # service commits. Idempotent: flipping an already-true flag is a no-op.
+        user = await self.get_by_id(user_id)
+        if user is None:
+            return None
+        user.has_completed_onboarding = True
+        return user
 
     async def is_session_revoked(self, sid: str) -> bool:
         found = await fetch_optional(

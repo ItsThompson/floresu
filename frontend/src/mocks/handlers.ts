@@ -1,6 +1,7 @@
 import { delay, http, HttpResponse } from "msw";
 
 import {
+  buildAuthUser,
   buildBullet,
   buildSkill,
   buildSourceRecord,
@@ -43,6 +44,11 @@ export const handlers = [
   http.get("*/me", async () => {
     await delay(LATENCY_MS);
     return HttpResponse.json(mockAuthUser);
+  }),
+
+  http.post("*/me/onboarding", async () => {
+    await delay(LATENCY_MS);
+    return HttpResponse.json(buildAuthUser({ has_completed_onboarding: true }));
   }),
 
   http.get("*/feed/history", async () => {
