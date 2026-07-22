@@ -20,3 +20,12 @@ DEFAULT_TEMPLATE_ID = "default"
 
 # The title a blank resume takes when the caller supplies none.
 DEFAULT_TITLE = "Untitled resume"
+
+# Recoverable message for a genuine simultaneous write that the optimistic revision
+# guard passed (both writers read the same revision) and the ``resume_revisions``
+# primary key then serialized: the loser's snapshot insert breaches the
+# ``(resume_id, revision_no)`` PK. The service and the finalize routine both remap
+# it to a Conflict so a real race reads as "re-read and retry", not a 500.
+CONCURRENT_WRITE_CONFLICT = (
+    "This resume was modified concurrently; re-read the latest revision and retry."
+)

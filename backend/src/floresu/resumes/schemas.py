@@ -163,6 +163,23 @@ class ResumeRecord(ResumeSummary):
     document: ResumeDocument
 
 
+class FinalizeResult(BaseModel):
+    """The outcome of finalizing an application resume: what was frozen and stored.
+
+    Finalize is terminal, so ``status`` is always ``finalized``; ``revision_no`` is
+    the appended frozen-snapshot revision and ``pdf_object_key`` is the R2 key of the
+    PDF rendered from it (retained per the retention rules even if the resume is
+    later deleted).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    resume_id: int
+    status: ResumeStatus = ResumeStatus.FINALIZED
+    pdf_object_key: str
+    revision_no: int
+
+
 def to_summary(resume: Resume) -> ResumeSummary:
     """Project a ``resumes`` row onto the list shape (no document)."""
     return ResumeSummary(

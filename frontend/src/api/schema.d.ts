@@ -748,6 +748,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/resumes/{resume_id}/finalize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Finalize Resume */
+        post: operations["finalize_resume_resumes__resume_id__finalize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/job-applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Applications */
+        get: operations["list_applications_job_applications_get"];
+        put?: never;
+        /** Create Application */
+        post: operations["create_application_job_applications_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/job-applications/{application_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Application */
+        get: operations["get_application_job_applications__application_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Application */
+        patch: operations["update_application_job_applications__application_id__patch"];
+        trace?: never;
+    };
     "/resumes": {
         parameters: {
             query?: never;
@@ -1298,6 +1351,25 @@ export interface components {
             download_url: string;
         };
         /**
+         * FinalizeResult
+         * @description The outcome of finalizing an application resume: what was frozen and stored.
+         *
+         *     Finalize is terminal, so ``status`` is always ``finalized``; ``revision_no`` is
+         *     the appended frozen-snapshot revision and ``pdf_object_key`` is the R2 key of the
+         *     PDF rendered from it (retained per the retention rules even if the resume is
+         *     later deleted).
+         */
+        FinalizeResult: {
+            /** Resume Id */
+            resume_id: number;
+            /** @default finalized */
+            status: components["schemas"]["ResumeStatus"];
+            /** Pdf Object Key */
+            pdf_object_key: string;
+            /** Revision No */
+            revision_no: number;
+        };
+        /**
          * ForkedThisResumeResult
          * @description A resume-local copy was forked; the canonical bullet is unchanged.
          */
@@ -1396,6 +1468,61 @@ export interface components {
              * @default false
              */
             is_default: boolean;
+        };
+        /**
+         * JobApplicationCreate
+         * @description Create an application: a company and role title; the status starts ``added``.
+         */
+        JobApplicationCreate: {
+            /** Company */
+            company: string;
+            /** Role Title */
+            role_title: string;
+        };
+        /**
+         * JobApplicationStatus
+         * @description A job application is ``added`` then ``submitted`` (submit finalizes its resume).
+         * @enum {string}
+         */
+        JobApplicationStatus: "added" | "submitted";
+        /**
+         * JobApplicationSummary
+         * @description List/read projection: the scalar columns plus the 1:1 linked resume id.
+         */
+        JobApplicationSummary: {
+            /** Id */
+            id: number;
+            /** Company */
+            company: string;
+            /** Role Title */
+            role_title: string;
+            status: components["schemas"]["JobApplicationStatus"];
+            /** Linked Resume Id */
+            linked_resume_id: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * JobApplicationUpdate
+         * @description A partial write: change the company/role title and/or set the status.
+         *
+         *     At least one field must be present. Setting ``status`` to ``submitted`` is the
+         *     finalize trigger the service acts on; the company/role title are plain edits.
+         */
+        JobApplicationUpdate: {
+            /** Company */
+            company?: string | null;
+            /** Role Title */
+            role_title?: string | null;
+            status?: components["schemas"]["JobApplicationStatus"] | null;
         };
         /**
          * LibraryRefItem
@@ -3799,6 +3926,156 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExportResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    finalize_resume_resumes__resume_id__finalize_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                resume_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinalizeResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_applications_job_applications_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobApplicationSummary"][];
+                };
+            };
+        };
+    };
+    create_application_job_applications_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobApplicationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobApplicationSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_application_job_applications__application_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobApplicationSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_application_job_applications__application_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobApplicationUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobApplicationSummary"];
                 };
             };
             /** @description Validation Error */
