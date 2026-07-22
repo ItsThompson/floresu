@@ -28,7 +28,6 @@ export function JobApplicationRow({
   onLinkResume,
   onSubmit,
 }: JobApplicationRowProps) {
-  const hasResume = application.linked_resume_id !== null;
   return (
     <tr className="border-b last:border-b-0">
       <td className="py-3 pr-4 font-medium">{application.company}</td>
@@ -37,9 +36,9 @@ export function JobApplicationRow({
         <JobApplicationStatusBadge status={application.status} />
       </td>
       <td className="py-3 pr-4">
-        {hasResume ? (
+        {application.linked_resume_id !== null ? (
           <Link
-            to={resumeEditorPath(application.linked_resume_id as number)}
+            to={resumeEditorPath(application.linked_resume_id)}
             className="text-primary text-sm font-medium underline-offset-4 hover:underline"
           >
             {resumeTitle ?? "Open resume"}

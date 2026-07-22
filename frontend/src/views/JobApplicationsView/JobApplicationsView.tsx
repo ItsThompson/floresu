@@ -23,16 +23,17 @@ export function JobApplicationsView() {
   const { state, actions } = useJobApplications();
   const [isCreating, setIsCreating] = useState(false);
   const [linkTarget, setLinkTarget] = useState<JobApplicationSummary | null>(null);
-  const [submitTarget, setSubmitTarget] = useState<JobApplicationSummary | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submit, setSubmit] = useState<{
+    application: JobApplicationSummary;
+    isSubmitting: boolean;
+  } | null>(null);
 
   const confirmSubmit = useCallback(async () => {
-    if (submitTarget === null) return;
-    setIsSubmitting(true);
-    await actions.submit(submitTarget.id);
-    setIsSubmitting(false);
-    setSubmitTarget(null);
-  }, [actions, submitTarget]);
+    if (submit === null) return;
+    setSubmit({ application: submit.application, isSubmitting: true });
+    await actions.submit(submit.application.id);
+    setSubmit(null);
+  }, [actions, submit]);
 
   return (
     <section className="mx-auto flex w-full max-w-[960px] flex-col gap-8 p-8">
@@ -43,6 +44,13 @@ export function JobApplicationsView() {
 
       {state.actionError && (
         <ErrorBanner message={state.actionError} onDismiss={actions.dismissActionError} />
+      )}
+
+      {state.resumesUnavailable && (
+        <p role="alert" className="text-muted-foreground text-sm">
+          Couldn’t load your resumes, so resume links and creating a resume are temporarily
+          unavailable. Your job applications are still shown.
+        </p>
       )}
 
       {state.status === "loading" && (
@@ -65,7 +73,7 @@ export function JobApplicationsView() {
             applications={state.applications}
             resumeTitles={state.resumeTitles}
             onLinkResume={setLinkTarget}
-            onSubmit={setSubmitTarget}
+            onSubmit={(application) => setSubmit({ application, isSubmitting: false })}
           />
         ))}
 
@@ -78,6 +86,7 @@ export function JobApplicationsView() {
       <LinkResumeDialog
         application={linkTarget}
         livingResumes={state.livingResumes}
+        resumesUnavailable={state.resumesUnavailable}
         onClose={() => setLinkTarget(null)}
         onLink={actions.linkResume}
         onLinked={(resumeId) => {
@@ -87,10 +96,10 @@ export function JobApplicationsView() {
       />
 
       <SubmitConfirmDialog
-        application={submitTarget}
-        isSubmitting={isSubmitting}
+        application={submit?.application ?? null}
+        isSubmitting={submit?.isSubmitting ?? false}
         onConfirm={() => void confirmSubmit()}
-        onCancel={() => setSubmitTarget(null)}
+        onCancel={() => setSubmit(null)}
       />
     </section>
   );

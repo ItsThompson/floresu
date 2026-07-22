@@ -72,6 +72,23 @@ describe("JobApplicationsView", () => {
     expect(await screen.findByText(/No job applications yet/)).toBeInTheDocument();
   });
 
+  it("surfaces a partial-load notice when the resumes fetch fails", async () => {
+    authenticate();
+    const { handlers } = createJobAppsApiMock({
+      applications: [buildJobApplicationSummary({ id: 1, company: "Acme Corp" })],
+      resumes: [],
+    });
+    server.use(...handlers);
+    // The resumes fetch fails while the applications list succeeds.
+    server.use(http.get("*/resumes", () => new HttpResponse(null, { status: 500 })));
+    renderApp(["/applications"]);
+
+    expect(await screen.findByText("Acme Corp")).toBeInTheDocument();
+    expect(
+      await screen.findByText(/resume links and creating a resume are temporarily unavailable/i),
+    ).toBeInTheDocument();
+  });
+
   it("adds a job application capturing company and role, starting status added", async () => {
     authenticate();
     const { handlers, applications } = createJobAppsApiMock({ applications: [], resumes: [] });

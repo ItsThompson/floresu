@@ -30,6 +30,7 @@ export function useJobApplications(): {
   const [status, setStatus] = useState<JobApplicationsStatus>("loading");
   const [applications, setApplications] = useState<JobApplicationSummary[]>([]);
   const [resumes, setResumes] = useState<ResumeSummary[]>([]);
+  const [resumesUnavailable, setResumesUnavailable] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -45,6 +46,7 @@ export function useJobApplications(): {
     }
     setApplications(appsRes.data);
     setResumes(resumesRes.data ?? []);
+    setResumesUnavailable(!resumesRes.response.ok);
     setError(null);
     setStatus("ready");
   }, [client]);
@@ -110,6 +112,7 @@ export function useJobApplications(): {
         (resume) => resume.kind === "living" && resume.archived_at === null,
       ),
       resumeTitles: titlesById(resumes),
+      resumesUnavailable,
       error,
       actionError,
     },

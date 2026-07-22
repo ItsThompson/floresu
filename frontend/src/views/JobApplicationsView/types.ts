@@ -14,6 +14,8 @@ export interface JobApplicationsState {
   livingResumes: ResumeSummary[];
   /** Linked-resume title by id, for the resume column's link label. */
   resumeTitles: Record<number, string>;
+  /** The resumes fetch failed while applications loaded; resume links/forking are degraded. */
+  resumesUnavailable: boolean;
   /** Load error (the list could not be fetched). */
   error: string | null;
   /** A recoverable action error (e.g. submit with no linked resume), dismissible. */

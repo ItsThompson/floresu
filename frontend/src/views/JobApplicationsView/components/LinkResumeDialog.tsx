@@ -10,6 +10,8 @@ interface LinkResumeDialogProps {
   application: JobApplicationSummary | null;
   /** Living resumes offered as the fork source. */
   livingResumes: ResumeSummary[];
+  /** The resumes fetch failed, so the source list is unknown (not necessarily empty). */
+  resumesUnavailable: boolean;
   onClose: () => void;
   /** Fork the chosen living resume into an application draft; resolves to the new id or null. */
   onLink: (
@@ -30,6 +32,7 @@ interface LinkResumeDialogProps {
 export function LinkResumeDialog({
   application,
   livingResumes,
+  resumesUnavailable,
   onClose,
   onLink,
   onLinked,
@@ -91,6 +94,10 @@ export function LinkResumeDialog({
             ))}
           </select>
         </label>
+      ) : resumesUnavailable ? (
+        <p role="alert" className="text-destructive text-sm">
+          Couldn’t load your resumes. Close this dialog and try again.
+        </p>
       ) : (
         <p className="text-muted-foreground text-sm">
           You have no living resumes yet. Create one first, then fork it for this application.
