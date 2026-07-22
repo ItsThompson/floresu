@@ -15,8 +15,10 @@ to lean tool outputs. The ``httpx.AsyncClient`` is injected (bound to the backen
 internal base URL) so tests substitute a transport without a live backend.
 
 The read methods below back the read tool surface; each is a single GET (or the
-search POST) mirroring one internal route. The write method surface mirroring the
-remaining routes lands with the write tools in a later ticket.
+search POST) mirroring one internal route. The write methods that follow back the
+write tool surface; each mirrors one internal write route op-for-op, and the
+revision-guarded resume mutations carry the caller's expected revision as an
+``If-Match`` header (a non-trusted header, so it rides in ``extra_headers``).
 """
 
 from __future__ import annotations
@@ -209,6 +211,217 @@ class InternalApiClient:
     async def search(self, user_id: str, actor: str, body: Any) -> httpx.Response:
         """Run hybrid search over the corpus (``POST /search``)."""
         return await self._request("POST", "/search", user_id=user_id, actor=actor, json=body)
+
+    # --- write routes (back the write tool surface) ---
+
+    async def worklog_update(
+        self, user_id: str, actor: str, worklog_id: int, body: Any
+    ) -> httpx.Response:
+        """Overwrite a worklog entry's fields, tags, and sources (``PUT /worklog/{id}``)."""
+        return await self._request(
+            "PUT", f"/worklog/{worklog_id}", user_id=user_id, actor=actor, json=body
+        )
+
+    async def worklog_archive(self, user_id: str, actor: str, worklog_id: int) -> httpx.Response:
+        """Soft-archive a worklog entry (``POST /worklog/{id}/archive``)."""
+        return await self._request(
+            "POST", f"/worklog/{worklog_id}/archive", user_id=user_id, actor=actor
+        )
+
+    async def source_create(self, user_id: str, actor: str, body: Any) -> httpx.Response:
+        """Create a profile source of a kind (``POST /sources``)."""
+        return await self._request("POST", "/sources", user_id=user_id, actor=actor, json=body)
+
+    async def source_update(
+        self, user_id: str, actor: str, source_id: int, body: Any
+    ) -> httpx.Response:
+        """Overwrite a profile source (``PUT /sources/{id}``)."""
+        return await self._request(
+            "PUT", f"/sources/{source_id}", user_id=user_id, actor=actor, json=body
+        )
+
+    async def source_archive(self, user_id: str, actor: str, source_id: int) -> httpx.Response:
+        """Soft-archive a profile source (``POST /sources/{id}/archive``)."""
+        return await self._request(
+            "POST", f"/sources/{source_id}/archive", user_id=user_id, actor=actor
+        )
+
+    async def sources_reorder(self, user_id: str, actor: str, body: Any) -> httpx.Response:
+        """Reorder the sources of one kind (``POST /sources/reorder``)."""
+        return await self._request(
+            "POST", "/sources/reorder", user_id=user_id, actor=actor, json=body
+        )
+
+    async def skill_create(self, user_id: str, actor: str, body: Any) -> httpx.Response:
+        """Create a skill (``POST /skills``)."""
+        return await self._request("POST", "/skills", user_id=user_id, actor=actor, json=body)
+
+    async def skill_update(
+        self, user_id: str, actor: str, skill_id: int, body: Any
+    ) -> httpx.Response:
+        """Rename a skill (``PUT /skills/{id}``)."""
+        return await self._request(
+            "PUT", f"/skills/{skill_id}", user_id=user_id, actor=actor, json=body
+        )
+
+    async def skill_archive(self, user_id: str, actor: str, skill_id: int) -> httpx.Response:
+        """Soft-archive a skill (``POST /skills/{id}/archive``)."""
+        return await self._request(
+            "POST", f"/skills/{skill_id}/archive", user_id=user_id, actor=actor
+        )
+
+    async def skills_reorder(self, user_id: str, actor: str, body: Any) -> httpx.Response:
+        """Reorder the user's skills (``POST /skills/reorder``)."""
+        return await self._request(
+            "POST", "/skills/reorder", user_id=user_id, actor=actor, json=body
+        )
+
+    async def variant_create(self, user_id: str, actor: str, body: Any) -> httpx.Response:
+        """Create an identity variant (``POST /identity-variants``)."""
+        return await self._request(
+            "POST", "/identity-variants", user_id=user_id, actor=actor, json=body
+        )
+
+    async def variant_update(
+        self, user_id: str, actor: str, variant_id: int, body: Any
+    ) -> httpx.Response:
+        """Overwrite an identity variant (``PUT /identity-variants/{id}``)."""
+        return await self._request(
+            "PUT", f"/identity-variants/{variant_id}", user_id=user_id, actor=actor, json=body
+        )
+
+    async def variant_archive(self, user_id: str, actor: str, variant_id: int) -> httpx.Response:
+        """Soft-archive an identity variant (``POST /identity-variants/{id}/archive``)."""
+        return await self._request(
+            "POST", f"/identity-variants/{variant_id}/archive", user_id=user_id, actor=actor
+        )
+
+    async def bullet_create(self, user_id: str, actor: str, body: Any) -> httpx.Response:
+        """Create a canonical bulletpoint with its provenance edges (``POST /bullets``)."""
+        return await self._request("POST", "/bullets", user_id=user_id, actor=actor, json=body)
+
+    async def bullet_archive(self, user_id: str, actor: str, bullet_id: int) -> httpx.Response:
+        """Soft-archive a canonical bulletpoint (``POST /bullets/{id}/archive``)."""
+        return await self._request(
+            "POST", f"/bullets/{bullet_id}/archive", user_id=user_id, actor=actor
+        )
+
+    async def bullet_scope_edit(self, user_id: str, actor: str, body: Any) -> httpx.Response:
+        """Copy-on-write scope edit of a canonical bullet (``POST /resumes/bullet-edit``).
+
+        The If-Match revisions guarding the edit ride in the body (not a header):
+        the canonical bullet revision for ``everywhere``, the resume revision for
+        ``this_resume``.
+        """
+        return await self._request(
+            "POST", "/resumes/bullet-edit", user_id=user_id, actor=actor, json=body
+        )
+
+    async def bullet_promote(
+        self, user_id: str, actor: str, resume_id: int, item_id: str, *, if_match: int
+    ) -> httpx.Response:
+        """Promote a resume-local item to a canonical bullet
+        (``POST /resumes/{id}/items/{item_id}/promote``, resume ``If-Match``)."""
+        return await self._request(
+            "POST",
+            f"/resumes/{resume_id}/items/{item_id}/promote",
+            user_id=user_id,
+            actor=actor,
+            extra_headers={"If-Match": str(if_match)},
+        )
+
+    async def resume_create(self, user_id: str, actor: str, body: Any) -> httpx.Response:
+        """Create a resume per the section 05 contract (``POST /resumes``)."""
+        return await self._request("POST", "/resumes", user_id=user_id, actor=actor, json=body)
+
+    async def resume_update(
+        self, user_id: str, actor: str, resume_id: int, body: Any, *, if_match: int
+    ) -> httpx.Response:
+        """Overwrite a resume document (``PUT /resumes/{id}``, ``If-Match`` revision)."""
+        return await self._request(
+            "PUT",
+            f"/resumes/{resume_id}",
+            user_id=user_id,
+            actor=actor,
+            json=body,
+            extra_headers={"If-Match": str(if_match)},
+        )
+
+    async def resume_add_item(
+        self, user_id: str, actor: str, resume_id: int, body: Any, *, if_match: int
+    ) -> httpx.Response:
+        """Append an item to a resume section (``POST /resumes/{id}/items``, ``If-Match``)."""
+        return await self._request(
+            "POST",
+            f"/resumes/{resume_id}/items",
+            user_id=user_id,
+            actor=actor,
+            json=body,
+            extra_headers={"If-Match": str(if_match)},
+        )
+
+    async def resume_remove_item(
+        self, user_id: str, actor: str, resume_id: int, item_id: str, *, if_match: int
+    ) -> httpx.Response:
+        """Remove a resume item (``POST /resumes/{id}/items/{item_id}/remove``, ``If-Match``)."""
+        return await self._request(
+            "POST",
+            f"/resumes/{resume_id}/items/{item_id}/remove",
+            user_id=user_id,
+            actor=actor,
+            extra_headers={"If-Match": str(if_match)},
+        )
+
+    async def resume_reorder(
+        self, user_id: str, actor: str, resume_id: int, body: Any, *, if_match: int
+    ) -> httpx.Response:
+        """Reorder resume sections/items (``POST /resumes/{id}/reorder``, ``If-Match``)."""
+        return await self._request(
+            "POST",
+            f"/resumes/{resume_id}/reorder",
+            user_id=user_id,
+            actor=actor,
+            json=body,
+            extra_headers={"If-Match": str(if_match)},
+        )
+
+    async def resume_finalize(self, user_id: str, actor: str, resume_id: int) -> httpx.Response:
+        """Freeze an application resume (``POST /resumes/{id}/finalize``)."""
+        return await self._request(
+            "POST", f"/resumes/{resume_id}/finalize", user_id=user_id, actor=actor
+        )
+
+    async def resume_render(self, user_id: str, actor: str, resume_id: int) -> httpx.Response:
+        """Render a resume to a persisted PDF and return its reference
+        (``POST /resumes/{id}/export``)."""
+        return await self._request(
+            "POST", f"/resumes/{resume_id}/export", user_id=user_id, actor=actor
+        )
+
+    async def jobapp_list(self, user_id: str, actor: str) -> httpx.Response:
+        """List the user's job applications (``GET /job-applications``)."""
+        return await self._request("GET", "/job-applications", user_id=user_id, actor=actor)
+
+    async def jobapp_get(self, user_id: str, actor: str, application_id: int) -> httpx.Response:
+        """Get one job application with its linked resume id (``GET /job-applications/{id}``)."""
+        return await self._request(
+            "GET", f"/job-applications/{application_id}", user_id=user_id, actor=actor
+        )
+
+    async def jobapp_create(self, user_id: str, actor: str, body: Any) -> httpx.Response:
+        """Create a job application (``POST /job-applications``)."""
+        return await self._request(
+            "POST", "/job-applications", user_id=user_id, actor=actor, json=body
+        )
+
+    async def jobapp_update(
+        self, user_id: str, actor: str, application_id: int, body: Any
+    ) -> httpx.Response:
+        """Edit a job application; status=submitted finalizes the linked resume
+        (``PATCH /job-applications/{id}``)."""
+        return await self._request(
+            "PATCH", f"/job-applications/{application_id}", user_id=user_id, actor=actor, json=body
+        )
 
 
 def create_internal_http_client(settings: RsSettings) -> httpx.AsyncClient:
