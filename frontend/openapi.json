@@ -1350,6 +1350,58 @@
         }
       }
     },
+    "/worklog/{worklog_id}/tags": {
+      "post": {
+        "tags": [
+          "worklog"
+        ],
+        "summary": "Mutate Tags",
+        "operationId": "mutate_tags_worklog__worklog_id__tags_post",
+        "parameters": [
+          {
+            "name": "worklog_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Worklog Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagMutation"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorklogRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/bullets": {
       "post": {
         "tags": [
@@ -6326,6 +6378,31 @@
         ],
         "title": "SourceSummary",
         "description": "Common-column projection for section lists (no subtype join)."
+      },
+      "TagMutation": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Label"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "add",
+              "remove"
+            ],
+            "title": "Action"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "label",
+          "action"
+        ],
+        "title": "TagMutation",
+        "description": "A single tag label to add to or remove from a worklog entry.\n\nThe partial-tag route (``POST /worklog/{id}/tags``) carries this instead of a\nfull :class:`WorklogWrite`, so a caller can reconcile one label without\nresubmitting the entry's whole representation. The service normalizes the\nlabel (trim, reject blank) and the router dispatches on ``action`` to\n``add_tag`` / ``remove_tag``."
       },
       "TagRead": {
         "properties": {

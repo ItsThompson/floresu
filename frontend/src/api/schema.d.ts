@@ -452,6 +452,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/worklog/{worklog_id}/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mutate Tags */
+        post: operations["mutate_tags_worklog__worklog_id__tags_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/bullets": {
         parameters: {
             query?: never;
@@ -2192,6 +2209,25 @@ export interface components {
             archived_at: string | null;
         };
         /**
+         * TagMutation
+         * @description A single tag label to add to or remove from a worklog entry.
+         *
+         *     The partial-tag route (``POST /worklog/{id}/tags``) carries this instead of a
+         *     full :class:`WorklogWrite`, so a caller can reconcile one label without
+         *     resubmitting the entry's whole representation. The service normalizes the
+         *     label (trim, reject blank) and the router dispatches on ``action`` to
+         *     ``add_tag`` / ``remove_tag``.
+         */
+        TagMutation: {
+            /** Label */
+            label: string;
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "add" | "remove";
+        };
+        /**
          * TagRead
          * @description A tag for the reuse list; color is derived from the label, not carried.
          */
@@ -3255,6 +3291,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorklogRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mutate_tags_worklog__worklog_id__tags_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                worklog_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TagMutation"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
