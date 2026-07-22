@@ -35,8 +35,11 @@ if TYPE_CHECKING:
 
 _MCP_HEADERS = {"Accept": "application/json, text/event-stream", "Content-Type": "application/json"}
 _TOOLS_LIST = {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
-# The registered foundation surface: one read + one write smoke tool.
-_SMOKE_TOOLS = {"worklog_list", "worklog_create"}
+# A representative slice of the registered surface: one read tool and one write
+# tool. The full read/write surfaces are asserted in the per-domain tool tests, so
+# this app-assembly check only needs the tool transport to serve a non-empty,
+# superset-containing list.
+_REPRESENTATIVE_TOOLS = {"worklog_query", "worklog_create"}
 
 
 class _FailingKeyProvider:
@@ -160,7 +163,7 @@ def test_wrong_audience_token_is_rejected(make_settings: MakeSettings) -> None:
     assert response.status_code == 401
 
 
-def test_valid_token_lists_the_smoke_tools_on_both_paths() -> None:
+def test_valid_token_lists_the_tool_surface_on_both_paths() -> None:
     harness = AgentHarness(lambda _request: httpx.Response(200, json=[]))
     with harness.open() as client:
         # Post to both /mcp and /mcp/: neither may 307-redirect.
@@ -172,9 +175,9 @@ def test_valid_token_lists_the_smoke_tools_on_both_paths() -> None:
         assert no_slash.status_code == 200, no_slash.text
         tools = harness.list_tools(client)
 
-    # The smoke tools remain registered; the read tools register alongside them
-    # (asserted in test_tools_read), so this foundation check is a subset.
-    assert {tool["name"] for tool in tools} >= _SMOKE_TOOLS
+    # The read and write surfaces register onto one server (asserted in detail in
+    # the per-domain tool tests), so this foundation check is a subset.
+    assert {tool["name"] for tool in tools} >= _REPRESENTATIVE_TOOLS
 
 
 def test_rs_dependency_facade_is_wired(make_settings: MakeSettings) -> None:
