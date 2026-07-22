@@ -17,6 +17,7 @@ wherever a tag is rendered.
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -37,6 +38,22 @@ class WorklogWrite(BaseModel):
     # Attached source ids; zero, one, or many. The service rejects any id the user
     # does not own, so an entry can never attach a foreign source.
     source_ids: list[int] = Field(default_factory=list)
+
+
+class TagMutation(BaseModel):
+    """A single tag label to add to or remove from a worklog entry.
+
+    The partial-tag route (``POST /worklog/{id}/tags``) carries this instead of a
+    full :class:`WorklogWrite`, so a caller can reconcile one label without
+    resubmitting the entry's whole representation. The service normalizes the
+    label (trim, reject blank) and the router dispatches on ``action`` to
+    ``add_tag`` / ``remove_tag``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    label: str = Field(min_length=1)
+    action: Literal["add", "remove"]
 
 
 class WorklogSummary(BaseModel):

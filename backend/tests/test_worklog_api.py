@@ -183,6 +183,73 @@ def test_list_tags_returns_the_reuse_set(make_settings: MakeSettings) -> None:
     assert [tag["label"] for tag in tags.json()] == ["api", "python"]
 
 
+def test_add_and_remove_a_tag_through_the_partial_route(make_settings: MakeSettings) -> None:
+    client, _, captured = _client(make_settings, internal=False)
+    worklog_id = client.post(
+        "/worklog", json=build_worklog_write(tags=[]).model_dump(mode="json")
+    ).json()["id"]
+
+    added = client.post(f"/worklog/{worklog_id}/tags", json={"label": "api", "action": "add"})
+    assert added.status_code == 200
+    assert added.json()["tags"] == ["api"]
+    # A tag mutation records one UPDATE and never signals a re-embed.
+    assert captured[-1].action.value == "update"
+    assert captured[-1].metadata is None
+
+    removed = client.post(f"/worklog/{worklog_id}/tags", json={"label": "api", "action": "remove"})
+    assert removed.status_code == 200
+    assert removed.json()["tags"] == []
+
+
+def test_partial_tag_route_rejects_an_unknown_action(make_settings: MakeSettings) -> None:
+    client, _, _ = _client(make_settings, internal=False)
+    worklog_id = client.post("/worklog", json=build_worklog_write().model_dump(mode="json")).json()[
+        "id"
+    ]
+    response = client.post(f"/worklog/{worklog_id}/tags", json={"label": "api", "action": "toggle"})
+    assert response.status_code == 422
+    assert response.headers["content-type"] == "application/problem+json"
+
+
+def test_partial_tag_route_rejects_an_extra_field(make_settings: MakeSettings) -> None:
+    client, _, _ = _client(make_settings, internal=False)
+    worklog_id = client.post("/worklog", json=build_worklog_write().model_dump(mode="json")).json()[
+        "id"
+    ]
+    response = client.post(
+        f"/worklog/{worklog_id}/tags",
+        json={"label": "api", "action": "add", "color": "blue"},
+    )
+    assert response.status_code == 422
+
+
+def test_partial_tag_route_on_a_missing_entry_is_a_404(make_settings: MakeSettings) -> None:
+    client, _, _ = _client(make_settings, internal=False)
+    response = client.post("/worklog/999/tags", json={"label": "api", "action": "add"})
+    assert response.status_code == 404
+    assert response.headers["content-type"] == "application/problem+json"
+
+
+def test_internal_boundary_attributes_the_agent_on_a_tag_mutation(
+    make_settings: MakeSettings,
+) -> None:
+    client, _, captured = _client(make_settings, internal=True)
+    worklog_id = client.post(
+        "/worklog",
+        json=build_worklog_write().model_dump(mode="json"),
+        headers=_INTERNAL_HEADERS,
+    ).json()["id"]
+    tagged = client.post(
+        f"/worklog/{worklog_id}/tags",
+        json={"label": "api", "action": "add"},
+        headers=_INTERNAL_HEADERS,
+    )
+    assert tagged.status_code == 200
+    assert tagged.json()["tags"] == ["api"]
+    assert captured[-1].actor.type is ActorType.AGENT
+    assert captured[-1].actor.label == "claude"
+
+
 def test_unauthenticated_request_is_rejected(make_settings: MakeSettings) -> None:
     client, _, _ = _client(make_settings, internal=False)
     client.cookies.clear()
