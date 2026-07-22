@@ -16,6 +16,7 @@ import type {
 } from "../types";
 
 const SAVE_ERROR = "Your change could not be saved. Please try again.";
+const FINALIZE_ERROR = "This resume could not be finalized. Please try again.";
 
 /**
  * The resume editor's state and write actions. It loads the resume, the canonical
@@ -107,7 +108,11 @@ export function useResumeEditor(resumeId: number): ResumeEditor {
       const current = recordRef.current;
       if (!current) return;
       setSaveError(null);
-      const { data, error: editError, response } = await client.POST("/resumes/bullet-edit", {
+      const {
+        data,
+        error: editError,
+        response,
+      } = await client.POST("/resumes/bullet-edit", {
         body: {
           bullet_id: bulletId,
           new_text: newText,
@@ -258,6 +263,34 @@ export function useResumeEditor(resumeId: number): ResumeEditor {
         params: { path: { resume_id: current.id } },
       });
       return data?.download_url ?? null;
+    },
+    finalizeResume: async () => {
+      const current = recordRef.current;
+      if (!current) return false;
+      setSaveError(null);
+      const {
+        data,
+        error: finalizeError,
+        response,
+      } = await client.POST("/resumes/{resume_id}/finalize", {
+        params: { path: { resume_id: current.id } },
+      });
+      if (response.status === 409) {
+        setIsStale(true);
+        return false;
+      }
+      if (finalizeError || !data) {
+        setSaveError(FINALIZE_ERROR);
+        return false;
+      }
+      // Finalize returns a summary, not the record. Re-read the resume (now frozen
+      // and read-only) and refresh bullets, whose "used in N" dropped the refs.
+      const { data: refreshed } = await client.GET("/resumes/{resume_id}", {
+        params: { path: { resume_id: current.id } },
+      });
+      if (refreshed) applyRecord(refreshed);
+      await refreshBullets();
+      return true;
     },
   };
 

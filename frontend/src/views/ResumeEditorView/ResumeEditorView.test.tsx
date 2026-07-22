@@ -59,7 +59,9 @@ describe("ResumeEditorView", () => {
     authenticate();
     const { handlers } = createResumeApiMock({
       resumes: [seedResume()],
-      bullets: [buildBulletpoint({ id: 100, text: "Cut checkout latency by 40%.", used_in_count: 1 })],
+      bullets: [
+        buildBulletpoint({ id: 100, text: "Cut checkout latency by 40%.", used_in_count: 1 }),
+      ],
     });
     server.use(...handlers);
     renderApp(["/resumes/1"]);
@@ -112,7 +114,9 @@ describe("ResumeEditorView", () => {
     authenticate();
     const { handlers, bullets } = createResumeApiMock({
       resumes: [seedResume()],
-      bullets: [buildBulletpoint({ id: 100, text: "Cut checkout latency by 40%.", used_in_count: 2 })],
+      bullets: [
+        buildBulletpoint({ id: 100, text: "Cut checkout latency by 40%.", used_in_count: 2 }),
+      ],
     });
     server.use(...handlers);
     renderApp(["/resumes/1"]);
@@ -136,7 +140,9 @@ describe("ResumeEditorView", () => {
     authenticate();
     const { handlers } = createResumeApiMock({
       resumes: [seedResume()],
-      bullets: [buildBulletpoint({ id: 100, text: "Cut checkout latency by 40%.", used_in_count: 2 })],
+      bullets: [
+        buildBulletpoint({ id: 100, text: "Cut checkout latency by 40%.", used_in_count: 2 }),
+      ],
     });
     server.use(...handlers);
     renderApp(["/resumes/1"]);
@@ -150,7 +156,9 @@ describe("ResumeEditorView", () => {
     const scopeDialog = await screen.findByRole("dialog", { name: /used in 2 resumes/i });
     // A concurrent change lands between the prompt and the apply: the scoped edit conflicts.
     server.use(
-      http.post("*/resumes/bullet-edit", () => HttpResponse.json({ detail: "stale" }, { status: 409 })),
+      http.post("*/resumes/bullet-edit", () =>
+        HttpResponse.json({ detail: "stale" }, { status: 409 }),
+      ),
     );
     await user.click(within(scopeDialog).getByRole("button", { name: "Apply" }));
 
@@ -163,7 +171,9 @@ describe("ResumeEditorView", () => {
     authenticate();
     const { handlers, bullets } = createResumeApiMock({
       resumes: [seedResume()],
-      bullets: [buildBulletpoint({ id: 100, text: "Cut checkout latency by 40%.", used_in_count: 1 })],
+      bullets: [
+        buildBulletpoint({ id: 100, text: "Cut checkout latency by 40%.", used_in_count: 1 }),
+      ],
     });
     server.use(...handlers);
     renderApp(["/resumes/1"]);
@@ -209,7 +219,10 @@ describe("ResumeEditorView", () => {
     const { handlers, resumes } = createResumeApiMock({
       resumes: [seedResume()],
       bullets: [buildBulletpoint({ id: 100, used_in_count: 1 })],
-      templates: [buildTemplate({ id: "classic", name: "Classic" }), buildTemplate({ id: "modern", name: "Modern" })],
+      templates: [
+        buildTemplate({ id: "classic", name: "Classic" }),
+        buildTemplate({ id: "modern", name: "Modern" }),
+      ],
     });
     server.use(...handlers);
     renderApp(["/resumes/1"]);
@@ -223,13 +236,46 @@ describe("ResumeEditorView", () => {
     authenticate();
     const { handlers } = createResumeApiMock({
       resumes: [seedResume({ kind: "application", status: "finalized" })],
-      bullets: [buildBulletpoint({ id: 100, text: "Cut checkout latency by 40%.", used_in_count: 1 })],
+      bullets: [
+        buildBulletpoint({ id: 100, text: "Cut checkout latency by 40%.", used_in_count: 1 }),
+      ],
     });
     server.use(...handlers);
     renderApp(["/resumes/1"]);
 
     expect(await screen.findByText("Work Experience")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /pull from library/i })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Resume title")).toBeDisabled();
+  });
+
+  it("finalizes an application draft through the confirm gate, freezing it read-only", async () => {
+    authenticate();
+    const { handlers, resumes, bullets } = createResumeApiMock({
+      resumes: [seedResume({ kind: "application", status: "draft" })],
+      bullets: [
+        buildBulletpoint({ id: 100, text: "Cut checkout latency by 40%.", used_in_count: 2 }),
+      ],
+    });
+    server.use(...handlers);
+    renderApp(["/resumes/1"]);
+    const user = userEvent.setup();
+
+    // The library reference is editable before finalize.
+    expect(await screen.findByDisplayValue("Cut checkout latency by 40%.")).toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: "Finalize" }));
+    // The confirm gate explains that freezing is permanent.
+    expect(await screen.findByText(/cannot be undone/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Finalize permanently/ }));
+
+    // The resume reads back finalized: its references are frozen to inline text,
+    // they stop counting toward the bullet's "used in N", and it becomes read-only.
+    await waitFor(() => expect(resumes.get(1)?.status).toBe("finalized"));
+    expect(resumes.get(1)?.document.sections?.[0].items?.["it-ref"].kind).toBe("local");
+    expect(bullets.get(100)?.used_in_count).toBe(1);
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: /pull from library/i })).not.toBeInTheDocument(),
+    );
     expect(screen.getByLabelText("Resume title")).toBeDisabled();
   });
 
@@ -258,10 +304,14 @@ describe("ResumeEditorView", () => {
     renderApp(["/resumes/1"]);
     const user = userEvent.setup();
 
-    const localRow = (await screen.findByDisplayValue("Local bullet text")).closest("li") as HTMLElement;
+    const localRow = (await screen.findByDisplayValue("Local bullet text")).closest(
+      "li",
+    ) as HTMLElement;
     await user.click(within(localRow).getByRole("button", { name: "Remove item" }));
 
-    await waitFor(() => expect(screen.queryByDisplayValue("Local bullet text")).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByDisplayValue("Local bullet text")).not.toBeInTheDocument(),
+    );
     expect(resumes.get(1)?.document.sections?.[0].item_order).toEqual(["it-ref"]);
   });
 
@@ -279,9 +329,13 @@ describe("ResumeEditorView", () => {
     await user.type(screen.getByLabelText("New bullet text"), "A fresh inline bullet");
     await user.click(screen.getByRole("button", { name: "Add" }));
 
-    await waitFor(() => expect(screen.getByDisplayValue("A fresh inline bullet")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByDisplayValue("A fresh inline bullet")).toBeInTheDocument(),
+    );
     const items = resumes.get(1)?.document.sections?.[0].items ?? {};
-    const added = Object.values(items).find((item) => item.kind === "local" && item.text === "A fresh inline bullet");
+    const added = Object.values(items).find(
+      (item) => item.kind === "local" && item.text === "A fresh inline bullet",
+    );
     expect(added?.kind).toBe("local");
   });
 
@@ -295,7 +349,9 @@ describe("ResumeEditorView", () => {
     renderApp(["/resumes/1"]);
     const user = userEvent.setup();
 
-    const localRow = (await screen.findByDisplayValue("Local bullet text")).closest("li") as HTMLElement;
+    const localRow = (await screen.findByDisplayValue("Local bullet text")).closest(
+      "li",
+    ) as HTMLElement;
     await user.click(within(localRow).getByRole("button", { name: "Promote" }));
 
     await waitFor(() => expect(resumes.get(1)?.revision).toBe(2));
@@ -305,7 +361,9 @@ describe("ResumeEditorView", () => {
     authenticate();
     const { handlers, resumes, bullets } = createResumeApiMock({
       resumes: [seedResume()],
-      bullets: [buildBulletpoint({ id: 100, text: "Cut checkout latency by 40%.", used_in_count: 2 })],
+      bullets: [
+        buildBulletpoint({ id: 100, text: "Cut checkout latency by 40%.", used_in_count: 2 }),
+      ],
     });
     server.use(...handlers);
     renderApp(["/resumes/1"]);

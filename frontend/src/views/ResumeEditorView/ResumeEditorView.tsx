@@ -5,6 +5,7 @@ import { useSessionClient } from "@/api";
 import { RESUMES_PATH } from "@/lib/resumePaths";
 
 import { EditorTopBar } from "./components/EditorTopBar";
+import { FinalizeDialog } from "./components/FinalizeDialog";
 import { PdfPreview } from "./components/PdfPreview";
 import { ScopeDialog } from "./components/ScopeDialog";
 import { SectionForm } from "./components/SectionForm";
@@ -27,6 +28,15 @@ export function ResumeEditorView() {
   const { state, actions } = useResumeEditor(resumeId);
   const [previewStatus, setPreviewStatus] = useState<PreviewStatus>("loading");
   const [refreshNonce, setRefreshNonce] = useState(0);
+  const [isFinalizeOpen, setIsFinalizeOpen] = useState(false);
+  const [isFinalizing, setIsFinalizing] = useState(false);
+
+  const confirmFinalize = useCallback(async () => {
+    setIsFinalizing(true);
+    await actions.finalizeResume();
+    setIsFinalizing(false);
+    setIsFinalizeOpen(false);
+  }, [actions]);
 
   const fetchPreview = useCallback(async (): Promise<Blob> => {
     const { data, error } = await client.POST("/resumes/{resume_id}/preview", {
@@ -72,6 +82,7 @@ export function ResumeEditorView() {
             onSetTemplate={actions.setTemplate}
             onExport={actions.exportPdf}
             onRefresh={() => setRefreshNonce((nonce) => nonce + 1)}
+            onRequestFinalize={() => setIsFinalizeOpen(true)}
           />
 
           {state.saveError && (
@@ -107,7 +118,17 @@ export function ResumeEditorView() {
         onApply={actions.resolveScope}
         onCancel={actions.cancelScope}
       />
-      <StaleSaveDialog isOpen={state.isStale} onReload={actions.reload} onDismiss={actions.dismissStale} />
+      <FinalizeDialog
+        isOpen={isFinalizeOpen}
+        isFinalizing={isFinalizing}
+        onConfirm={() => void confirmFinalize()}
+        onCancel={() => setIsFinalizeOpen(false)}
+      />
+      <StaleSaveDialog
+        isOpen={state.isStale}
+        onReload={actions.reload}
+        onDismiss={actions.dismissStale}
+      />
     </section>
   );
 }

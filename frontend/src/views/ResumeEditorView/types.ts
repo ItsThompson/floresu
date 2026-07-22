@@ -67,6 +67,12 @@ export interface ResumeEditorActions {
   promoteItem: (itemId: string) => void;
   /** Render and persist a PDF; resolves to a download URL, or null on failure. */
   exportPdf: () => Promise<string | null>;
+  /**
+   * Finalize an application resume: freeze every reference to inline read-only
+   * text and produce the frozen PDF. Resolves true on success; the resume then
+   * reads back `finalized` (read-only).
+   */
+  finalizeResume: () => Promise<boolean>;
 }
 
 export interface ResumeEditor {

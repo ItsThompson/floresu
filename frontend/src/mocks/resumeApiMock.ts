@@ -2,11 +2,7 @@ import { http, HttpResponse } from "msw";
 
 import type { components } from "@/api";
 
-import {
-  buildBulletpoint,
-  buildResumeRecord,
-  buildTemplate,
-} from "./resumeFixtures";
+import { buildBulletpoint, buildResumeRecord, buildTemplate } from "./resumeFixtures";
 
 type ResumeRecord = components["schemas"]["ResumeRecord"];
 type ResumeSummary = components["schemas"]["ResumeSummary"];
@@ -86,7 +82,10 @@ export function createResumeApiMock(seed: ResumeApiSeed = {}) {
       }
 
       if (scope === "everywhere") {
-        if (body.if_match_bullet_revision != null && body.if_match_bullet_revision !== bullet.revision) {
+        if (
+          body.if_match_bullet_revision != null &&
+          body.if_match_bullet_revision !== bullet.revision
+        ) {
           return conflict();
         }
         bullet.text = body.new_text;
@@ -98,7 +97,10 @@ export function createResumeApiMock(seed: ResumeApiSeed = {}) {
       // this_resume: fork a local copy in the resume and drop the shared reference.
       const record = body.resume_id == null ? null : requireResume(body.resume_id);
       if (!record) return HttpResponse.json({ detail: "Resume not found." }, { status: 404 });
-      if (body.if_match_resume_revision != null && body.if_match_resume_revision !== record.revision) {
+      if (
+        body.if_match_resume_revision != null &&
+        body.if_match_resume_revision !== record.revision
+      ) {
         return conflict();
       }
       forkReferenceToLocal(record, bullet.id, body.new_text, () => `item-${(itemCounter += 1)}`);
@@ -123,6 +125,26 @@ export function createResumeApiMock(seed: ResumeApiSeed = {}) {
         revision: record.revision,
         object_key: `u/1/r/${record.id}/rev/${record.revision}.pdf`,
         download_url: `https://r2.example/${record.id}-${record.revision}.pdf`,
+      });
+    }),
+
+    http.post("*/resumes/:resumeId/finalize", ({ params }) => {
+      const record = requireResume(Number(params.resumeId));
+      if (!record) return HttpResponse.json({ detail: "Resume not found." }, { status: 404 });
+      if (record.kind !== "application") {
+        return HttpResponse.json(
+          { title: "Conflict", detail: "Only application resumes can be finalized." },
+          { status: 409 },
+        );
+      }
+      freezeReferences(record, bullets);
+      record.status = "finalized";
+      commit(record);
+      return HttpResponse.json({
+        resume_id: record.id,
+        status: "finalized",
+        pdf_object_key: `u/1/r/${record.id}/rev/${record.revision}.pdf`,
+        revision_no: record.revision,
       });
     }),
 
@@ -183,7 +205,8 @@ export function createResumeApiMock(seed: ResumeApiSeed = {}) {
     http.delete("*/resumes/:resumeId", ({ params, request }) => {
       const id = Number(params.resumeId);
       const confirmed = new URL(request.url).searchParams.get("confirm") === "true";
-      if (!confirmed) return HttpResponse.json({ detail: "Confirmation required." }, { status: 422 });
+      if (!confirmed)
+        return HttpResponse.json({ detail: "Confirmation required." }, { status: 422 });
       resumes.delete(id);
       return HttpResponse.json({ entity_type: "resume", entity_id: id, embedding_purged: false });
     }),
@@ -206,7 +229,12 @@ export function createResumeApiMock(seed: ResumeApiSeed = {}) {
         title: body.title ?? "Untitled resume",
         revision: 1,
         job_application_id: body.job_application_id ?? null,
-        document: { schema_version: 1, template_id: body.template_id ?? "classic", header: {}, sections: [] },
+        document: {
+          schema_version: 1,
+          template_id: body.template_id ?? "classic",
+          header: {},
+          sections: [],
+        },
       });
       resumes.set(id, created);
       return HttpResponse.json(clone(created), { status: 201 });
@@ -236,7 +264,12 @@ function addItem(
   const item: ResumeItem =
     body.item.kind === "library_ref"
       ? { id: itemId, kind: "library_ref", bullet_id: body.item.bullet_id }
-      : { id: itemId, kind: "local", text: body.item.text, source_refs: body.item.source_refs ?? undefined };
+      : {
+          id: itemId,
+          kind: "local",
+          text: body.item.text,
+          source_refs: body.item.source_refs ?? undefined,
+        };
   section.items = { ...section.items, [itemId]: item };
   section.item_order = [...(section.item_order ?? []), itemId];
   if (item.kind === "library_ref") {
@@ -282,7 +315,37 @@ function forkReferenceToLocal(
   void mintId;
 }
 
-function applyReorder(record: ResumeRecord, body: components["schemas"]["ResumeReorderRequest"]): void {
+/**
+ * Finalize's freeze: every library reference is resolved to inline read-only
+ * text (retaining `forked_from_bullet_id`) and stops counting toward its bullet's
+ * "used in N", mirroring the backend dropping the resume's bullet refs.
+ */
+function freezeReferences(record: ResumeRecord, bullets: Map<number, BulletpointRecord>): void {
+  for (const section of record.document.sections ?? []) {
+    for (const [id, item] of Object.entries(section.items ?? {})) {
+      if (item.kind !== "library_ref") continue;
+      const bullet = bullets.get(item.bullet_id);
+      section.items = {
+        ...section.items,
+        [id]: {
+          id,
+          kind: "local",
+          text: bullet?.text ?? "",
+          forked_from_bullet_id: item.bullet_id,
+        },
+      };
+      if (bullet) {
+        bullet.used_in_count = Math.max(0, bullet.used_in_count - 1);
+        bullets.set(bullet.id, bullet);
+      }
+    }
+  }
+}
+
+function applyReorder(
+  record: ResumeRecord,
+  body: components["schemas"]["ResumeReorderRequest"],
+): void {
   const sections = record.document.sections ?? [];
   if (body.section_order) {
     sections.sort((a, b) => body.section_order!.indexOf(a.id) - body.section_order!.indexOf(b.id));

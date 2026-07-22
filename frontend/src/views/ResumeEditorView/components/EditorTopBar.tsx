@@ -16,14 +16,17 @@ interface EditorTopBarProps {
   onSetTemplate: (templateId: string) => void;
   onExport: () => Promise<string | null>;
   onRefresh: () => void;
+  /** Open the finalize confirm gate (application resumes only). */
+  onRequestFinalize: () => void;
 }
 
 /**
  * The editor header: the editable title, the kind/status line, the template
- * selector, and the actions (export, refresh, and the gated finalize/history).
- * Export renders and persists a PDF and surfaces a download link; finalize and
- * past-revision viewing are gated seams (their backend routes are not available
- * yet) and are shown disabled with an explanation rather than invented.
+ * selector, and the actions (export, refresh, finalize, and the gated history).
+ * Export renders and persists a PDF and surfaces a download link; finalize opens
+ * a confirm gate (rendered by the orchestrator) and is shown only for an editable
+ * application resume. Past-revision viewing is a gated seam (its backend route is
+ * not available yet) and is shown disabled with an explanation.
  */
 export function EditorTopBar({
   record,
@@ -34,6 +37,7 @@ export function EditorTopBar({
   onSetTemplate,
   onExport,
   onRefresh,
+  onRequestFinalize,
 }: EditorTopBarProps) {
   const [title, setTitle] = useState(record.title);
   const [lastTitle, setLastTitle] = useState(record.title);
@@ -83,7 +87,12 @@ export function EditorTopBar({
           isReadOnly={isReadOnly}
           onChange={onSetTemplate}
         />
-        <Button variant="outline" size="sm" onClick={() => void doExport()} disabled={!canExport || isExporting}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => void doExport()}
+          disabled={!canExport || isExporting}
+        >
           <Download aria-hidden /> Export
         </Button>
         <Button variant="ghost" size="sm" onClick={onRefresh}>
@@ -97,15 +106,20 @@ export function EditorTopBar({
         >
           <History aria-hidden /> History
         </Button>
-        {record.kind === "application" && (
-          <Button variant="ghost" size="sm" disabled title="Finalize ships with the Job Applications view.">
+        {record.kind === "application" && !isReadOnly && (
+          <Button variant="default" size="sm" onClick={onRequestFinalize}>
             Finalize
           </Button>
         )}
       </div>
 
       {exportUrl && (
-        <a href={exportUrl} target="_blank" rel="noopener" className="text-primary text-sm underline">
+        <a
+          href={exportUrl}
+          target="_blank"
+          rel="noopener"
+          className="text-primary text-sm underline"
+        >
           Download exported PDF
         </a>
       )}
