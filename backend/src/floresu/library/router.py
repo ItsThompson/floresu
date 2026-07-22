@@ -7,6 +7,10 @@ injects the trusted-header identity and the named-agent actor. Business rules, t
 transaction, and the write-event publish all live in the service, so both
 boundaries share one implementation and provenance is uniform.
 
+``PUT /bullets/{id}`` carries the expected ``revision`` in the ``If-Match`` header;
+a missing or non-integer header is a request-validation error and a stale value is
+rejected by the service as a recoverable conflict via the compare-and-swap.
+
 The ``FloresuError`` the service raises is rendered as RFC 9457 problem+json by the
 shared exception handler.
 """
@@ -16,7 +20,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header
 
 from floresu.core.actor import Actor
 from floresu.library.schemas import BulletpointRecord, BulletpointWrite
@@ -74,8 +78,12 @@ def create_bullets_router(
         user_id: str = Depends(identity),
         actor_: Actor = Depends(actor),
         service: LibraryService = Depends(service_provider),
+        if_match: int = Header(alias="If-Match"),
     ) -> BulletpointRecord:
-        return await service.update(user_id, bullet_id, actor_, body)
+        # ``If-Match`` carries the ``revision`` the client loaded; the service makes
+        # the write a compare-and-swap on it. A missing or non-integer header is a
+        # request-validation error (4xx), so a write can never bypass the guard.
+        return await service.update(user_id, bullet_id, actor_, body, if_match)
 
     @router.post("/{bullet_id}/archive")
     async def archive_bullet(

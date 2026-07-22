@@ -11,9 +11,12 @@ Create persists the bullet text plus its ``bullet_source`` and/or ``bullet_workl
 edges (zero, one, or many of each; both empty is allowed but ungrouped). Edit
 overwrites the full representation: setting the source / worklog lists re-frames
 the bullet. The content hash is recomputed on every edit and a re-embed is
-signalled (the hash rides the event metadata) only when it changes; the
-``revision`` token is left untouched here (the guarded scope=everywhere edit path
-that increments it lands later). Archive is soft (stamps ``archived_at``; restore
+signalled (the hash rides the event metadata) only when it changes. Edit is an
+optimistic compare-and-swap on the ``revision`` token guarded by ``If-Match``: a
+stale or raced token matches 0 rows and is a recoverable conflict, and a successful
+swap advances the token by one atomically. This is the same guard the
+scope=everywhere edit path uses, so both canonical edit paths share one token.
+Archive is soft (stamps ``archived_at``; restore
 clears it), so an archived bullet leaves library reads while its edges persist.
 Only canonical bullets ever reach this table; a resume-local fork lives inline in
 the resume document, so there is no path for one to land here.
@@ -125,9 +128,16 @@ class LibraryService:
         ]
 
     async def update(
-        self, user_id: str, bullet_id: int, actor: Actor, write: BulletpointWrite
+        self, user_id: str, bullet_id: int, actor: Actor, write: BulletpointWrite, if_match: int
     ) -> BulletpointRecord:
-        """Overwrite text and edges; re-embed only when the bullet text changed."""
+        """Overwrite text and edges under the optimistic token; re-embed on text change.
+
+        The write is a compare-and-swap guarded by ``if_match`` (the ``revision`` the
+        client loaded): a stale or raced token matches 0 rows and raises a recoverable
+        conflict rather than silently overwriting, and a successful swap advances the
+        token by one atomically. An edges-only edit still runs the swap (advancing the
+        token) but signals no re-embed, since the content hash is unchanged.
+        """
         pk = _require_user_pk(user_id)
         bullet = await self._repo.get(pk, bullet_id)
         if bullet is None:
@@ -138,18 +148,22 @@ class LibraryService:
         new_hash = compute_content_hash(write.text)
         content_changed = new_hash != bullet.content_hash
         async with transaction(self._session):
-            bullet.text = write.text
-            bullet.content_hash = new_hash
-            await self._attach(bullet.id, source_ids, worklog_ids)
+            swapped = await self._repo.update_text_if_revision(
+                pk, bullet_id, if_match, write.text, new_hash
+            )
+            if not swapped:
+                raise Conflict("This bulletpoint changed since you loaded it; re-read and retry.")
+            await self._attach(bullet_id, source_ids, worklog_ids)
             # Signal a re-embed (carry the new hash) only when the text changed; an
-            # edges-only edit leaves the hash and publishes no trigger.
+            # edges-only edit still advances the token but leaves the hash and
+            # publishes no trigger.
             metadata = {REEMBED_CONTENT_HASH_KEY: new_hash} if content_changed else None
             await self._publish(
                 pk,
                 actor,
-                bullet.id,
+                bullet_id,
                 Action.UPDATE,
-                summary=edited_summary(bullet.text),
+                summary=edited_summary(write.text),
                 metadata=metadata,
             )
         return await self._record_after_write(bullet, source_ids, worklog_ids)

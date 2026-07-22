@@ -53,8 +53,10 @@ class Bulletpoint(Base):
     # Hash over the bullet text; the service recomputes it on edit and the
     # embedding worker compares it to gate re-embedding. Never null: set on create.
     content_hash: Mapped[str] = mapped_column(Text, nullable=False)
-    # Optimistic-concurrency token for scope=everywhere edits guarded by If-Match.
-    # This table creates it; the guarded edit path that increments it lands later.
+    # Optimistic-concurrency token guarded by If-Match. Both canonical edit paths
+    # (PUT /bullets/{id} and the scope=everywhere edit) advance it via a
+    # compare-and-swap UPDATE, so two edits that loaded the same revision cannot
+    # both win.
     revision: Mapped[int] = mapped_column(Integer, nullable=False, server_default=sql("1"))
     # Soft archive: a non-null value means archived (dropped from library reads).
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -86,27 +86,26 @@ class LibraryCanonicalBulletWriter:
     async def edit_text_everywhere(
         self, user_id: int, actor: Actor, bullet_id: int, *, new_text: str, if_match_revision: int
     ) -> BulletpointRecord:
-        """Overwrite the canonical bullet text in place, guarded by its ``revision``.
+        """Overwrite the canonical bullet text in place, guarded by a revision CAS.
 
-        Rejects a stale edit (a revision that no longer matches) with a recoverable
-        re-read/retry conflict, bumps the token on success, and signals a re-embed
-        only when the text actually changed. Every resume that references the bullet
-        resolves the new text on its next read, so the edit lands everywhere.
+        The write is a compare-and-swap on ``revision``: a stale or raced token
+        matches 0 rows and raises a recoverable re-read/retry conflict rather than
+        silently overwriting, and a successful swap advances the token by one
+        atomically. It signals a re-embed only when the text actually changed. This is
+        the same guard ``PUT /bullets/{id}`` uses, so the two canonical edit paths
+        share one token. Every resume that references the bullet resolves the new text
+        on its next read, so the edit lands everywhere.
         """
         bullet = await self._repo.get(user_id, bullet_id)
         if bullet is None:
             raise NotFound(f"No bulletpoint with id {bullet_id}.")
-        if bullet.revision != if_match_revision:
-            raise Conflict(
-                "This bulletpoint changed since you loaded it "
-                f"(you sent revision {if_match_revision}, current is {bullet.revision}); "
-                "re-read and retry."
-            )
         new_hash = compute_content_hash(new_text)
         content_changed = new_hash != bullet.content_hash
-        bullet.text = new_text
-        bullet.content_hash = new_hash
-        bullet.revision += 1
+        swapped = await self._repo.update_text_if_revision(
+            user_id, bullet_id, if_match_revision, new_text, new_hash
+        )
+        if not swapped:
+            raise Conflict("This bulletpoint changed since you loaded it; re-read and retry.")
         metadata: dict[str, Any] = {SCOPE_METADATA_KEY: _SCOPE_EVERYWHERE}
         if content_changed:
             metadata[REEMBED_CONTENT_HASH_KEY] = new_hash
