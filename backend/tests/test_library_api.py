@@ -176,18 +176,55 @@ def test_restore_returns_a_bullet_to_the_active_list(make_settings: MakeSettings
 def test_edit_updates_text_and_edges(make_settings: MakeSettings) -> None:
     client, repo, captured = _client(make_settings, internal=False)
     repo.own_worklog(1, 10)
-    bullet_id = client.post("/bullets", json=build_bullet_write().model_dump(mode="json")).json()[
-        "id"
-    ]
+    created = client.post("/bullets", json=build_bullet_write().model_dump(mode="json")).json()
+    bullet_id = created["id"]
 
     edited = client.put(
         f"/bullets/{bullet_id}",
         json=build_bullet_write(text="Reworded framing.", worklog_ids=[10]).model_dump(mode="json"),
+        headers={"If-Match": str(created["revision"])},
     )
     assert edited.status_code == 200
     assert edited.json()["text"] == "Reworded framing."
     assert edited.json()["worklog_ids"] == [10]
+    # The CAS advanced the optimistic token by one.
+    assert edited.json()["revision"] == created["revision"] + 1
     assert captured[-1].action.value == "update"
+
+
+def test_put_without_if_match_is_a_422(make_settings: MakeSettings) -> None:
+    client, _, _ = _client(make_settings, internal=False)
+    bullet_id = client.post("/bullets", json=build_bullet_write().model_dump(mode="json")).json()[
+        "id"
+    ]
+    # A missing If-Match must not fall through to an unguarded write: it is a 4xx.
+    response = client.put(
+        f"/bullets/{bullet_id}",
+        json=build_bullet_write(text="No guard.").model_dump(mode="json"),
+    )
+    assert response.status_code == 422
+    assert response.headers["content-type"] == "application/problem+json"
+
+
+def test_put_with_a_stale_if_match_is_a_409(make_settings: MakeSettings) -> None:
+    client, _, _ = _client(make_settings, internal=False)
+    created = client.post("/bullets", json=build_bullet_write().model_dump(mode="json")).json()
+    bullet_id = created["id"]
+    # First edit advances the token past the loaded revision.
+    ok = client.put(
+        f"/bullets/{bullet_id}",
+        json=build_bullet_write(text="First.").model_dump(mode="json"),
+        headers={"If-Match": str(created["revision"])},
+    )
+    assert ok.status_code == 200
+    # A second edit carrying the now-stale original revision is a recoverable 409.
+    stale = client.put(
+        f"/bullets/{bullet_id}",
+        json=build_bullet_write(text="Stale.").model_dump(mode="json"),
+        headers={"If-Match": str(created["revision"])},
+    )
+    assert stale.status_code == 409
+    assert stale.headers["content-type"] == "application/problem+json"
 
 
 def test_unauthenticated_request_is_rejected(make_settings: MakeSettings) -> None:

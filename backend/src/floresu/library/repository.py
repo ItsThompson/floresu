@@ -16,9 +16,9 @@ the ``transaction`` boundary the service wraps its write in is what commits.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 
 from floresu.core.db import fetch_optional
 from floresu.library.models import Bulletpoint, BulletSource, BulletWorklog
@@ -28,6 +28,7 @@ from floresu.worklog.models import WorklogEntry
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from sqlalchemy.engine import CursorResult
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -41,6 +42,10 @@ class LibraryRepository(Protocol):
     async def list_bullets(
         self, user_id: int, *, include_archived: bool, limit: int
     ) -> Sequence[Bulletpoint]: ...
+
+    async def update_text_if_revision(
+        self, user_id: int, bullet_id: int, if_match: int, text: str, content_hash: str
+    ) -> bool: ...
 
     async def owned_source_ids(self, user_id: int, source_ids: Sequence[int]) -> set[int]: ...
 
@@ -81,6 +86,27 @@ class SqlAlchemyLibraryRepository:
         statement = statement.order_by(Bulletpoint.id.desc()).limit(limit)
         result = await self._session.execute(statement)
         return result.scalars().all()
+
+    async def update_text_if_revision(
+        self, user_id: int, bullet_id: int, if_match: int, text: str, content_hash: str
+    ) -> bool:
+        # Compare-and-swap: advance the revision and rewrite text/hash in one atomic
+        # statement, but only while the loaded revision still matches. The database
+        # decides a same-revision race: exactly one concurrent writer matches
+        # ``revision == if_match`` and increments, the loser matches 0 rows. The
+        # rowcount, not a prior read, is the guard, so there is no lost update.
+        result = await self._session.execute(
+            update(Bulletpoint)
+            .where(
+                Bulletpoint.id == bullet_id,
+                Bulletpoint.user_id == user_id,
+                Bulletpoint.revision == if_match,
+            )
+            .values(revision=Bulletpoint.revision + 1, text=text, content_hash=content_hash)
+        )
+        # A DML execute yields a CursorResult; rowcount is the CAS's authoritative
+        # hit count (1 on a match, 0 on a stale/raced token).
+        return cast("CursorResult[Any]", result).rowcount == 1
 
     async def owned_source_ids(self, user_id: int, source_ids: Sequence[int]) -> set[int]:
         if not source_ids:

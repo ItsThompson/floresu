@@ -23,8 +23,9 @@ from floresu.audit.models import AuditLog
 from floresu.audit.wiring import build_write_event_publisher
 from floresu.core.actor import Actor, ActorType
 from floresu.core.db import create_db_engine, create_sessionmaker, transaction
-from floresu.core.errors import Validation
+from floresu.core.errors import Conflict, Validation
 from floresu.core.events import REEMBED_CONTENT_HASH_KEY
+from floresu.library.cow import LibraryCanonicalBulletWriter
 from floresu.library.hashing import compute_content_hash
 from floresu.library.models import Bulletpoint, BulletSource, BulletWorklog
 from floresu.library.provenance import build_provenance_dag
@@ -73,6 +74,13 @@ def _library(session: AsyncSession) -> LibraryService:
         SqlAlchemyLibraryRepository(session),
         build_write_event_publisher(),
         SqlAlchemyResumeRepository(session),
+    )
+
+
+def _writer(session: AsyncSession) -> LibraryCanonicalBulletWriter:
+    # The scope=everywhere edit path; transaction-free, so the caller wraps it.
+    return LibraryCanonicalBulletWriter(
+        session, SqlAlchemyLibraryRepository(session), build_write_event_publisher()
     )
 
 
@@ -231,15 +239,24 @@ async def test_reembed_trigger_only_fires_when_text_changes(migrated_url: str) -
         source_id = await _create_source(sessionmaker, user_id)
         async with sessionmaker() as session:
             created = await _library(session).create(str(user_id), _HUMAN, build_bullet_write())
-        # An edges-only edit leaves the content hash: no re-embed trigger.
+        # An edges-only edit leaves the content hash: no re-embed trigger. It still
+        # runs the CAS, so the token advances.
         async with sessionmaker() as session:
-            await _library(session).update(
-                str(user_id), created.id, _HUMAN, build_bullet_write(source_ids=[source_id])
+            edited = await _library(session).update(
+                str(user_id),
+                created.id,
+                _HUMAN,
+                build_bullet_write(source_ids=[source_id]),
+                created.revision,
             )
         # A text edit changes the hash: the trigger fires.
         async with sessionmaker() as session:
             await _library(session).update(
-                str(user_id), created.id, _HUMAN, build_bullet_write(text="A new framing entirely.")
+                str(user_id),
+                created.id,
+                _HUMAN,
+                build_bullet_write(text="A new framing entirely."),
+                edited.revision,
             )
         async with sessionmaker() as session:
             updates = (
@@ -389,3 +406,96 @@ async def test_dropping_refs_lowers_the_library_count(migrated_url: str) -> None
 
     assert before == 2
     assert after == 1
+
+
+async def test_same_revision_race_yields_one_success_and_one_conflict(migrated_url: str) -> None:
+    engine = create_db_engine(migrated_url)
+    sessionmaker = create_sessionmaker(engine)
+    try:
+        user_id = await _insert_user(sessionmaker, "lib-cas-race@example.com")
+        async with sessionmaker() as session:
+            created = await _library(session).create(
+                str(user_id), _HUMAN, build_bullet_write(text="Contended framing.")
+            )
+        loaded = created.revision
+        # Two writers both loaded the same revision. The first swap wins.
+        async with sessionmaker() as session:
+            winner = await _library(session).update(
+                str(user_id), created.id, _HUMAN, build_bullet_write(text="Winner."), loaded
+            )
+        # The second, carrying the same (now-stale) revision, matches 0 rows: a
+        # recoverable conflict, not a 500 and not a lost update.
+        with pytest.raises(Conflict):
+            async with sessionmaker() as session:
+                await _library(session).update(
+                    str(user_id), created.id, _HUMAN, build_bullet_write(text="Loser."), loaded
+                )
+        async with sessionmaker() as session:
+            final = (
+                await session.execute(select(Bulletpoint).where(Bulletpoint.id == created.id))
+            ).scalar_one()
+    finally:
+        await engine.dispose()
+
+    assert winner.revision == loaded + 1
+    # Advanced by exactly one: the loser neither incremented again nor overwrote.
+    assert final.revision == loaded + 1
+    assert final.text == "Winner."
+
+
+async def test_one_token_spans_the_put_and_everywhere_edit_paths(migrated_url: str) -> None:
+    engine = create_db_engine(migrated_url)
+    sessionmaker = create_sessionmaker(engine)
+    try:
+        user_id = await _insert_user(sessionmaker, "lib-one-token@example.com")
+        async with sessionmaker() as session:
+            created = await _library(session).create(
+                str(user_id), _HUMAN, build_bullet_write(text="Shared token.")
+            )
+        loaded = created.revision
+        # An everywhere edit advances the shared token via the same CAS.
+        async with sessionmaker() as session, transaction(session):
+            await _writer(session).edit_text_everywhere(
+                user_id, _HUMAN, created.id, new_text="Edited everywhere.", if_match_revision=loaded
+            )
+        # A PUT carrying the pre-everywhere revision is now stale (one direction).
+        with pytest.raises(Conflict):
+            async with sessionmaker() as session:
+                await _library(session).update(
+                    str(user_id), created.id, _HUMAN, build_bullet_write(text="Stale PUT."), loaded
+                )
+        async with sessionmaker() as session:
+            after_everywhere = (
+                (await session.execute(select(Bulletpoint).where(Bulletpoint.id == created.id)))
+                .scalar_one()
+                .revision
+            )
+        # A PUT advances the token; a subsequent everywhere edit at the pre-PUT
+        # revision is rejected as stale too (the other direction).
+        async with sessionmaker() as session:
+            await _library(session).update(
+                str(user_id),
+                created.id,
+                _HUMAN,
+                build_bullet_write(text="Advanced by PUT."),
+                after_everywhere,
+            )
+        with pytest.raises(Conflict):
+            async with sessionmaker() as session, transaction(session):
+                await _writer(session).edit_text_everywhere(
+                    user_id,
+                    _HUMAN,
+                    created.id,
+                    new_text="Stale everywhere.",
+                    if_match_revision=after_everywhere,
+                )
+        async with sessionmaker() as session:
+            final = (
+                await session.execute(select(Bulletpoint).where(Bulletpoint.id == created.id))
+            ).scalar_one()
+    finally:
+        await engine.dispose()
+
+    # Two successful swaps (everywhere, then PUT): the token advanced by exactly two.
+    assert final.revision == loaded + 2
+    assert final.text == "Advanced by PUT."

@@ -1544,6 +1544,15 @@
               "type": "integer",
               "title": "Bullet Id"
             }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "If-Match"
+            }
           }
         ],
         "requestBody": {

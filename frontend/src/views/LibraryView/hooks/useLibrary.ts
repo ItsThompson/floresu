@@ -144,7 +144,13 @@ export function useLibrary(): UseLibrary {
       const request =
         editor?.mode === "edit"
           ? client.PUT("/bullets/{bullet_id}", {
-              params: { path: { bullet_id: editor.bullet.id } },
+              params: {
+                path: { bullet_id: editor.bullet.id },
+                // Send the loaded revision so the backend CAS guards the write. The
+                // recoverable 409 re-read/retry UX is a separate follow-up; here a
+                // stale save surfaces as a save error rather than a false success.
+                header: { "If-Match": editor.bullet.revision },
+              },
               body,
             })
           : client.POST("/bullets", { body });
