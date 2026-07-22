@@ -93,9 +93,13 @@ first real deploy, provision and supply:
 5. **GitHub Actions secrets**: `DEPLOY_SSH_KEY`, `DEPLOY_SERVER_IP`,
    `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `SESSION_JWT_SECRET`, `INTERNAL_API_TOKEN`,
    `DISCORD_WEBHOOK_URL`, `GF_SECURITY_ADMIN_PASSWORD`, `OPENAI_API_KEY`,
-   `FLORESU_OAUTH_PRIVATE_KEY` (RSA PEM), `FLORESU_CLOUDFLARED_CREDENTIALS`.
-6. **R2** (rendering/storage, wired by the rendering ticket): provision the bucket
-   and add the `R2_*` secrets when that code lands; they are not consumed yet.
+   `FLORESU_OAUTH_PRIVATE_KEY` (RSA PEM), `FLORESU_CLOUDFLARED_CREDENTIALS`,
+   `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`.
+6. **R2** (rendered-PDF storage: export, finalize, published-version viewing):
+   provision the bucket, set the non-secret `R2_ENDPOINT_URL` and `R2_BUCKET` in
+   `.env.prod`, and add the `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` GitHub
+   secrets. Required: the deploy preflight fails fast if any `R2_*` value is unset,
+   and export/finalize/history do not work without them.
 
 Backups / point-in-time recovery are explicitly deferred (spec §12/§15);
 `HostDiskAlmostFull` warns before the disk fills.
