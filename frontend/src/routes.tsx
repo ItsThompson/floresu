@@ -11,6 +11,8 @@ import { LibraryView } from "@/views/LibraryView";
 import { OnboardingView } from "@/views/OnboardingView";
 import { ProfileHubView } from "@/views/ProfileHubView";
 import { ProfileSourceDetailView } from "@/views/ProfileSourceDetailView";
+import { ResumeEditorView } from "@/views/ResumeEditorView";
+import { ResumesListView } from "@/views/ResumesListView";
 import { SkillsView } from "@/views/SkillsView";
 import { WorklogView } from "@/views/WorklogView";
 
@@ -51,6 +53,8 @@ export const appRoutes: RouteObject[] = [
               { index: true, element: <HomeView /> },
               { path: "worklog", element: <WorklogView /> },
               { path: "library", element: <LibraryView /> },
+              { path: "resumes", element: <ResumesListView /> },
+              { path: "resumes/:resumeId", element: <ResumeEditorView /> },
               // Career Profile: hub, source detail, skills, identities.
               { path: "profile", element: <ProfileHubView /> },
               { path: "profile/skills", element: <SkillsView /> },
