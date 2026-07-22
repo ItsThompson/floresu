@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { to: "/worklog", label: "Worklog", end: false },
   { to: "/library", label: "Library", end: false },
   { to: "/resumes", label: "Resumes", end: false },
+  { to: "/applications", label: "Job Applications", end: false },
   { to: "/profile", label: "Profile", end: false },
   { to: "/settings", label: "Settings", end: false },
 ] as const;
@@ -33,7 +34,9 @@ export function Sidebar() {
               end={item.end}
               className={({ isActive }) =>
                 `block rounded-md px-3 py-2 text-sm font-medium ${
-                  isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : "hover:bg-sidebar-accent/50"
+                  isActive
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                    : "hover:bg-sidebar-accent/50"
                 }`
               }
             >
