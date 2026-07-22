@@ -54,6 +54,8 @@ export_required_secret_env() {
   export FLORESU_PROMETHEUS_CONFIG="global: {}" FLORESU_PROMETHEUS_ALERTS="groups: []"
   export POSTGRES_PASSWORD="pw" SESSION_JWT_SECRET="s" INTERNAL_API_TOKEN="t"
   export GF_SECURITY_ADMIN_PASSWORD="gf" REDIS_PASSWORD="rpw"
+  export R2_ENDPOINT_URL="https://acct.r2.cloudflarestorage.com" R2_BUCKET="resumes"
+  export R2_ACCESS_KEY_ID="ak" R2_SECRET_ACCESS_KEY="sk"
 }
 
 # --- pure helpers -----------------------------------------------------------
@@ -126,6 +128,24 @@ test_assert_secret_env_requires_grafana_password() {
   rc=$?
   [[ ${rc} -ne 0 ]] || { echo "expected non-zero exit without GF_SECURITY_ADMIN_PASSWORD"; return 1; }
   contains "${out}" "GF_SECURITY_ADMIN_PASSWORD" || return 1
+}
+
+test_assert_secret_env_requires_every_r2_value() {
+  source "${DEPLOY}"
+  # All four R2 values are required: the endpoint/bucket (non-secret .env.prod
+  # half) and the access key id/secret (GitHub secrets). Unsetting any one fails
+  # fast and names it, so a deploy never ships a backend that cannot export,
+  # finalize, or serve a stored PDF.
+  local var out rc
+  for var in R2_ENDPOINT_URL R2_BUCKET R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY; do
+    export_required_secret_env
+    unset "${var}"
+    out="$(assert_secret_env_present 2>&1)"
+    rc=$?
+    [[ ${rc} -ne 0 ]] || { echo "expected non-zero exit without ${var}"; return 1; }
+    contains "${out}" "${var}" || return 1
+    contains "${out}" "missing required" || return 1
+  done
 }
 
 # --- dry-run phase plan & ordering ------------------------------------------
@@ -255,6 +275,28 @@ test_cd_frontend_image_bakes_prod_api_and_mcp_origins() {
   contains "${workflow}" 'build-args: ${{ steps.frontend-build-args.outputs.value }}' || return 1
 }
 
+test_deploy_overlay_and_cd_wire_r2_to_backend() {
+  local overlay envprod cd
+  overlay="$(cat "${REPO_DIR}/docker-compose.deploy.yml")"
+  envprod="$(cat "${REPO_DIR}/.env.prod")"
+  cd="${REPO_DIR}/.github/workflows/cd.yml"
+  # The two R2 secrets pass through from the runner env, required (:?) like the
+  # other app secrets. Only the backend renders/persists, so the overlay wires R2
+  # to backend, not worker/mcp.
+  contains "${overlay}" 'R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:?' || return 1
+  contains "${overlay}" 'R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:?' || return 1
+  # The non-secret half (endpoint + bucket) is committed in .env.prod and reaches
+  # the backend via env_file, so it is not re-declared as a passthrough secret.
+  contains "${envprod}" "R2_ENDPOINT_URL=" || return 1
+  contains "${envprod}" "R2_BUCKET=" || return 1
+  # .env.prod stays secret-free: the R2 keys are GitHub secrets, never committed.
+  not_contains "${envprod}" "R2_ACCESS_KEY_ID=" || return 1
+  not_contains "${envprod}" "R2_SECRET_ACCESS_KEY=" || return 1
+  # Both the deploy and the rollback steps carry the two R2 GitHub secrets.
+  equals "$(grep -cF 'R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}' "${cd}")" "2" || return 1
+  equals "$(grep -cF 'R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}' "${cd}")" "2" || return 1
+}
+
 # --- rollback target helper (CI owns rollback) ------------------------------
 
 test_read_deployed_sha_returns_prev_and_refuses_on_empty() {
@@ -380,6 +422,7 @@ main_tests() {
   run_test test_gate_unhealthy_empty_or_unparseable_is_not_healthy
   run_test test_assert_secret_env_present
   run_test test_assert_secret_env_requires_grafana_password
+  run_test test_assert_secret_env_requires_every_r2_value
   run_test test_dry_run_uses_docker_context_and_no_ssh_heredoc
   run_test test_dry_run_migrations_before_start
   run_test test_dry_run_pull_migrate_up_use_overlay_and_profile
@@ -390,6 +433,7 @@ main_tests() {
   run_test test_compose_data_tier_isolation
   run_test test_compose_deploy_overlay_feeds_app_env_from_env_prod_and_secrets
   run_test test_cd_frontend_image_bakes_prod_api_and_mcp_origins
+  run_test test_deploy_overlay_and_cd_wire_r2_to_backend
   run_test test_read_deployed_sha_returns_prev_and_refuses_on_empty
   run_test test_failed_gate_no_internal_redeploy
   run_test test_failed_gate_nonzero_exit_and_no_deployed_sha_write
