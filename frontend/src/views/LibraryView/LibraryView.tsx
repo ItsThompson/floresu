@@ -7,6 +7,7 @@ import { BulletForm } from "./components/BulletForm";
 import { LibraryToolbar } from "./components/LibraryToolbar";
 import { SearchFilters } from "./components/SearchFilters";
 import { SearchResults } from "./components/SearchResults";
+import { StaleBulletDialog } from "./components/StaleBulletDialog";
 import { EMPTY_LIBRARY_MESSAGE, LOAD_ERROR_MESSAGE } from "./constants";
 import { useLibrary } from "./hooks/useLibrary";
 import type { BulletFormValues } from "./types";
@@ -88,7 +89,7 @@ export function LibraryView() {
 
       {editor && (
         <BulletForm
-          key={editor.mode === "edit" ? `edit-${editor.bullet.id}` : "create"}
+          key={editor.mode === "edit" ? `edit-${editor.bullet.id}-${editor.bullet.revision}` : "create"}
           mode={editor.mode}
           initialValues={editorInitialValues}
           sources={data.sources}
@@ -126,6 +127,12 @@ export function LibraryView() {
         ) : (
           <p className="text-muted-foreground text-sm">{EMPTY_LIBRARY_MESSAGE}</p>
         ))}
+
+      <StaleBulletDialog
+        isOpen={state.isStale}
+        onReread={actions.rereadStaleBullet}
+        onDismiss={actions.dismissStale}
+      />
     </section>
   );
 }

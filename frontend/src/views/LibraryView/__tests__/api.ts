@@ -16,6 +16,8 @@ interface LibraryApiSeed {
 interface LibraryApiHandle {
   setSearchResult: (result: SearchResult) => void;
   getBullets: () => Bullet[];
+  /** Simulate a concurrent writer: bump the stored revision and rewrite the text. */
+  recordExternalEdit: (id: number, text: string) => void;
 }
 
 /**
@@ -38,6 +40,11 @@ export function installLibraryApi(seed: LibraryApiSeed = {}): LibraryApiHandle {
   server.use(
     http.get("*/sources", () => HttpResponse.json(sources)),
     http.get("*/bullets", () => HttpResponse.json(active())),
+    http.get("*/bullets/:id", ({ params }) => {
+      const id = Number(params.id);
+      const found = bullets.find((entry) => entry.id === id);
+      return found ? HttpResponse.json(found) : new HttpResponse(null, { status: 404 });
+    }),
     http.get("*/worklog", () => HttpResponse.json(worklog)),
     http.get("*/worklog/tags", () => HttpResponse.json(tags)),
     http.post("*/search", () => HttpResponse.json(searchResult)),
@@ -54,20 +61,28 @@ export function installLibraryApi(seed: LibraryApiSeed = {}): LibraryApiHandle {
       return HttpResponse.json(created, { status: 201 });
     }),
     http.put("*/bullets/:id", async ({ request, params }) => {
-      const body = (await request.json()) as BulletWrite;
       const id = Number(params.id);
-      bullets = bullets.map((entry) =>
-        entry.id === id
-          ? {
-              ...entry,
-              text: body.text,
-              source_ids: body.source_ids ?? [],
-              worklog_ids: body.worklog_ids ?? [],
-              revision: entry.revision + 1,
-            }
-          : entry,
-      );
-      return HttpResponse.json(bullets.find((entry) => entry.id === id));
+      const current = bullets.find((entry) => entry.id === id);
+      if (!current) return new HttpResponse(null, { status: 404 });
+      // Mirror the backend CAS: the write only lands when the loaded revision
+      // still matches, otherwise it is a recoverable 409 (no overwrite).
+      const ifMatch = Number(request.headers.get("If-Match"));
+      if (current.revision !== ifMatch) {
+        return HttpResponse.json(
+          { detail: "This bulletpoint changed since you loaded it; re-read and retry." },
+          { status: 409 },
+        );
+      }
+      const body = (await request.json()) as BulletWrite;
+      const updated: Bullet = {
+        ...current,
+        text: body.text,
+        source_ids: body.source_ids ?? [],
+        worklog_ids: body.worklog_ids ?? [],
+        revision: current.revision + 1,
+      };
+      bullets = bullets.map((entry) => (entry.id === id ? updated : entry));
+      return HttpResponse.json(updated);
     }),
     http.post("*/bullets/:id/archive", ({ params }) => {
       const id = Number(params.id);
@@ -86,5 +101,10 @@ export function installLibraryApi(seed: LibraryApiSeed = {}): LibraryApiHandle {
       searchResult = result;
     },
     getBullets: () => bullets,
+    recordExternalEdit: (id, text) => {
+      bullets = bullets.map((entry) =>
+        entry.id === id ? { ...entry, text, revision: entry.revision + 1 } : entry,
+      );
+    },
   };
 }
