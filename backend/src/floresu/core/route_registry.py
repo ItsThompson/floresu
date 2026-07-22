@@ -90,6 +90,9 @@ EXTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("PUT", "/worklog/{worklog_id}"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("POST", "/worklog/{worklog_id}/archive"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("POST", "/worklog/{worklog_id}/restore"): AccessLevel.EXTERNAL_COOKIE,
+    # Partial-tag mutation (add/remove one label). POST, not DELETE, so the same
+    # route can mount on the internal app, which exposes zero DELETE routes.
+    RouteKey("POST", "/worklog/{worklog_id}/tags"): AccessLevel.EXTERNAL_COOKIE,
     # Canonical library bulletpoints and the provenance DAG. The web boundary
     # resolves the human session cookie; the same routes mount on the internal app
     # for the agent path (below).
@@ -185,6 +188,9 @@ INTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("PUT", "/worklog/{worklog_id}"): AccessLevel.INTERNAL_TRUSTED,
     RouteKey("POST", "/worklog/{worklog_id}/archive"): AccessLevel.INTERNAL_TRUSTED,
     RouteKey("POST", "/worklog/{worklog_id}/restore"): AccessLevel.INTERNAL_TRUSTED,
+    # Partial-tag mutation (add/remove one label) on the internal app: POST only,
+    # so the agent path keeps its zero-DELETE-route invariant.
+    RouteKey("POST", "/worklog/{worklog_id}/tags"): AccessLevel.INTERNAL_TRUSTED,
     # Canonical library bulletpoints on the agent-facing internal app: trusted-header identity.
     RouteKey("POST", "/bullets"): AccessLevel.INTERNAL_TRUSTED,
     RouteKey("GET", "/bullets"): AccessLevel.INTERNAL_TRUSTED,

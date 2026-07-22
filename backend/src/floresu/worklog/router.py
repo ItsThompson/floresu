@@ -21,7 +21,13 @@ from typing import Any
 from fastapi import APIRouter, Depends
 
 from floresu.core.actor import Actor
-from floresu.worklog.schemas import TagRead, WorklogRecord, WorklogSummary, WorklogWrite
+from floresu.worklog.schemas import (
+    TagMutation,
+    TagRead,
+    WorklogRecord,
+    WorklogSummary,
+    WorklogWrite,
+)
 from floresu.worklog.service import WorklogService
 
 # FastAPI dependencies, injected so the router never hard-codes how identity, the
@@ -103,5 +109,19 @@ def create_worklog_router(
         service: WorklogService = Depends(service_provider),
     ) -> WorklogRecord:
         return await service.restore(user_id, worklog_id, actor_)
+
+    @router.post("/{worklog_id}/tags")
+    async def mutate_tags(
+        worklog_id: int,
+        body: TagMutation,
+        user_id: str = Depends(identity),
+        actor_: Actor = Depends(actor),
+        service: WorklogService = Depends(service_provider),
+    ) -> WorklogRecord:
+        # One non-destructive POST for both actions: the agent-facing internal app
+        # exposes zero DELETE routes, so remove is modeled as a POST, not a DELETE.
+        if body.action == "add":
+            return await service.add_tag(user_id, worklog_id, actor_, body.label)
+        return await service.remove_tag(user_id, worklog_id, actor_, body.label)
 
     return router
