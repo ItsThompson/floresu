@@ -9,6 +9,7 @@ import {
   buildBulletpoint,
   buildLibraryRefItem,
   buildLocalItem,
+  buildPublishedVersion,
   buildResumeRecord,
   buildSection,
   buildTemplate,
@@ -416,5 +417,39 @@ describe("ResumeEditorView", () => {
     await waitFor(() =>
       expect(resumes.get(1)?.document.sections?.[0].item_order).toEqual(["it-loc", "it-ref"]),
     );
+  });
+
+  it("opens the enabled History control and lists the resume's published versions", async () => {
+    authenticate();
+    const { handlers } = createResumeApiMock({
+      resumes: [seedResume()],
+      bullets: [buildBulletpoint({ id: 100, used_in_count: 1 })],
+    });
+    server.use(
+      ...handlers,
+      http.get("*/resumes/:resumeId/revisions", () =>
+        HttpResponse.json({
+          resume_id: 1,
+          versions: [
+            buildPublishedVersion({ revision_no: 4, created_at: "2026-07-20T00:00:00Z" }),
+            buildPublishedVersion({ revision_no: 2, created_at: "2026-07-18T00:00:00Z" }),
+          ],
+        }),
+      ),
+    );
+    renderApp(["/resumes/1"]);
+    const user = userEvent.setup();
+
+    // The control is enabled (no longer the disabled "coming soon" seam).
+    const historyButton = await screen.findByRole("button", { name: /History/ });
+    expect(historyButton).toBeEnabled();
+    await user.click(historyButton);
+
+    const dialog = await screen.findByRole("dialog", { name: "Version history" });
+    const rows = await within(dialog).findAllByRole("button", { name: /Revision \d/ });
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringContaining("Revision 4"),
+      expect.stringContaining("Revision 2"),
+    ]);
   });
 });

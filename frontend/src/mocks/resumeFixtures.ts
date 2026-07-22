@@ -8,6 +8,7 @@ type LocalItem = components["schemas"]["LocalItem"];
 type BulletpointRecord = components["schemas"]["BulletpointRecord"];
 type TemplateInfo = components["schemas"]["TemplateInfo"];
 type IdentityVariant = components["schemas"]["IdentityVariantRead"];
+type PublishedVersion = components["schemas"]["PublishedVersion"];
 
 /** Build a resume list-projection fixture (no document). Defaults to a living draft. */
 export function buildResumeSummary(overrides?: Partial<ResumeSummary>): ResumeSummary {
@@ -103,4 +104,9 @@ export function buildVariant(overrides?: Partial<IdentityVariant>): IdentityVari
     archived_at: null,
     ...overrides,
   };
+}
+
+/** Build a published-version fixture: a revision whose PDF is stored in R2. */
+export function buildPublishedVersion(overrides?: Partial<PublishedVersion>): PublishedVersion {
+  return { revision_no: 3, created_at: "2026-07-20T12:00:00Z", ...overrides };
 }
