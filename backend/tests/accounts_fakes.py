@@ -56,6 +56,13 @@ class InMemoryAccountRepository:
         except ValueError:
             return None
 
+    async def mark_onboarding_complete(self, user_id: str) -> User | None:
+        user = await self.get_by_id(user_id)
+        if user is None:
+            return None
+        user.has_completed_onboarding = True
+        return user
+
     async def add_user(self, user: User) -> None:
         if any(existing.email == user.email for existing in self._by_id.values()):
             raise IntegrityError("INSERT INTO users", {}, _UniqueViolationError())

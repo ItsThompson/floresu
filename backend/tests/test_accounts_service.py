@@ -64,6 +64,24 @@ async def test_new_registrations_start_not_onboarded() -> None:
     assert stored is not None and stored.has_completed_onboarding is False
 
 
+async def test_complete_onboarding_persists_the_flag_and_commits() -> None:
+    service, repo = _service()
+    registered = await service.register("ada@example.com", _PASSWORD)
+    commits_before = repo.commits
+
+    completed = await service.complete_onboarding(str(registered.user.id))
+    assert completed.has_completed_onboarding is True
+    stored = await repo.get_by_id(str(registered.user.id))
+    assert stored is not None and stored.has_completed_onboarding is True
+    assert repo.commits == commits_before + 1
+
+
+async def test_complete_onboarding_for_a_missing_user_is_unauthorized() -> None:
+    service, _ = _service()
+    with pytest.raises(Unauthorized):
+        await service.complete_onboarding("999")
+
+
 async def test_duplicate_email_is_a_field_level_conflict_and_creates_no_user() -> None:
     service, repo = _service()
     first = await service.register("ada@example.com", _PASSWORD)

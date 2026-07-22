@@ -143,6 +143,27 @@
         }
       }
     },
+    "/me/onboarding": {
+      "post": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Complete Onboarding",
+        "operationId": "complete_onboarding_me_onboarding_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthenticatedUser"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/.well-known/oauth-authorization-server": {
       "get": {
         "tags": [

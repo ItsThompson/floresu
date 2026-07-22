@@ -56,6 +56,7 @@ EXTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("POST", "/auth/refresh"): AccessLevel.PUBLIC,
     RouteKey("POST", "/auth/logout"): AccessLevel.PUBLIC,
     RouteKey("GET", "/me"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("POST", "/me/onboarding"): AccessLevel.EXTERNAL_COOKIE,
     # Agent OAuth 2.1 Authorization Server (mounted on the external app only). The
     # discovery + handshake endpoints are OAUTH (no human session; the client is
     # PKCE/token-authenticated or the metadata is public discovery). The consent
