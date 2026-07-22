@@ -1,8 +1,7 @@
 """Shared tool registrar for the MCP tool surface.
 
-Every tool: the smoke tools here and the full read/write surfaces in later
-tickets: registers through this one registrar, so each is wrapped identically:
-counted as ``mcp_tool_invocations_total{tool,outcome}``
+Every tool in the read and write surfaces registers through this one registrar, so
+each is wrapped identically: counted as ``mcp_tool_invocations_total{tool,outcome}``
 (:mod:`floresu_mcp.tool_metrics`) before being handed to FastMCP. The counting
 wrapper preserves the tool's name/signature/return annotation
 (``functools.wraps``), so FastMCP's schema generation (which follows

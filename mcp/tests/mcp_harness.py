@@ -1,4 +1,4 @@
-"""Test harness: drive the mounted smoke tools over the real transport.
+"""Test harness: drive the mounted MCP tools over the real transport.
 
 Builds the actual resource-server app (:func:`create_rs_app`) with a faked JWKS
 provider, a ``MockTransport``-backed internal client, and an in-memory rate-limit
