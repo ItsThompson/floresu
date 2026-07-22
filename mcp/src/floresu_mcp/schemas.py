@@ -15,6 +15,7 @@ timestamps, and server-owned fields are never accepted on a write.
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -31,6 +32,22 @@ class WorklogEntryInput(BaseModel):
     tags: list[str] = Field(default_factory=list)
     # Attached source ids; the backend rejects any id the user does not own.
     source_ids: list[int] = Field(default_factory=list)
+
+
+class WorklogTagInput(BaseModel):
+    """The partial-tag body: one label to add or remove on an entry.
+
+    Backs ``worklog_tag``, the single-label counterpart to the full-representation
+    ``tags`` list on create/update. The entry id is a tool-function argument (a
+    backend path parameter), not a body field, matching :class:`WorklogEntryInput`
+    / ``worklog_update``. The pair is sent verbatim to ``POST /worklog/{id}/tags``;
+    the backend normalizes the label and dispatches on ``action``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    label: str = Field(min_length=1)
+    action: Literal["add", "remove"]
 
 
 class WorklogEntrySummary(BaseModel):

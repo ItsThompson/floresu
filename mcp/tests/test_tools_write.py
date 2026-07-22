@@ -38,6 +38,13 @@ _WRITE_CASES: list[tuple[str, dict[str, Any], str, str, bool]] = [
     ("worklog_create", {"entry": _ENTRY}, "POST", "/worklog", False),
     ("worklog_update", {"worklog_id": 3, "entry": _ENTRY}, "PUT", "/worklog/3", True),
     ("worklog_archive", {"worklog_id": 3}, "POST", "/worklog/3/archive", True),
+    (
+        "worklog_tag",
+        {"worklog_id": 3, "label": "backend", "action": "add"},
+        "POST",
+        "/worklog/3/tags",
+        True,
+    ),
     ("profile_create", {"item": _ROLE}, "POST", "/sources", False),
     ("profile_create", {"item": {"kind": "skill", "name": "Python"}}, "POST", "/skills", False),
     (

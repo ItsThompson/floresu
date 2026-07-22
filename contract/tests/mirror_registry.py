@@ -76,6 +76,7 @@ MCP_SCHEMA_MODULES = _discover_mcp_schema_modules()
 MIRRORS: dict[type[BaseModel], MirrorSpec] = {
     # --- worklog ---
     mcp_worklog.WorklogEntryInput: MirrorSpec(be_worklog.WorklogWrite),
+    mcp_worklog.WorklogTagInput: MirrorSpec(be_worklog.TagMutation),
     mcp_worklog.WorklogEntrySummary: MirrorSpec(
         be_worklog.WorklogSummary,
         lean_optional=frozenset({"description", "tags", "source_ids", "archived_at"}),
