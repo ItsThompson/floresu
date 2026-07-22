@@ -765,6 +765,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/resumes/{resume_id}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Revisions */
+        get: operations["list_revisions_resumes__resume_id__revisions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/resumes/{resume_id}/revisions/{revision_no}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Revision Pdf */
+        get: operations["revision_pdf_resumes__resume_id__revisions__revision_no__pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/resumes/{resume_id}/finalize": {
         parameters: {
             query?: never;
@@ -1661,6 +1695,29 @@ export interface components {
             links?: string[];
         };
         /**
+         * PublishedVersion
+         * @description One revision that has a rendered PDF stored in R2 (an export or a finalize).
+         */
+        PublishedVersion: {
+            /** Revision No */
+            revision_no: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * PublishedVersionList
+         * @description A resume's published versions, newest first (may be empty).
+         */
+        PublishedVersionList: {
+            /** Resume Id */
+            resume_id: number;
+            /** Versions */
+            versions: components["schemas"]["PublishedVersion"][];
+        };
+        /**
          * RankedHit
          * @description One entry in the flat RRF-ranked list: what matched and its fused score.
          */
@@ -2190,6 +2247,18 @@ export interface components {
             label: string;
             /** Url */
             url: string;
+        };
+        /**
+         * VersionPdfUrl
+         * @description A time-limited presigned URL for one published version's stored PDF.
+         */
+        VersionPdfUrl: {
+            /** Resume Id */
+            resume_id: number;
+            /** Revision No */
+            revision_no: number;
+            /** Download Url */
+            download_url: string;
         };
         /**
          * WorklogRecord
@@ -3963,6 +4032,69 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExportResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_revisions_resumes__resume_id__revisions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                resume_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishedVersionList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revision_pdf_resumes__resume_id__revisions__revision_no__pdf_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                resume_id: number;
+                revision_no: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionPdfUrl"];
                 };
             };
             /** @description Validation Error */

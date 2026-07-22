@@ -2400,6 +2400,99 @@
         }
       }
     },
+    "/resumes/{resume_id}/revisions": {
+      "get": {
+        "tags": [
+          "resumes"
+        ],
+        "summary": "List Revisions",
+        "operationId": "list_revisions_resumes__resume_id__revisions_get",
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Resume Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishedVersionList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/resumes/{resume_id}/revisions/{revision_no}/pdf": {
+      "get": {
+        "tags": [
+          "resumes"
+        ],
+        "summary": "Revision Pdf",
+        "operationId": "revision_pdf_resumes__resume_id__revisions__revision_no__pdf_get",
+        "parameters": [
+          {
+            "name": "resume_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Resume Id"
+            }
+          },
+          {
+            "name": "revision_no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Revision No"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionPdfUrl"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/resumes/{resume_id}/finalize": {
       "post": {
         "tags": [
@@ -4891,6 +4984,48 @@
         ],
         "title": "ProjectWrite"
       },
+      "PublishedVersion": {
+        "properties": {
+          "revision_no": {
+            "type": "integer",
+            "title": "Revision No"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "revision_no",
+          "created_at"
+        ],
+        "title": "PublishedVersion",
+        "description": "One revision that has a rendered PDF stored in R2 (an export or a finalize)."
+      },
+      "PublishedVersionList": {
+        "properties": {
+          "resume_id": {
+            "type": "integer",
+            "title": "Resume Id"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/PublishedVersion"
+            },
+            "type": "array",
+            "title": "Versions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "resume_id",
+          "versions"
+        ],
+        "title": "PublishedVersionList",
+        "description": "A resume's published versions, newest first (may be empty)."
+      },
       "RankedHit": {
         "properties": {
           "type": {
@@ -6338,6 +6473,30 @@
         ],
         "title": "VariantLink",
         "description": "A labeled link (e.g. a portfolio or profile URL)."
+      },
+      "VersionPdfUrl": {
+        "properties": {
+          "resume_id": {
+            "type": "integer",
+            "title": "Resume Id"
+          },
+          "revision_no": {
+            "type": "integer",
+            "title": "Revision No"
+          },
+          "download_url": {
+            "type": "string",
+            "title": "Download Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "resume_id",
+          "revision_no",
+          "download_url"
+        ],
+        "title": "VersionPdfUrl",
+        "description": "A time-limited presigned URL for one published version's stored PDF."
       },
       "WorklogRecord": {
         "properties": {
