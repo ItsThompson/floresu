@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 
 from floresu.accounts.models import User
 from floresu.audit.models import AuditLog
@@ -32,6 +32,8 @@ from floresu.library.repository import SqlAlchemyLibraryRepository
 from floresu.library.service import LibraryService
 from floresu.profile.repository import SqlAlchemySourceRepository
 from floresu.profile.service import SourceService
+from floresu.resumes.models import Resume, ResumeBulletRef, ResumeKind
+from floresu.resumes.repository import SqlAlchemyResumeRepository
 from floresu.worklog.models import WorklogSource
 from floresu.worklog.repository import SqlAlchemyWorklogRepository
 from floresu.worklog.service import WorklogService
@@ -67,7 +69,10 @@ async def _insert_user(sessionmaker: async_sessionmaker[AsyncSession], email: st
 
 def _library(session: AsyncSession) -> LibraryService:
     return LibraryService(
-        session, SqlAlchemyLibraryRepository(session), build_write_event_publisher()
+        session,
+        SqlAlchemyLibraryRepository(session),
+        build_write_event_publisher(),
+        SqlAlchemyResumeRepository(session),
     )
 
 
@@ -91,6 +96,17 @@ async def _create_worklog(
             str(user_id), _HUMAN, build_worklog_write(source_ids=source_ids)
         )
         return record.id
+
+
+async def _insert_resume(sessionmaker: async_sessionmaker[AsyncSession], user_id: int) -> int:
+    """Insert a bare resume row so a ``resume_bullet_ref`` can satisfy its FK."""
+    async with sessionmaker() as session, transaction(session):
+        resume = Resume(
+            user_id=user_id, kind=ResumeKind.LIVING, title="R", schema_version=1, document={}
+        )
+        session.add(resume)
+        await session.flush()
+        return resume.id
 
 
 async def test_create_writes_bullet_edges_and_audit_in_one_transaction(migrated_url: str) -> None:
@@ -301,3 +317,75 @@ async def test_framing_a_foreign_source_or_worklog_is_rejected(migrated_url: str
                 )
     finally:
         await engine.dispose()
+
+
+async def test_list_reports_real_used_in_count_over_refs(migrated_url: str) -> None:
+    engine = create_db_engine(migrated_url)
+    sessionmaker = create_sessionmaker(engine)
+    try:
+        user_id = await _insert_user(sessionmaker, "lib-usage@example.com")
+        async with sessionmaker() as session:
+            shared = await _library(session).create(
+                str(user_id), _HUMAN, build_bullet_write(text="Shared bullet.")
+            )
+            once = await _library(session).create(
+                str(user_id), _HUMAN, build_bullet_write(text="Used once.")
+            )
+            unused = await _library(session).create(
+                str(user_id), _HUMAN, build_bullet_write(text="Unused bullet.")
+            )
+        resume_a = await _insert_resume(sessionmaker, user_id)
+        resume_b = await _insert_resume(sessionmaker, user_id)
+        # Two resumes reference `shared`, one references `once`, none reference `unused`.
+        async with sessionmaker() as session, transaction(session):
+            session.add_all(
+                [
+                    ResumeBulletRef(resume_id=resume_a, bullet_id=shared.id),
+                    ResumeBulletRef(resume_id=resume_b, bullet_id=shared.id),
+                    ResumeBulletRef(resume_id=resume_a, bullet_id=once.id),
+                ]
+            )
+        async with sessionmaker() as session:
+            listed = await _library(session).list_bullets(str(user_id))
+            fetched = await _library(session).get(str(user_id), shared.id)
+    finally:
+        await engine.dispose()
+
+    by_id = {record.id: record.used_in_count for record in listed}
+    assert by_id == {shared.id: 2, once.id: 1, unused.id: 0}
+    # The list count equals the single-read count for the same bullet.
+    assert fetched.used_in_count == 2
+
+
+async def test_dropping_refs_lowers_the_library_count(migrated_url: str) -> None:
+    engine = create_db_engine(migrated_url)
+    sessionmaker = create_sessionmaker(engine)
+    try:
+        user_id = await _insert_user(sessionmaker, "lib-usage-drop@example.com")
+        async with sessionmaker() as session:
+            bullet = await _library(session).create(
+                str(user_id), _HUMAN, build_bullet_write(text="Referenced then dropped.")
+            )
+        resume_a = await _insert_resume(sessionmaker, user_id)
+        resume_b = await _insert_resume(sessionmaker, user_id)
+        async with sessionmaker() as session, transaction(session):
+            session.add_all(
+                [
+                    ResumeBulletRef(resume_id=resume_a, bullet_id=bullet.id),
+                    ResumeBulletRef(resume_id=resume_b, bullet_id=bullet.id),
+                ]
+            )
+        async with sessionmaker() as session:
+            before = (await _library(session).get(str(user_id), bullet.id)).used_in_count
+        # Finalize drops a resume's refs; simulate by removing one resume's rows.
+        async with sessionmaker() as session, transaction(session):
+            await session.execute(
+                delete(ResumeBulletRef).where(ResumeBulletRef.resume_id == resume_b)
+            )
+        async with sessionmaker() as session:
+            after = (await _library(session).get(str(user_id), bullet.id)).used_in_count
+    finally:
+        await engine.dispose()
+
+    assert before == 2
+    assert after == 1

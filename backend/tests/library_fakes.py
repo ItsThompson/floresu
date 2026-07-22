@@ -124,6 +124,33 @@ def capturing_publisher() -> tuple[WriteEventPublisher, list[WriteEvent]]:
     return WriteEventPublisher(transactional=[consume]), captured
 
 
+class InMemoryBulletUsageCounter:
+    """A seedable :class:`BulletUsageCounter` double that records each call's ids.
+
+    Mirrors the grouped-count contract of the real ``resume_bullet_ref`` query: a
+    seeded id returns its count, an id with no reference is absent from the result
+    (so the call site defaults it to 0), and an empty input returns an empty map.
+    ``calls`` records the id lists passed, so a test can assert one batched call per
+    list read rather than a per-bullet N+1.
+    """
+
+    def __init__(self) -> None:
+        self._counts: dict[int, int] = {}
+        self.calls: list[list[int]] = []
+
+    def set_count(self, bullet_id: int, count: int) -> None:
+        """Seed how many resumes reference a bullet."""
+        self._counts[bullet_id] = count
+
+    async def used_in_counts(self, bullet_ids: Sequence[int]) -> dict[int, int]:
+        self.calls.append(list(bullet_ids))
+        return {
+            bullet_id: self._counts[bullet_id]
+            for bullet_id in bullet_ids
+            if self._counts.get(bullet_id, 0) > 0
+        }
+
+
 def build_bullet_write(**overrides: Any) -> BulletpointWrite:
     base: dict[str, Any] = {
         "text": "Cut p99 checkout latency 40% by sharding the write path.",

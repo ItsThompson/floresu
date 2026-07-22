@@ -26,6 +26,7 @@ from floresu.library.router import create_bullets_router
 from floresu.library.service import LibraryService
 from tests.library_fakes import (
     FakeSession,
+    InMemoryBulletUsageCounter,
     InMemoryLibraryRepository,
     build_bullet_write,
     capturing_publisher,
@@ -45,13 +46,19 @@ _INTERNAL_HEADERS = {
 
 
 def _client(
-    make_settings: MakeSettings, *, internal: bool
+    make_settings: MakeSettings,
+    *,
+    internal: bool,
+    usage: InMemoryBulletUsageCounter | None = None,
 ) -> tuple[TestClient, InMemoryLibraryRepository, list[WriteEvent]]:
     repo = InMemoryLibraryRepository()
     publisher, captured = capturing_publisher()
+    counter = usage if usage is not None else InMemoryBulletUsageCounter()
 
     def provider(request: Request) -> LibraryService:
-        return LibraryService(cast("AsyncSession", FakeSession()), repo, request.app.state.events)
+        return LibraryService(
+            cast("AsyncSession", FakeSession()), repo, request.app.state.events, counter
+        )
 
     if internal:
         router = create_bullets_router(
@@ -111,6 +118,18 @@ def test_create_requires_text(make_settings: MakeSettings) -> None:
     response = client.post("/bullets", json=payload)
     assert response.status_code == 422
     assert response.headers["content-type"] == "application/problem+json"
+
+
+def test_list_carries_the_real_used_in_count_on_the_wire(make_settings: MakeSettings) -> None:
+    counter = InMemoryBulletUsageCounter()
+    client, _, _ = _client(make_settings, internal=False, usage=counter)
+    bullet_id = client.post("/bullets", json=build_bullet_write().model_dump(mode="json")).json()[
+        "id"
+    ]
+    counter.set_count(bullet_id, 2)
+    listed = client.get("/bullets").json()
+    assert [bullet["used_in_count"] for bullet in listed] == [2]
+    assert client.get(f"/bullets/{bullet_id}").json()["used_in_count"] == 2
 
 
 def test_framing_a_foreign_source_is_a_422(make_settings: MakeSettings) -> None:

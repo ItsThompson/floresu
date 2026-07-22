@@ -83,7 +83,10 @@ async def _create_bullet(
 ) -> int:
     async with sessionmaker() as session:
         service = LibraryService(
-            session, SqlAlchemyLibraryRepository(session), build_write_event_publisher()
+            session,
+            SqlAlchemyLibraryRepository(session),
+            build_write_event_publisher(),
+            SqlAlchemyResumeRepository(session),
         )
         record = await service.create(str(user_id), _HUMAN, BulletpointWrite(text=text))
         return record.id

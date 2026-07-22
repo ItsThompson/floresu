@@ -175,12 +175,14 @@ async def test_finalize_flips_status_and_drops_out_of_used_in_n() -> None:
     await harness.repo.set_bullet_refs(resume.id, [_BULLET_ID])
     await harness.repo.set_bullet_refs(999, [_BULLET_ID])
     assert await harness.repo.used_in_count(_BULLET_ID) == 2
+    assert await harness.repo.used_in_counts([_BULLET_ID]) == {_BULLET_ID: 2}
 
     await harness.service.finalize(_USER, resume.id, _HUMAN)
 
     assert resume.status is ResumeStatus.FINALIZED
     # The finalized resume dropped its ref; only the live reference remains.
     assert await harness.repo.used_in_count(_BULLET_ID) == 1
+    assert await harness.repo.used_in_counts([_BULLET_ID]) == {_BULLET_ID: 1}
     assert harness.repo.bullet_refs(resume.id) == []
 
 

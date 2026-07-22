@@ -124,6 +124,14 @@ class InMemoryResumeRepository:
     async def used_in_count(self, bullet_id: int) -> int:
         return sum(bullet_id in refs for refs in self._bullet_refs.values())
 
+    async def used_in_counts(self, bullet_ids: Sequence[int]) -> dict[int, int]:
+        counts: dict[int, int] = {}
+        for bullet_id in bullet_ids:
+            count = sum(bullet_id in refs for refs in self._bullet_refs.values())
+            if count:
+                counts[bullet_id] = count
+        return counts
+
 
 class InMemoryBulletTextResolver:
     """A dict-backed :class:`BulletTextResolver`; only owned bullets resolve."""

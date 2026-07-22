@@ -20,6 +20,7 @@ from floresu.library.injection import Clock
 from floresu.library.service import LibraryService
 from tests.library_fakes import (
     FakeSession,
+    InMemoryBulletUsageCounter,
     InMemoryLibraryRepository,
     build_bullet_write,
     capturing_publisher,
@@ -39,13 +40,14 @@ class _FixedClock:
 
 
 def _service(
-    *, clock: Clock | None = None
+    *, clock: Clock | None = None, usage: InMemoryBulletUsageCounter | None = None
 ) -> tuple[LibraryService, InMemoryLibraryRepository, FakeSession, list[WriteEvent]]:
     repo = InMemoryLibraryRepository()
     session = FakeSession()
     publisher, captured = capturing_publisher()
+    counter = usage if usage is not None else InMemoryBulletUsageCounter()
     kwargs = {"clock": clock} if clock is not None else {}
-    service = LibraryService(session, repo, publisher, **kwargs)  # type: ignore[arg-type]
+    service = LibraryService(session, repo, publisher, counter, **kwargs)  # type: ignore[arg-type]
     return service, repo, session, captured
 
 
@@ -150,6 +152,44 @@ async def test_get_another_users_bullet_is_not_found_no_existence_leak() -> None
     mine = await service.create(_USER, _HUMAN, build_bullet_write())
     with pytest.raises(NotFound):
         await service.get("2", mine.id)
+
+
+async def test_list_reports_the_real_used_in_count_per_bullet() -> None:
+    counter = InMemoryBulletUsageCounter()
+    service, _, _, _ = _service(usage=counter)
+    shared = await service.create(_USER, _HUMAN, build_bullet_write(text="Shared bullet."))
+    once = await service.create(_USER, _HUMAN, build_bullet_write(text="Used once."))
+    unused = await service.create(_USER, _HUMAN, build_bullet_write(text="Unused bullet."))
+    counter.set_count(shared.id, 3)
+    counter.set_count(once.id, 1)
+    # `unused` is left unseeded: absent from the grouped result, defaults to 0.
+    by_id = {record.id: record.used_in_count for record in await service.list_bullets(_USER)}
+    assert by_id == {shared.id: 3, once.id: 1, unused.id: 0}
+
+
+async def test_list_issues_one_batched_count_for_the_page() -> None:
+    counter = InMemoryBulletUsageCounter()
+    service, _, _, _ = _service(usage=counter)
+    first = await service.create(_USER, _HUMAN, build_bullet_write(text="First."))
+    second = await service.create(_USER, _HUMAN, build_bullet_write(text="Second."))
+    await service.list_bullets(_USER)
+    # Exactly one grouped count call carrying every id on the page: no per-bullet N+1.
+    assert counter.calls == [[second.id, first.id]]
+
+
+async def test_empty_library_list_counts_with_no_query_error() -> None:
+    counter = InMemoryBulletUsageCounter()
+    service, _, _, _ = _service(usage=counter)
+    assert await service.list_bullets(_USER) == []
+    assert counter.calls == [[]]
+
+
+async def test_get_reports_the_real_used_in_count() -> None:
+    counter = InMemoryBulletUsageCounter()
+    service, _, _, _ = _service(usage=counter)
+    created = await service.create(_USER, _HUMAN, build_bullet_write())
+    counter.set_count(created.id, 2)
+    assert (await service.get(_USER, created.id)).used_in_count == 2
 
 
 async def test_list_is_newest_first_and_active_only() -> None:

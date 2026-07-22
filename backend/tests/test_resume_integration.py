@@ -84,7 +84,10 @@ async def _create_bullet(
 ) -> int:
     async with sessionmaker() as session:
         service = LibraryService(
-            session, SqlAlchemyLibraryRepository(session), build_write_event_publisher()
+            session,
+            SqlAlchemyLibraryRepository(session),
+            build_write_event_publisher(),
+            SqlAlchemyResumeRepository(session),
         )
         record = await service.create(str(user_id), _HUMAN, BulletpointWrite(text=text))
         return record.id
@@ -95,7 +98,10 @@ async def _edit_bullet(
 ) -> None:
     async with sessionmaker() as session:
         service = LibraryService(
-            session, SqlAlchemyLibraryRepository(session), build_write_event_publisher()
+            session,
+            SqlAlchemyLibraryRepository(session),
+            build_write_event_publisher(),
+            SqlAlchemyResumeRepository(session),
         )
         await service.update(str(user_id), bullet_id, _HUMAN, BulletpointWrite(text=text))
 
@@ -211,12 +217,19 @@ async def test_reference_indexes_bullet_ref_and_used_in_count(migrated_url: str)
                 .all()
             )
             count = await _resumes(session).bullet_used_in_count(str(user_id), bullet_id)
+            # The batched grouped count agrees with the singular count for the same
+            # bullet, omits an unreferenced id, and returns {} for an empty request.
+            repo = SqlAlchemyResumeRepository(session)
+            batched = await repo.used_in_counts([bullet_id, bullet_id + 9_999])
+            empty_batched = await repo.used_in_counts([])
             snapshot = await session.get(ResumeRevision, (created.id, updated.revision))
     finally:
         await engine.dispose()
 
     assert list(refs) == [bullet_id]
     assert count == 1
+    assert batched == {bullet_id: 1}
+    assert empty_batched == {}
     assert snapshot is not None
     # The snapshot resolved the reference to inline text at save time.
     assert snapshot.document["sections"][0]["items"]["a"]["text"] == "Cut latency 40%."
