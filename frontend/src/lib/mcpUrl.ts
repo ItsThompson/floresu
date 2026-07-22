@@ -9,7 +9,7 @@
  */
 
 /** MCP endpoint shown when `VITE_MCP_URL` is unset (dev and tests). */
-export const DEFAULT_MCP_URL = "https://mcp.floresu.app/mcp";
+export const DEFAULT_MCP_URL = "https://mcp.floresu.com/mcp";
 
 /** The configured MCP URL, falling back to the default when unset. */
 export function resolveMcpUrl(): string {

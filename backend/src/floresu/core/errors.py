@@ -35,7 +35,7 @@ PROBLEM_JSON_MEDIA_TYPE = "application/problem+json"
 
 # Stable identifier base for the ``type`` member. RFC 9457 ``type`` URIs need not
 # be dereferenceable; they are stable identifiers keyed off the error code.
-ERROR_TYPE_BASE = "https://floresu.app/errors/"
+ERROR_TYPE_BASE = "https://floresu.com/errors/"
 
 _log = get_logger("floresu-core")
 
