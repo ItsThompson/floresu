@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, Any
 from floresu.core.db import transaction
 from floresu.core.errors import NotFound, Unauthorized, Validation
 from floresu.core.events import Action, emit_write_event
+from floresu.core.identity import resolve_user_pk
 from floresu.core.logging import get_logger
 from floresu.core.observability import track_failures
 from floresu.embedding.config import EmbedItemKind
@@ -83,7 +84,7 @@ class LifecycleService:
         self, user_id: str, worklog_id: int, actor: Actor, *, confirm: bool
     ) -> DeletionReceipt:
         """Hard-delete a worklog entry (cascading its edges) and purge its vector."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         _require_confirmation(confirm)
         async with transaction(self._session):
             title = await self._repo.delete_worklog(pk, worklog_id)
@@ -99,7 +100,7 @@ class LifecycleService:
         self, user_id: str, source_id: int, actor: Actor, *, confirm: bool
     ) -> DeletionReceipt:
         """Hard-delete a source (cascading its subtype and join rows) and purge its vector."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         _require_confirmation(confirm)
         async with transaction(self._session):
             found = await self._repo.delete_source(pk, source_id)
@@ -116,7 +117,7 @@ class LifecycleService:
         self, user_id: str, bullet_id: int, actor: Actor, *, confirm: bool
     ) -> DeletionReceipt:
         """Hard-delete a bulletpoint (cascading its edges and refs) and purge its vector."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         _require_confirmation(confirm)
         async with transaction(self._session):
             text = await self._repo.delete_bullet(pk, bullet_id)
@@ -136,7 +137,7 @@ class LifecycleService:
         self, user_id: str, resume_id: int, actor: Actor, *, confirm: bool
     ) -> DeletionReceipt:
         """Hard-delete a resume (cascading its revisions and refs); the PDF and audit stay."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         _require_confirmation(confirm)
         async with transaction(self._session):
             title = await self._repo.delete_resume(pk, resume_id)
@@ -149,7 +150,7 @@ class LifecycleService:
 
     async def export_data(self, user_id: str) -> dict[str, Any]:
         """Assemble the complete export archive of the account's records (read-only)."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         account = await self._export_repo.account(pk)
         if account is None:
             raise Unauthorized(_STALE_SESSION)
@@ -181,7 +182,7 @@ class LifecycleService:
 
     async def delete_account(self, user_id: str, *, confirm: bool) -> AccountDeletionReceipt:
         """Irreversibly remove the account: cascade its records and revoke every agent."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         _require_confirmation(confirm)
         async with transaction(self._session):
             agent_count = await self._repo.count_active_agents(user_id)
@@ -209,13 +210,6 @@ class LifecycleService:
             summary=summary,
             metadata={"permanent": True},
         )
-
-
-def _require_user_pk(user_id: str) -> int:
-    try:
-        return int(user_id)
-    except ValueError as exc:
-        raise Unauthorized(_STALE_SESSION) from exc
 
 
 def _require_confirmation(confirm: bool) -> None:
