@@ -24,6 +24,7 @@ from starlette.responses import StreamingResponse
 
 from floresu.audit.schemas import AuditEntry
 from floresu.audit.service import AuditService
+from floresu.core.identity import resolve_user_pk
 from floresu.feed.store import RedisFeedStore
 from floresu.feed.stream import feed_frames
 from floresu.feed.wiring import get_feed_store
@@ -73,7 +74,7 @@ def create_feed_router(
         store: RedisFeedStore = Depends(get_feed_store),
     ) -> StreamingResponse:
         last_event_id = _parse_last_event_id(request)
-        frames = feed_frames(store, int(user_id), last_event_id)
+        frames = feed_frames(store, resolve_user_pk(user_id), last_event_id)
         return StreamingResponse(frames, media_type="text/event-stream", headers=_SSE_HEADERS)
 
     @router.get("/feed/history")

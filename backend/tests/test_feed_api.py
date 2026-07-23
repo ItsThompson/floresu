@@ -15,6 +15,7 @@ from fastapi import FastAPI
 from starlette.testclient import TestClient
 
 from floresu.audit.service import AuditService
+from floresu.core.errors import build_exception_handlers
 from floresu.feed.api import create_feed_router
 from floresu.feed.wiring import FEED_STORE_ATTR
 from tests.audit_fakes import InMemoryAuditRepository, build_audit_entry, build_write_event
@@ -42,14 +43,16 @@ class _FakeStore:
             yield item
 
 
-def _build_app(store: _FakeStore, service: AuditService) -> FastAPI:
+def _build_app(store: _FakeStore, service: AuditService, *, user_id: str = "1") -> FastAPI:
     async def identity() -> str:
-        return "1"
+        return user_id
 
     def audit_provider() -> AuditService:
         return service
 
     app = FastAPI()
+    for key, handler in build_exception_handlers().items():
+        app.add_exception_handler(key, handler)
     app.include_router(create_feed_router(identity=identity, audit_service_provider=audit_provider))
     setattr(app.state, FEED_STORE_ATTR, store)
     return app
@@ -84,6 +87,20 @@ def test_feed_without_last_event_id_skips_replay() -> None:
     assert store.replay_since_args is None
     assert "id: 6" not in response.text
     assert "id: 7" in response.text
+
+
+def test_feed_malformed_identity_returns_401_not_500() -> None:
+    store = _FakeStore(replay=[build_audit_entry(id=6)], live=[build_audit_entry(id=7)])
+    service = AuditService(InMemoryAuditRepository())  # unused by /feed
+    client = TestClient(_build_app(store, service, user_id="not-a-pk"))
+
+    response = client.get("/feed")
+
+    assert response.status_code == 401
+    assert response.headers["content-type"] == "application/problem+json"
+    assert response.json()["detail"] == "Session is invalid or expired."
+    # The malformed id is rejected before any stream setup: no replay is attempted.
+    assert store.replay_since_args is None
 
 
 def test_feed_history_returns_recent_rows_newest_first() -> None:
