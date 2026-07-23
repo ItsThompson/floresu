@@ -87,4 +87,45 @@ describe("ResumesListView", () => {
     await waitFor(() => expect(screen.queryByText("Backend Engineer")).not.toBeInTheDocument());
     expect(screen.getByText(/No living resumes yet/)).toBeInTheDocument();
   });
+
+  it("keeps the create dialog open without navigating when POST /resumes fails", async () => {
+    authenticate();
+    const { handlers } = createResumeApiMock({ resumes: [] });
+    server.use(...handlers);
+    server.use(http.post("*/resumes", () => new HttpResponse(null, { status: 500 })));
+    renderApp(["/resumes"]);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "+ New resume" }));
+    await user.type(screen.getByLabelText("Title"), "Staff Engineer");
+    await user.click(screen.getByRole("button", { name: "Create" }));
+
+    // create() resolves to null: the dialog stays open with an inline error and
+    // the view never navigates into the editor (no "All resumes" back link).
+    expect(await screen.findByText(/Could not create the resume/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /All resumes/ })).not.toBeInTheDocument();
+  });
+
+  it("keeps the resume listed when DELETE /resumes/{id} fails", async () => {
+    authenticate();
+    const { handlers } = createResumeApiMock({
+      resumes: [buildResumeRecord({ id: 1, kind: "living", title: "Backend Engineer" })],
+    });
+    server.use(...handlers);
+    server.use(
+      http.delete("*/resumes/:resumeId", () =>
+        HttpResponse.json({ detail: "Delete failed." }, { status: 500 }),
+      ),
+    );
+    renderApp(["/resumes"]);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Delete" }));
+    await user.click(screen.getByRole("button", { name: "Delete permanently" }));
+
+    // remove() resolves to false: the resume stays listed and the dialog surfaces
+    // the failure instead of closing.
+    expect(await screen.findByText(/Could not delete the resume/)).toBeInTheDocument();
+    expect(screen.getByText("Backend Engineer")).toBeInTheDocument();
+  });
 });
