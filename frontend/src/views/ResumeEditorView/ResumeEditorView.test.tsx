@@ -479,4 +479,75 @@ describe("ResumeEditorView", () => {
       expect.stringContaining("Revision 2"),
     ]);
   });
+
+  it("surfaces the finalize error when finalize fails with a non-409 error", async () => {
+    authenticate();
+    const { handlers } = createResumeApiMock({
+      resumes: [seedResume({ kind: "application", status: "draft" })],
+      bullets: [buildBulletpoint({ id: 100, used_in_count: 1 })],
+    });
+    server.use(...handlers);
+    renderApp(["/resumes/1"]);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Finalize" }));
+    // A non-409 failure lands when the confirm fires: the finalize error mapping
+    // surfaces its fallback message rather than the stale re-read prompt.
+    server.use(
+      http.post("*/resumes/:resumeId/finalize", () => new HttpResponse(null, { status: 500 })),
+    );
+    await user.click(await screen.findByRole("button", { name: /Finalize permanently/ }));
+
+    expect(
+      await screen.findByText("This resume could not be finalized. Please try again."),
+    ).toBeInTheDocument();
+    // It did not freeze: the resume stays an editable draft.
+    expect(screen.getByRole("button", { name: /pull from library/i })).toBeInTheDocument();
+  });
+
+  it("prompts to re-read when finalize conflicts with a 409", async () => {
+    authenticate();
+    const { handlers } = createResumeApiMock({
+      resumes: [seedResume({ kind: "application", status: "draft" })],
+      bullets: [buildBulletpoint({ id: 100, used_in_count: 1 })],
+    });
+    server.use(...handlers);
+    renderApp(["/resumes/1"]);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Finalize" }));
+    // A concurrent change makes finalize conflict: the write enters `stale`.
+    server.use(
+      http.post("*/resumes/:resumeId/finalize", () =>
+        HttpResponse.json({ detail: "stale" }, { status: 409 }),
+      ),
+    );
+    await user.click(await screen.findByRole("button", { name: /Finalize permanently/ }));
+
+    expect(await screen.findByRole("dialog", { name: /This resume changed/i })).toBeInTheDocument();
+    // The resume stays an editable draft (it did not freeze).
+    expect(screen.getByRole("button", { name: /pull from library/i })).toBeInTheDocument();
+  });
+
+  it("shows no download link when the export returns no download_url", async () => {
+    authenticate();
+    const { handlers } = createResumeApiMock({
+      resumes: [seedResume()],
+      bullets: [buildBulletpoint({ id: 100, used_in_count: 1 })],
+    });
+    server.use(...handlers);
+    server.use(
+      http.post("*/resumes/:resumeId/export", () =>
+        HttpResponse.json({ resume_id: 1, revision: 1, object_key: "u/1/r/1/rev/1.pdf" }),
+      ),
+    );
+    renderApp(["/resumes/1"]);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: /Export/ }));
+
+    // exportPdf() resolves to null: no download link appears and the failure shows.
+    expect(await screen.findByText(/Export failed/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Download exported PDF/ })).not.toBeInTheDocument();
+  });
 });
