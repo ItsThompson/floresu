@@ -1,4 +1,5 @@
 import type { components } from "@/api";
+import type { WriteState } from "@/lib/asyncState";
 
 /** A canonical library bullet with its provenance edges and usage count. */
 export type Bullet = components["schemas"]["BulletpointRecord"];
@@ -97,11 +98,13 @@ export interface LibraryState {
   filters: LibraryFilters;
   search: SearchState;
   editor: LibraryEditor | null;
-  isSaving: boolean;
-  saveError: string | null;
+  /**
+   * The bullet save/edit write lifecycle, scoped to the open editor session.
+   * `stale` is the 409 re-read prompt; the failure message lives in the `error`
+   * arm. Reset to `idle` whenever the editor opens or closes.
+   */
+  write: WriteState;
   archiveError: string | null;
-  /** True when an edit save was rejected as stale (409); drives the re-read prompt. */
-  isStale: boolean;
 }
 
 export interface LibraryActions {

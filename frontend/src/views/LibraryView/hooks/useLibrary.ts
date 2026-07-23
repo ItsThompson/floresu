@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useSessionClient } from "@/api";
+import type { WriteState } from "@/lib/asyncState";
 import { extractProblem } from "@/lib/problemDetail";
 
 import {
@@ -51,10 +52,8 @@ export function useLibrary(): UseLibrary {
   const [filters, setFilters] = useState<LibraryFilters>(DEFAULT_FILTERS);
   const [search, setSearch] = useState<SearchState>({ status: "idle" });
   const [editor, setEditor] = useState<LibraryEditor | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [write, setWrite] = useState<WriteState>({ status: "idle" });
   const [archiveError, setArchiveError] = useState<string | null>(null);
-  const [isStale, setIsStale] = useState(false);
 
   const fetchAll = useCallback(async (): Promise<LibraryData | null> => {
     try {
@@ -141,9 +140,7 @@ export function useLibrary(): UseLibrary {
         source_ids: values.sourceIds,
         worklog_ids: values.worklogIds,
       };
-      setIsSaving(true);
-      setSaveError(null);
-      setIsStale(false);
+      setWrite({ status: "saving" });
       const request =
         editor?.mode === "edit"
           ? client.PUT("/bullets/{bullet_id}", {
@@ -156,17 +153,20 @@ export function useLibrary(): UseLibrary {
             })
           : client.POST("/bullets", { body });
       void request.then(async ({ data: saved, error, response }) => {
-        setIsSaving(false);
         if (editor?.mode === "edit" && response.status === 409) {
           // The bullet changed since it was loaded: prompt to re-read and retry.
           // The edit was not applied, so this is never reported as a success.
-          setIsStale(true);
+          setWrite({ status: "stale" });
           return;
         }
         if (error || !saved) {
-          setSaveError(extractProblem(error, SAVE_ERROR_FALLBACK).message);
+          setWrite({
+            status: "error",
+            message: extractProblem(error, SAVE_ERROR_FALLBACK).message,
+          });
           return;
         }
+        setWrite({ status: "idle" });
         setEditor(null);
         await refreshBullets();
         rerunActiveSearch();
@@ -184,8 +184,7 @@ export function useLibrary(): UseLibrary {
     void client
       .GET("/bullets/{bullet_id}", { params: { path: { bullet_id: bulletId } } })
       .then(async ({ data: fresh, error }) => {
-        setIsStale(false);
-        setSaveError(null);
+        setWrite({ status: "idle" });
         setEditor(error || !fresh ? null : { mode: "edit", bullet: fresh });
         await refreshBullets();
         rerunActiveSearch();
@@ -219,24 +218,21 @@ export function useLibrary(): UseLibrary {
         setSearch({ status: "idle" });
       },
       openCreate: () => {
-        setSaveError(null);
-        setIsStale(false);
+        setWrite({ status: "idle" });
         setEditor({ mode: "create" });
       },
       openEdit: (bullet) => {
-        setSaveError(null);
-        setIsStale(false);
+        setWrite({ status: "idle" });
         setEditor({ mode: "edit", bullet });
       },
       closeEditor: () => {
         setEditor(null);
-        setSaveError(null);
-        setIsStale(false);
+        setWrite({ status: "idle" });
       },
       saveBullet,
       archiveBullet,
       rereadStaleBullet,
-      dismissStale: () => setIsStale(false),
+      dismissStale: () => setWrite({ status: "idle" }),
       reload: () => {
         setData((prev) => ({ ...prev, status: "loading" }));
         void fetchAll().then((next) => setData((prev) => next ?? { ...prev, status: "error" }));
@@ -246,8 +242,8 @@ export function useLibrary(): UseLibrary {
   );
 
   const state = useMemo<LibraryState>(
-    () => ({ data, query, filters, search, editor, isSaving, saveError, archiveError, isStale }),
-    [data, query, filters, search, editor, isSaving, saveError, archiveError, isStale],
+    () => ({ data, query, filters, search, editor, write, archiveError }),
+    [data, query, filters, search, editor, write, archiveError],
   );
 
   return { state, actions };

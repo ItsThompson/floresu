@@ -23,7 +23,7 @@ import { groupBulletsBySource } from "./utils";
  */
 export function LibraryView() {
   const { state, actions } = useLibrary();
-  const { data, search, editor } = state;
+  const { data, search, editor, write } = state;
 
   const groups = useMemo(
     () => groupBulletsBySource(data.bullets, data.sources),
@@ -60,6 +60,10 @@ export function LibraryView() {
         }
       : { text: "", sourceIds: [], worklogIds: [] };
 
+  const isSaving = write.status === "saving";
+  const saveError = write.status === "error" ? write.message : null;
+  const isStale = write.status === "stale";
+
   return (
     <section className="mx-auto flex w-full max-w-[860px] flex-col gap-6 p-8">
       <header className="flex flex-col gap-1">
@@ -94,8 +98,8 @@ export function LibraryView() {
           initialValues={editorInitialValues}
           sources={data.sources}
           worklogEntries={data.worklogEntries}
-          isSaving={state.isSaving}
-          error={state.saveError}
+          isSaving={isSaving}
+          error={saveError}
           onSubmit={actions.saveBullet}
           onCancel={actions.closeEditor}
         />
@@ -129,7 +133,7 @@ export function LibraryView() {
         ))}
 
       <StaleBulletDialog
-        isOpen={state.isStale}
+        isOpen={isStale}
         onReread={actions.rereadStaleBullet}
         onDismiss={actions.dismissStale}
       />
