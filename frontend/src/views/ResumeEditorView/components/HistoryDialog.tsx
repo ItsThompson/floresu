@@ -4,9 +4,9 @@ import { Loader2 } from "lucide-react";
 import { Modal } from "@/components/Modal";
 import { Button } from "@/components/ui/button";
 import { formatDayYear } from "@/lib/formatDate";
+import type { PdfRenderer } from "@/lib/renderPdf";
 import { cn } from "@/lib/utils";
 
-import type { PdfRenderer } from "@/lib/renderPdf";
 import type { PublishedVersion } from "../types";
 import { useResumeHistory } from "../hooks/useResumeHistory";
 
