@@ -62,6 +62,26 @@ describe("IdentityVariantsView", () => {
     expect(await screen.findByText("Primary")).toBeInTheDocument();
   });
 
+  it("blocks submit and flags both required fields when they are empty", async () => {
+    mockVariantsList([primary, alt]);
+    let postCalled = false;
+    server.use(
+      http.post("*/identity-variants", () => {
+        postCalled = true;
+        return HttpResponse.json(buildVariant({ id: 9 }), { status: 201 });
+      }),
+    );
+
+    renderWithProviders(<IdentityVariantsView />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "New variant" }));
+
+    await user.click(screen.getByRole("button", { name: "Create" }));
+
+    expect(await screen.findAllByText("This field is required.")).toHaveLength(2);
+    expect(postCalled).toBe(false);
+  });
+
   it("sets a different variant as default", async () => {
     const state = mockVariantsList([primary, alt]);
     let updateBody: { is_default: boolean } | null = null;
