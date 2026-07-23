@@ -39,12 +39,11 @@ from floresu.resumes.models import (
 from tests.jobapps_fakes import FIXED_NOW, InMemoryJobApplicationRepository, build_application
 from tests.rendering_fakes import FakeTypstCompiler, InMemoryIdentityResolver, build_snapshot
 from tests.resumes_fakes import (
-    FakeSession,
     InMemoryBulletTextResolver,
     InMemoryResumeRepository,
-    capturing_publisher,
 )
 from tests.storage_fakes import FakeObjectStore
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 
 _HUMAN = Actor(type=ActorType.HUMAN)
 _USER = "1"
@@ -81,7 +80,8 @@ class _Harness:
         self.store = FakeObjectStore()
         self.job_apps = InMemoryJobApplicationRepository()
         self.render = RenderModule(FakeTypstCompiler(), templates_dir=Path("/tmpl"))
-        self.publisher, self.captured = capturing_publisher()
+        self.publisher = CapturingWriteEventPublisher()
+        self.captured = self.publisher.captured
         self.service = ResumeFinalizeService(
             FakeSession(),  # type: ignore[arg-type]
             self.repo,

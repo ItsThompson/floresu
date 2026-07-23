@@ -24,11 +24,10 @@ from floresu.core.identity import SESSION_COOKIE_NAME, require_internal_user, re
 from floresu.core.settings import AppSettings
 from floresu.worklog.router import create_worklog_router
 from floresu.worklog.service import WorklogService
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 from tests.worklog_fakes import (
-    FakeSession,
     InMemoryWorklogRepository,
     build_worklog_write,
-    capturing_publisher,
 )
 
 if TYPE_CHECKING:
@@ -48,7 +47,8 @@ def _client(
     make_settings: MakeSettings, *, internal: bool
 ) -> tuple[TestClient, InMemoryWorklogRepository, list[WriteEvent]]:
     repo = InMemoryWorklogRepository()
-    publisher, captured = capturing_publisher()
+    publisher = CapturingWriteEventPublisher()
+    captured = publisher.captured
 
     def provider(request: Request) -> WorklogService:
         return WorklogService(cast("AsyncSession", FakeSession()), repo, request.app.state.events)

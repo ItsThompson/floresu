@@ -15,11 +15,10 @@ from floresu.profile.injection import Clock
 from floresu.profile.skills.schemas import SkillReorderRequest
 from floresu.profile.skills.service import SkillService
 from tests.skills_fakes import (
-    FakeSession,
     InMemorySkillRepository,
     build_skill_write,
-    capturing_publisher,
 )
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 
 _USER = "1"
 _HUMAN = Actor(type=ActorType.HUMAN)
@@ -31,7 +30,8 @@ def _service(
 ) -> tuple[SkillService, InMemorySkillRepository, FakeSession, list[WriteEvent]]:
     repo = InMemorySkillRepository()
     session = FakeSession()
-    publisher, captured = capturing_publisher()
+    publisher = CapturingWriteEventPublisher()
+    captured = publisher.captured
     kwargs = {"clock": clock} if clock is not None else {}
     service = SkillService(session, repo, publisher, **kwargs)  # type: ignore[arg-type]
     return service, repo, session, captured

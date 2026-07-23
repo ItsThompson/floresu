@@ -24,7 +24,7 @@ from tests.jobapps_fakes import (
     RecordingFinalizer,
     build_application,
 )
-from tests.resumes_fakes import FakeSession, capturing_publisher
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 
 _HUMAN = Actor(type=ActorType.HUMAN)
 _USER = "1"
@@ -48,7 +48,8 @@ def _setup() -> tuple[
     JobApplicationService, InMemoryJobApplicationRepository, list[WriteEvent], RecordingFinalizer
 ]:
     repo = InMemoryJobApplicationRepository()
-    publisher, captured = capturing_publisher()
+    publisher = CapturingWriteEventPublisher()
+    captured = publisher.captured
     finalizer = RecordingFinalizer(repo)
     return _service(repo, publisher, finalizer), repo, captured, finalizer
 

@@ -20,15 +20,10 @@ from sqlalchemy.exc import IntegrityError
 from floresu.profile.skills.models import Skill
 from floresu.profile.skills.schemas import SkillWrite
 
-# The profile FakeSession + capturing publisher are the canonical profile-family
-# test doubles; skills is a profile-family entity, so it reuses them rather than
-# re-declaring an identical session/publisher stand-in.
-from tests.profile_fakes import FakeSession, capturing_publisher
-
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-__all__ = ["FakeSession", "InMemorySkillRepository", "build_skill_write", "capturing_publisher"]
+__all__ = ["InMemorySkillRepository", "build_skill_write"]
 
 
 class _UniqueOrigError(Exception):

@@ -14,31 +14,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from floresu.core.events import WriteEvent, WriteEventPublisher
 from floresu.worklog.models import Tag, WorklogEntry
 from floresu.worklog.schemas import WorklogWrite
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-
-
-class FakeSession:
-    """A no-op stand-in for ``AsyncSession`` recording the transaction boundary.
-
-    Carries ``info`` because the ``transaction`` boundary drains the session's
-    post-commit queue (see :mod:`floresu.core.post_commit`) on a clean exit.
-    """
-
-    def __init__(self) -> None:
-        self.commits = 0
-        self.rollbacks = 0
-        self.info: dict[str, Any] = {}
-
-    async def commit(self) -> None:
-        self.commits += 1
-
-    async def rollback(self) -> None:
-        self.rollbacks += 1
 
 
 class InMemoryWorklogRepository:
@@ -122,16 +102,6 @@ class InMemoryWorklogRepository:
 
     async def bullet_ids_by_worklog(self, worklog_ids: Sequence[int]) -> dict[int, list[int]]:
         return {}
-
-
-def capturing_publisher() -> tuple[WriteEventPublisher, list[WriteEvent]]:
-    """The real publisher seam wired with a capturing transactional consumer."""
-    captured: list[WriteEvent] = []
-
-    async def consume(_session: Any, event: WriteEvent) -> None:
-        captured.append(event)
-
-    return WriteEventPublisher(transactional=[consume]), captured
 
 
 def build_worklog_write(**overrides: Any) -> WorklogWrite:

@@ -40,13 +40,12 @@ from tests.rendering_fakes import (
     revision_row,
 )
 from tests.resumes_fakes import (
-    FakeSession,
     InMemoryBulletTextResolver,
     InMemoryResumeRepository,
     build_bullet_writer,
-    capturing_publisher,
 )
 from tests.storage_fakes import FakeObjectStore
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -68,7 +67,8 @@ def _client(
     identity_resolver = InMemoryIdentityResolver()
     module = RenderModule(FakeTypstCompiler(), templates_dir=Path("/tmpl"))
     store = FakeObjectStore()
-    publisher, captured = capturing_publisher()
+    publisher = CapturingWriteEventPublisher()
+    captured = publisher.captured
 
     def render_provider(request: Request) -> ResumeRenderService:
         return ResumeRenderService(

@@ -27,12 +27,11 @@ from floresu.resumes.cow import EditChannel
 from floresu.resumes.router import create_resumes_router
 from floresu.resumes.service import ResumeService
 from tests.resumes_fakes import (
-    FakeSession,
     InMemoryBulletTextResolver,
     InMemoryResumeRepository,
     build_bullet_writer,
-    capturing_publisher,
 )
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,7 +51,8 @@ def _client(
 ) -> tuple[TestClient, InMemoryResumeRepository, InMemoryBulletTextResolver, list[WriteEvent]]:
     repo = InMemoryResumeRepository()
     resolver = InMemoryBulletTextResolver()
-    publisher, captured = capturing_publisher()
+    publisher = CapturingWriteEventPublisher()
+    captured = publisher.captured
 
     def provider(request: Request) -> ResumeService:
         session = cast("AsyncSession", FakeSession())

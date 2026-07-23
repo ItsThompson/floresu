@@ -37,13 +37,12 @@ from tests.rendering_fakes import (
     revision_row,
 )
 from tests.resumes_fakes import (
-    FakeSession,
     InMemoryBulletTextResolver,
     InMemoryResumeRepository,
     build_bullet_writer,
-    capturing_publisher,
 )
 from tests.storage_fakes import FakeObjectStore
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -63,7 +62,8 @@ def _client(
 ) -> tuple[TestClient, InMemoryRenderRepository, list[WriteEvent]]:
     render_repo = InMemoryRenderRepository()
     store = FakeObjectStore()
-    publisher, captured = capturing_publisher()
+    publisher = CapturingWriteEventPublisher()
+    captured = publisher.captured
 
     def revision_provider(_request: Request) -> ResumeRevisionService:
         return ResumeRevisionService(render_repo, store)

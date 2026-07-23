@@ -19,12 +19,11 @@ from floresu.core.events import REEMBED_CONTENT_HASH_KEY, WriteEvent
 from floresu.library.injection import Clock
 from floresu.library.service import LibraryService
 from tests.library_fakes import (
-    FakeSession,
     InMemoryBulletUsageCounter,
     InMemoryLibraryRepository,
     build_bullet_write,
-    capturing_publisher,
 )
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 
 _USER = "1"
 _HUMAN = Actor(type=ActorType.HUMAN)
@@ -44,7 +43,8 @@ def _service(
 ) -> tuple[LibraryService, InMemoryLibraryRepository, FakeSession, list[WriteEvent]]:
     repo = InMemoryLibraryRepository()
     session = FakeSession()
-    publisher, captured = capturing_publisher()
+    publisher = CapturingWriteEventPublisher()
+    captured = publisher.captured
     counter = usage if usage is not None else InMemoryBulletUsageCounter()
     kwargs = {"clock": clock} if clock is not None else {}
     service = LibraryService(session, repo, publisher, counter, **kwargs)  # type: ignore[arg-type]

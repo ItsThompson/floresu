@@ -31,7 +31,7 @@ from tests.jobapps_fakes import (
     RecordingFinalizer,
     build_application,
 )
-from tests.resumes_fakes import FakeSession, capturing_publisher
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 
 MakeSettings = Callable[..., AppSettings]
 
@@ -48,7 +48,7 @@ def _client(
 ) -> tuple[TestClient, InMemoryJobApplicationRepository, RecordingFinalizer]:
     repo = InMemoryJobApplicationRepository()
     finalizer = RecordingFinalizer(repo)
-    publisher, _captured = capturing_publisher()
+    publisher = CapturingWriteEventPublisher()
 
     def provider(_request: Request) -> JobApplicationService:
         return JobApplicationService(

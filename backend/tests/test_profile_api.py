@@ -25,12 +25,11 @@ from floresu.core.settings import AppSettings
 from floresu.profile.router import create_sources_router
 from floresu.profile.service import SourceService
 from tests.profile_fakes import (
-    FakeSession,
     InMemorySourceRepository,
     build_project_write,
     build_role_write,
-    capturing_publisher,
 )
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,7 +48,8 @@ def _client(
     make_settings: MakeSettings, *, internal: bool
 ) -> tuple[TestClient, InMemorySourceRepository, list[WriteEvent]]:
     repo = InMemorySourceRepository()
-    publisher, captured = capturing_publisher()
+    publisher = CapturingWriteEventPublisher()
+    captured = publisher.captured
 
     def provider(request: Request) -> SourceService:
         return SourceService(cast("AsyncSession", FakeSession()), repo, request.app.state.events)

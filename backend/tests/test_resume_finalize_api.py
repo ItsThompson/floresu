@@ -37,12 +37,11 @@ from floresu.resumes.models import Resume, ResumeKind, ResumeStatus
 from tests.jobapps_fakes import FIXED_NOW, InMemoryJobApplicationRepository
 from tests.rendering_fakes import FakeTypstCompiler, InMemoryIdentityResolver
 from tests.resumes_fakes import (
-    FakeSession,
     InMemoryBulletTextResolver,
     InMemoryResumeRepository,
-    capturing_publisher,
 )
 from tests.storage_fakes import FakeObjectStore
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 
 MakeSettings = Callable[..., AppSettings]
 
@@ -94,7 +93,7 @@ def _client(
     store = FakeObjectStore()
     job_apps = InMemoryJobApplicationRepository()
     module = RenderModule(FakeTypstCompiler(), templates_dir=Path("/tmpl"))
-    publisher, _captured = capturing_publisher()
+    publisher = CapturingWriteEventPublisher()
 
     def provider(_request: Request) -> ResumeFinalizeService:
         return ResumeFinalizeService(

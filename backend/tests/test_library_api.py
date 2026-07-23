@@ -25,12 +25,11 @@ from floresu.core.settings import AppSettings
 from floresu.library.router import create_bullets_router
 from floresu.library.service import LibraryService
 from tests.library_fakes import (
-    FakeSession,
     InMemoryBulletUsageCounter,
     InMemoryLibraryRepository,
     build_bullet_write,
-    capturing_publisher,
 )
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,7 +51,8 @@ def _client(
     usage: InMemoryBulletUsageCounter | None = None,
 ) -> tuple[TestClient, InMemoryLibraryRepository, list[WriteEvent]]:
     repo = InMemoryLibraryRepository()
-    publisher, captured = capturing_publisher()
+    publisher = CapturingWriteEventPublisher()
+    captured = publisher.captured
     counter = usage if usage is not None else InMemoryBulletUsageCounter()
 
     def provider(request: Request) -> LibraryService:

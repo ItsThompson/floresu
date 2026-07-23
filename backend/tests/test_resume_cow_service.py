@@ -32,14 +32,13 @@ from floresu.resumes.schemas import (
 from floresu.resumes.service import ResumeService
 from tests.library_fakes import InMemoryLibraryRepository
 from tests.resumes_fakes import (
-    FakeSession,
     InMemoryResumeRepository,
     LibraryRepoTextResolver,
     build_bullet_writer,
     build_create_request,
     build_update,
-    capturing_publisher,
 )
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 
 _USER = "1"
 _PK = 1
@@ -51,7 +50,8 @@ class _Bench:
         self.resume_repo = InMemoryResumeRepository()
         self.library_repo = InMemoryLibraryRepository()
         self.session = FakeSession()
-        self.publisher, self.captured = capturing_publisher()
+        self.publisher = CapturingWriteEventPublisher()
+        self.captured = self.publisher.captured
         self.service = ResumeService(
             self.session,  # type: ignore[arg-type]
             self.resume_repo,

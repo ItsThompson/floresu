@@ -40,8 +40,9 @@ from tests.rendering_fakes import (
     resume_row,
     revision_row,
 )
-from tests.resumes_fakes import FakeSession, InMemoryBulletTextResolver, capturing_publisher
+from tests.resumes_fakes import InMemoryBulletTextResolver
 from tests.storage_fakes import FakeObjectStore
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -85,7 +86,8 @@ def _harness(*, compiler: TypstCompiler | None = None) -> _Harness:
     fake_compiler = compiler if compiler is not None else FakeTypstCompiler()
     module = RenderModule(fake_compiler, templates_dir=Path("/tmpl"))
     store = FakeObjectStore()
-    publisher, captured = capturing_publisher()
+    publisher = CapturingWriteEventPublisher()
+    captured = publisher.captured
     service = ResumeRenderService(
         cast("AsyncSession", FakeSession()),
         repo,

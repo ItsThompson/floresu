@@ -18,11 +18,10 @@ from floresu.core.errors import Conflict, NotFound, Unauthorized, Validation
 from floresu.core.events import REEMBED_CONTENT_HASH_KEY, WriteEvent
 from floresu.worklog.injection import Clock
 from floresu.worklog.service import WorklogService
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 from tests.worklog_fakes import (
-    FakeSession,
     InMemoryWorklogRepository,
     build_worklog_write,
-    capturing_publisher,
 )
 
 _USER = "1"
@@ -43,7 +42,8 @@ def _service(
 ) -> tuple[WorklogService, InMemoryWorklogRepository, FakeSession, list[WriteEvent]]:
     repo = InMemoryWorklogRepository()
     session = FakeSession()
-    publisher, captured = capturing_publisher()
+    publisher = CapturingWriteEventPublisher()
+    captured = publisher.captured
     kwargs = {"clock": clock} if clock is not None else {}
     service = WorklogService(session, repo, publisher, **kwargs)  # type: ignore[arg-type]
     return service, repo, session, captured

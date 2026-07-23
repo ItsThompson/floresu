@@ -22,7 +22,8 @@ from floresu.embedding.enqueue import EmbedIntent, embed_intent
 from floresu.library.cow import LibraryCanonicalBulletWriter
 from floresu.library.hashing import compute_content_hash
 from floresu.library.models import Bulletpoint
-from tests.library_fakes import FakeSession, InMemoryLibraryRepository, capturing_publisher
+from tests.library_fakes import InMemoryLibraryRepository
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 
 _HUMAN = Actor(type=ActorType.HUMAN)
 _USER = 1
@@ -42,9 +43,9 @@ async def _seed_bullet(repo: InMemoryLibraryRepository, *, text: str, user_id: i
 def _writer(
     repo: InMemoryLibraryRepository,
 ) -> tuple[LibraryCanonicalBulletWriter, list[WriteEvent]]:
-    publisher, captured = capturing_publisher()
+    publisher = CapturingWriteEventPublisher()
     writer = LibraryCanonicalBulletWriter(FakeSession(), repo, publisher)  # type: ignore[arg-type]
-    return writer, captured
+    return writer, publisher.captured
 
 
 async def test_edit_text_everywhere_overwrites_bumps_revision_and_reembeds() -> None:

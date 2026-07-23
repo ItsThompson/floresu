@@ -26,10 +26,10 @@ from floresu.embedding.service import EmbeddingService
 from tests.embedding_fakes import (
     FakeCorpusResolver,
     FakeEmbeddingProvider,
-    FakeSession,
     InMemoryEmbeddingRepository,
     corpus_item,
 )
+from tests.support.fakes import FakeSession
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -133,3 +133,24 @@ def test_unknown_kind_is_rejected(make_settings: MakeSettings) -> None:
     client, _repo, _resolver = _client(make_settings)
     response = client.get("/embed/items/resume/5", headers=_HEADERS)
     assert response.status_code == 422  # not a member of embed_item_kind
+
+
+def test_read_item_with_a_malformed_identity_is_401(make_settings: MakeSettings) -> None:
+    client, _repo, resolver = _client(make_settings)
+    resolver.seed(EmbedItemKind.WORKLOG, 5, corpus_item("shipped it", "h1"))
+
+    response = client.get(
+        "/embed/items/worklog/5", headers={**_HEADERS, USER_ID_HEADER: "not-a-pk"}
+    )
+
+    assert response.status_code == 401  # the service casts and rejects the bad id
+
+
+def test_purge_with_a_malformed_identity_is_401(make_settings: MakeSettings) -> None:
+    client, _repo, _resolver = _client(make_settings)
+
+    response = client.post(
+        "/embed/items/worklog/5/purge", headers={**_HEADERS, USER_ID_HEADER: "not-a-pk"}
+    )
+
+    assert response.status_code == 401

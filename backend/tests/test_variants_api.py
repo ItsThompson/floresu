@@ -27,11 +27,10 @@ from floresu.core.settings import AppSettings
 from floresu.profile.variants.config import REPLACEMENT_REQUIRED_RULE
 from floresu.profile.variants.router import VARIANTS_PATH, create_variants_router
 from floresu.profile.variants.service import IdentityVariantService
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 from tests.variants_fakes import (
-    FakeSession,
     InMemoryIdentityVariantRepository,
     build_variant_write,
-    capturing_publisher,
 )
 
 if TYPE_CHECKING:
@@ -51,7 +50,8 @@ def _client(
     make_settings: MakeSettings, *, internal: bool
 ) -> tuple[TestClient, InMemoryIdentityVariantRepository, list[WriteEvent]]:
     repo = InMemoryIdentityVariantRepository()
-    publisher, captured = capturing_publisher()
+    publisher = CapturingWriteEventPublisher()
+    captured = publisher.captured
 
     def provider(request: Request) -> IdentityVariantService:
         return IdentityVariantService(

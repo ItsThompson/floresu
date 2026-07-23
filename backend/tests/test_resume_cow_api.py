@@ -30,12 +30,11 @@ from floresu.resumes.router import create_resumes_router
 from floresu.resumes.service import ResumeService
 from tests.library_fakes import InMemoryLibraryRepository
 from tests.resumes_fakes import (
-    FakeSession,
     InMemoryResumeRepository,
     LibraryRepoTextResolver,
     build_bullet_writer,
-    capturing_publisher,
 )
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -125,7 +124,8 @@ class _Bench:
 def _bench(make_settings: MakeSettings, *, internal: bool = False) -> _Bench:
     resume_repo = InMemoryResumeRepository()
     library_repo = InMemoryLibraryRepository()
-    publisher, captured = capturing_publisher()
+    publisher = CapturingWriteEventPublisher()
+    captured = publisher.captured
 
     def provider(request: Request) -> ResumeService:
         session = cast("AsyncSession", FakeSession())

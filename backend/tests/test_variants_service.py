@@ -16,11 +16,10 @@ from floresu.core.events import Action, WriteEvent
 from floresu.profile.injection import Clock
 from floresu.profile.variants.config import REPLACEMENT_REQUIRED_RULE
 from floresu.profile.variants.service import IdentityVariantService
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 from tests.variants_fakes import (
-    FakeSession,
     InMemoryIdentityVariantRepository,
     build_variant_write,
-    capturing_publisher,
 )
 
 _USER = "1"
@@ -35,7 +34,8 @@ def _service(
 ]:
     repo = InMemoryIdentityVariantRepository()
     session = FakeSession()
-    publisher, captured = capturing_publisher()
+    publisher = CapturingWriteEventPublisher()
+    captured = publisher.captured
     kwargs = {"clock": clock} if clock is not None else {}
     service = IdentityVariantService(session, repo, publisher, **kwargs)  # type: ignore[arg-type]
     return service, repo, session, captured

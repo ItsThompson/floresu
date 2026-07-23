@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from floresu.core.events import WriteEvent, WriteEventPublisher
+from floresu.core.events import WriteEventPublisher
 from floresu.library.cow import LibraryCanonicalBulletWriter
 from floresu.resumes.models import Resume, ResumeKind, ResumeRevision
 from floresu.resumes.schemas import (
@@ -28,21 +28,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from sqlalchemy.ext.asyncio import AsyncSession
-
-
-class FakeSession:
-    """A no-op stand-in for ``AsyncSession`` recording the transaction boundary."""
-
-    def __init__(self) -> None:
-        self.commits = 0
-        self.rollbacks = 0
-        self.info: dict[str, Any] = {}
-
-    async def commit(self) -> None:
-        self.commits += 1
-
-    async def rollback(self) -> None:
-        self.rollbacks += 1
 
 
 class InMemoryResumeRepository:
@@ -188,16 +173,6 @@ def build_bullet_writer(
     return LibraryCanonicalBulletWriter(
         session, library_repo or InMemoryLibraryRepository(), publisher
     )
-
-
-def capturing_publisher() -> tuple[WriteEventPublisher, list[WriteEvent]]:
-    """The real publisher seam wired with a capturing transactional consumer."""
-    captured: list[WriteEvent] = []
-
-    async def consume(_session: Any, event: WriteEvent) -> None:
-        captured.append(event)
-
-    return WriteEventPublisher(transactional=[consume]), captured
 
 
 def build_create_request(**overrides: Any) -> ResumeCreateRequest:

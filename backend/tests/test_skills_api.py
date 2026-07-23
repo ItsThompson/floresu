@@ -25,11 +25,10 @@ from floresu.core.settings import AppSettings
 from floresu.profile.skills.router import create_skills_router
 from floresu.profile.skills.service import SkillService
 from tests.skills_fakes import (
-    FakeSession,
     InMemorySkillRepository,
     build_skill_write,
-    capturing_publisher,
 )
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -48,7 +47,8 @@ def _client(
     make_settings: MakeSettings, *, internal: bool
 ) -> tuple[TestClient, InMemorySkillRepository, list[WriteEvent]]:
     repo = InMemorySkillRepository()
-    publisher, captured = capturing_publisher()
+    publisher = CapturingWriteEventPublisher()
+    captured = publisher.captured
 
     def provider(request: Request) -> SkillService:
         return SkillService(cast("AsyncSession", FakeSession()), repo, request.app.state.events)

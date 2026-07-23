@@ -8,7 +8,7 @@ Redis/arq via the recording queue). No test ever calls OpenAI or a live broker.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from floresu.embedding.config import EMBEDDING_DIMENSION, EMBEDDING_MODEL, EmbedItemKind
 from floresu.embedding.corpus import CorpusResolver
@@ -17,25 +17,6 @@ from floresu.embedding.schemas import CorpusItem
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
-
-
-class FakeSession:
-    """A no-op stand-in for ``AsyncSession`` recording the transaction boundary.
-
-    Carries ``info`` because the ``transaction`` boundary drains the session's
-    post-commit queue on a clean exit.
-    """
-
-    def __init__(self) -> None:
-        self.commits = 0
-        self.rollbacks = 0
-        self.info: dict[str, Any] = {}
-
-    async def commit(self) -> None:
-        self.commits += 1
-
-    async def rollback(self) -> None:
-        self.rollbacks += 1
 
 
 class FakeCorpusResolver(CorpusResolver):

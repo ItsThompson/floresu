@@ -20,7 +20,8 @@ from floresu.embedding.wiring import (
     create_embedding_provider,
     create_openai_http_client,
 )
-from tests.embedding_fakes import FakeEmbeddingProvider, FakeSession
+from tests.embedding_fakes import FakeEmbeddingProvider
+from tests.support.fakes import FakeSession
 
 if TYPE_CHECKING:
     from floresu.core.settings import EnvSettings

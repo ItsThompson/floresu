@@ -27,12 +27,11 @@ from floresu.lifecycle.router import create_lifecycle_router
 from floresu.lifecycle.service import LifecycleService
 from tests.embedding_fakes import InMemoryEmbeddingRepository
 from tests.lifecycle_fakes import (
-    FakeSession,
     InMemoryExportRepository,
     InMemoryLifecycleRepository,
     build_account,
-    capturing_publisher,
 )
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,7 +49,8 @@ def _client(
     repo = repo or InMemoryLifecycleRepository()
     export_repo = export_repo or InMemoryExportRepository(account=build_account(1))
     embeddings = embeddings or InMemoryEmbeddingRepository()
-    publisher, captured = capturing_publisher()
+    publisher = CapturingWriteEventPublisher()
+    captured = publisher.captured
 
     def provider(request: Request) -> LifecycleService:
         return LifecycleService(

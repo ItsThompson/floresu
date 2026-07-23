@@ -22,7 +22,6 @@ from floresu.resumes.models import ResumeKind, ResumeStatus
 from floresu.resumes.schemas import ResumeReorderRequest
 from floresu.resumes.service import ResumeService
 from tests.resumes_fakes import (
-    FakeSession,
     InMemoryBulletTextResolver,
     InMemoryResumeRepository,
     build_add_item,
@@ -30,8 +29,8 @@ from tests.resumes_fakes import (
     build_create_request,
     build_section,
     build_update,
-    capturing_publisher,
 )
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 
 _USER = "1"
 _HUMAN = Actor(type=ActorType.HUMAN)
@@ -65,7 +64,8 @@ def _service() -> tuple[
     repo = InMemoryResumeRepository()
     resolver = InMemoryBulletTextResolver()
     session = FakeSession()
-    publisher, captured = capturing_publisher()
+    publisher = CapturingWriteEventPublisher()
+    captured = publisher.captured
     service = ResumeService(
         session,  # type: ignore[arg-type]
         repo,

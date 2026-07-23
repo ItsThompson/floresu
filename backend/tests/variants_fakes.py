@@ -19,18 +19,12 @@ from sqlalchemy.exc import IntegrityError
 from floresu.profile.variants.models import IdentityVariant
 from floresu.profile.variants.schemas import IdentityVariantWrite
 
-# The profile FakeSession + capturing publisher are the canonical profile-family
-# test doubles; identity variants reuse them rather than re-declaring stand-ins.
-from tests.profile_fakes import FakeSession, capturing_publisher
-
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
 __all__ = [
-    "FakeSession",
     "InMemoryIdentityVariantRepository",
     "build_variant_write",
-    "capturing_publisher",
 ]
 
 

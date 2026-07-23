@@ -21,14 +21,13 @@ from floresu.profile.schemas import (
 )
 from floresu.profile.service import SourceService
 from tests.profile_fakes import (
-    FakeSession,
     InMemorySourceRepository,
     build_certification_write,
     build_education_write,
     build_project_write,
     build_role_write,
-    capturing_publisher,
 )
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 
 _USER = "1"
 _HUMAN = Actor(type=ActorType.HUMAN)
@@ -40,7 +39,8 @@ def _service(
 ) -> tuple[SourceService, InMemorySourceRepository, FakeSession, list[WriteEvent]]:
     repo = InMemorySourceRepository()
     session = FakeSession()
-    publisher, captured = capturing_publisher()
+    publisher = CapturingWriteEventPublisher()
+    captured = publisher.captured
     kwargs = {"clock": clock} if clock is not None else {}
     service = SourceService(session, repo, publisher, **kwargs)  # type: ignore[arg-type]
     return service, repo, session, captured
