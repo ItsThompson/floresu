@@ -20,4 +20,17 @@ export type WorklogWrite = components["schemas"]["WorklogWrite"];
 /** Flat, string-valued form state; a checkbox drives the open-ended end date. */
 export type SourceFormValues = Record<string, string>;
 
+/**
+ * The quick add-entry form's controlled values. A form-representation shape, not
+ * the API write body: `tags` is the raw comma-separated input, split into the
+ * API's string array on submit.
+ */
+export interface AddEntryFormValues {
+  title: string;
+  /** ISO date `yyyy-mm-dd`. */
+  entryDate: string;
+  description: string;
+  tags: string;
+}
+
 export type LoadStatus = "loading" | "ready" | "error";

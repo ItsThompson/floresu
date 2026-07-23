@@ -3,7 +3,7 @@ import { useState, type FormEvent } from "react";
 import { FormInputField } from "@/components/FormInputField";
 import { Button } from "@/components/ui/button";
 
-import type { WorklogWrite } from "../types";
+import type { AddEntryFormValues, WorklogWrite } from "../types";
 
 interface AddWorklogEntryFormProps {
   isAdding: boolean;
@@ -12,30 +12,38 @@ interface AddWorklogEntryFormProps {
   onCancel: () => void;
 }
 
+const INITIAL_VALUES: AddEntryFormValues = {
+  title: "",
+  entryDate: "",
+  description: "",
+  tags: "",
+};
+
 /**
  * The quick add-entry form in the contextual worklog panel. Title and date are
  * required; description and tags are optional. The panel pre-attaches the created
  * entry to the current source, so this form carries no source concern.
  */
 export function AddWorklogEntryForm({ isAdding, error, onAdd, onCancel }: AddWorklogEntryFormProps) {
-  const [title, setTitle] = useState("");
-  const [entryDate, setEntryDate] = useState("");
-  const [description, setDescription] = useState("");
-  const [tags, setTags] = useState("");
-  const [missing, setMissing] = useState<{ title?: string; entry_date?: string }>({});
+  const [values, setValues] = useState<AddEntryFormValues>(INITIAL_VALUES);
+  const [missing, setMissing] = useState<Record<string, string>>({});
+
+  const setField = (field: keyof AddEntryFormValues, value: string) =>
+    setValues((prev) => ({ ...prev, [field]: value }));
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    const errors: { title?: string; entry_date?: string } = {};
-    if (!title.trim()) errors.title = "This field is required.";
-    if (!entryDate) errors.entry_date = "This field is required.";
+    const errors: Record<string, string> = {};
+    if (!values.title.trim()) errors.title = "This field is required.";
+    if (!values.entryDate) errors.entry_date = "This field is required.";
     setMissing(errors);
     if (Object.keys(errors).length > 0) return;
+    const description = values.description.trim();
     onAdd({
-      title: title.trim(),
-      entry_date: entryDate,
-      description: description.trim() ? description.trim() : null,
-      tags: tags
+      title: values.title.trim(),
+      entry_date: values.entryDate,
+      description: description || null,
+      tags: values.tags
         .split(",")
         .map((tag) => tag.trim())
         .filter(Boolean),
@@ -47,24 +55,24 @@ export function AddWorklogEntryForm({ isAdding, error, onAdd, onCancel }: AddWor
       <FormInputField
         label="Title"
         name="title"
-        value={title}
+        value={values.title}
         error={missing.title}
-        onChange={(event) => setTitle(event.target.value)}
+        onChange={(event) => setField("title", event.target.value)}
       />
       <FormInputField
         label="Date"
         name="entry_date"
         type="date"
-        value={entryDate}
+        value={values.entryDate}
         error={missing.entry_date}
-        onChange={(event) => setEntryDate(event.target.value)}
+        onChange={(event) => setField("entryDate", event.target.value)}
       />
       <label className="flex flex-col gap-1.5">
         <span className="text-foreground text-sm font-medium">Description</span>
         <textarea
           name="description"
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
+          value={values.description}
+          onChange={(event) => setField("description", event.target.value)}
           className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 min-h-16 rounded-md border px-3 py-2 text-sm outline-none focus-visible:ring-[3px]"
         />
       </label>
@@ -72,8 +80,8 @@ export function AddWorklogEntryForm({ isAdding, error, onAdd, onCancel }: AddWor
         label="Tags"
         name="tags"
         placeholder="backend, payments"
-        value={tags}
-        onChange={(event) => setTags(event.target.value)}
+        value={values.tags}
+        onChange={(event) => setField("tags", event.target.value)}
       />
       {error && (
         <p role="alert" className="text-destructive text-sm">
