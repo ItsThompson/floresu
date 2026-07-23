@@ -20,7 +20,13 @@ from floresu.core.db import transaction
 from floresu.library.models import Bulletpoint
 from floresu.library.repository import LibraryRepository, SqlAlchemyLibraryRepository
 from tests.library_fakes import InMemoryLibraryRepository
-from tests.support.conformance import Arranger, RepoCase, backend_params, sqlalchemy_backend
+from tests.support.conformance import (
+    Arranger,
+    RepoCase,
+    backend_params,
+    resolve_case,
+    sqlalchemy_backend,
+)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -96,13 +102,13 @@ async def _sqlalchemy_library_case(
 async def library_case(
     request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
 ) -> AsyncIterator[LibraryCase]:
-    if request.param == "in_memory":
-        yield in_memory_library_case()
-        return
-    postgres_url: str = request.getfixturevalue("postgres_url")
-    async with sqlalchemy_backend(postgres_url, monkeypatch) as sessionmaker:
-        async for case in _sqlalchemy_library_case(sessionmaker):
-            yield case
+    async for case in resolve_case(
+        request,
+        monkeypatch,
+        in_memory=in_memory_library_case,
+        sqlalchemy=_sqlalchemy_library_case,
+    ):
+        yield case
 
 
 async def test_cas_advances_the_revision_on_a_matching_token(library_case: LibraryCase) -> None:

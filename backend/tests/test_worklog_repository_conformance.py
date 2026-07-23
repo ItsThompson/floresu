@@ -26,6 +26,7 @@ from tests.support.conformance import (
     Arranger,
     RepoCase,
     backend_params,
+    resolve_case,
     sqlalchemy_backend,
 )
 from tests.worklog_fakes import InMemoryWorklogRepository
@@ -130,13 +131,13 @@ async def _sqlalchemy_worklog_case(
 async def worklog_case(
     request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
 ) -> AsyncIterator[WorklogCase]:
-    if request.param == "in_memory":
-        yield in_memory_worklog_case()
-        return
-    postgres_url: str = request.getfixturevalue("postgres_url")
-    async with sqlalchemy_backend(postgres_url, monkeypatch) as sessionmaker:
-        async for case in _sqlalchemy_worklog_case(sessionmaker):
-            yield case
+    async for case in resolve_case(
+        request,
+        monkeypatch,
+        in_memory=in_memory_worklog_case,
+        sqlalchemy=_sqlalchemy_worklog_case,
+    ):
+        yield case
 
 
 async def test_bullet_ids_by_worklog_excludes_archived(worklog_case: WorklogCase) -> None:

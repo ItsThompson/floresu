@@ -21,7 +21,13 @@ from floresu.accounts.repository import AccountRepository, SqlAlchemyAccountRepo
 from floresu.accounts.tokens import RefreshClaims
 from floresu.core.db import transaction
 from tests.accounts_fakes import InMemoryAccountRepository
-from tests.support.conformance import Arranger, RepoCase, backend_params, sqlalchemy_backend
+from tests.support.conformance import (
+    Arranger,
+    RepoCase,
+    backend_params,
+    resolve_case,
+    sqlalchemy_backend,
+)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -82,13 +88,13 @@ async def _sqlalchemy_account_case(
 async def account_case(
     request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
 ) -> AsyncIterator[AccountCase]:
-    if request.param == "in_memory":
-        yield in_memory_account_case()
-        return
-    postgres_url: str = request.getfixturevalue("postgres_url")
-    async with sqlalchemy_backend(postgres_url, monkeypatch) as sessionmaker:
-        async for case in _sqlalchemy_account_case(sessionmaker):
-            yield case
+    async for case in resolve_case(
+        request,
+        monkeypatch,
+        in_memory=in_memory_account_case,
+        sqlalchemy=_sqlalchemy_account_case,
+    ):
+        yield case
 
 
 async def test_get_by_id_maps_the_string_identity_to_the_pk(account_case: AccountCase) -> None:

@@ -17,7 +17,7 @@ from floresu.core.db import transaction
 from floresu.resumes.models import Resume, ResumeKind
 from floresu.resumes.repository import ResumeRepository, SqlAlchemyResumeRepository
 from tests.resumes_fakes import InMemoryResumeRepository
-from tests.support.conformance import Arranger, RepoCase, backend_params, sqlalchemy_backend
+from tests.support.conformance import Arranger, RepoCase, backend_params, resolve_case
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -99,13 +99,13 @@ async def _sqlalchemy_resume_case(
 async def resume_case(
     request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch
 ) -> AsyncIterator[ResumeCase]:
-    if request.param == "in_memory":
-        yield in_memory_resume_case()
-        return
-    postgres_url: str = request.getfixturevalue("postgres_url")
-    async with sqlalchemy_backend(postgres_url, monkeypatch) as sessionmaker:
-        async for case in _sqlalchemy_resume_case(sessionmaker):
-            yield case
+    async for case in resolve_case(
+        request,
+        monkeypatch,
+        in_memory=in_memory_resume_case,
+        sqlalchemy=_sqlalchemy_resume_case,
+    ):
+        yield case
 
 
 async def test_list_resumes_filters_by_kind(resume_case: ResumeCase) -> None:

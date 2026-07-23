@@ -33,7 +33,7 @@ from alembic.config import Config
 from floresu.core.db import create_db_engine, create_sessionmaker
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Callable
 
     from _pytest.mark.structures import ParameterSet
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -123,3 +123,27 @@ async def sqlalchemy_backend(
         yield create_sessionmaker(engine)
     finally:
         await engine.dispose()
+
+
+async def resolve_case[R, A: Arranger](
+    request: pytest.FixtureRequest,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    in_memory: Callable[[], RepoCase[R, A]],
+    sqlalchemy: Callable[[async_sessionmaker[AsyncSession]], AsyncIterator[RepoCase[R, A]]],
+) -> AsyncIterator[RepoCase[R, A]]:
+    """Yield the case for the current parameter: in-memory fake or SQLAlchemy binding.
+
+    The shared body of every domain's parametrized ``*_case`` fixture: the
+    in-memory parameter yields ``in_memory()`` in the unit lane; the SQLAlchemy
+    parameter resolves the Docker-gated ``postgres_url`` (skipping without Docker),
+    opens a migrated backend, and drives the domain's ``sqlalchemy`` builder, whose
+    session stays open for the test.
+    """
+    if request.param == "in_memory":
+        yield in_memory()
+        return
+    postgres_url: str = request.getfixturevalue("postgres_url")
+    async with sqlalchemy_backend(postgres_url, monkeypatch) as sessionmaker:
+        async for case in sqlalchemy(sessionmaker):
+            yield case
