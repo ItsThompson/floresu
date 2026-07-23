@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING
 
 from floresu.core.db import transaction
 from floresu.core.events import Action, emit_write_event
+from floresu.core.identity import resolve_user_pk
 from floresu.core.observability import track_failures
 from floresu.rendering.config import PDF_MEDIA_TYPE
 from floresu.rendering.errors import RenderError
@@ -38,7 +39,7 @@ from floresu.resumes.document import (
     referenced_bullet_ids,
     resolve_document,
 )
-from floresu.resumes.operations import require_user_pk, resume_not_found
+from floresu.resumes.operations import resume_not_found
 from floresu.resumes.render_schemas import ExportResult
 from floresu.resumes.upcast import load_document
 from floresu.storage.keys import revision_pdf_key
@@ -87,7 +88,7 @@ class ResumeRenderService:
 
     async def preview(self, user_id: str, resume_id: int, template_id: str | None = None) -> bytes:
         """Render the live document to ephemeral PDF bytes (never stored)."""
-        pk = require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         resume = await self._load(pk, resume_id)
         document = load_document(resume.document)
         resolved = await self._resolve_live(pk, document)
@@ -95,7 +96,7 @@ class ResumeRenderService:
 
     async def export(self, user_id: str, resume_id: int, actor: Actor) -> ExportResult:
         """Render the latest revision, persist it to R2, and record its object key."""
-        pk = require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         await self._load(pk, resume_id)
         revision = await self._repo.latest_revision(resume_id)
         if revision is None:

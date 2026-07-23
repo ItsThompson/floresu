@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Any
 from floresu.core.db import transaction
 from floresu.core.errors import Conflict, NotFound
 from floresu.core.events import Action, emit_write_event
+from floresu.core.identity import resolve_user_pk
 from floresu.core.observability import track_failures
 from floresu.jobapps.config import DEFAULT_LIST_LIMIT, ENTITY_TYPE
 from floresu.jobapps.schemas import (
@@ -29,7 +30,6 @@ from floresu.jobapps.schemas import (
 )
 from floresu.resumes.injection import Clock, utcnow
 from floresu.resumes.models import JobApplication, JobApplicationStatus
-from floresu.resumes.operations import require_user_pk
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -63,7 +63,7 @@ class JobApplicationService:
         self, user_id: str, actor: Actor, request: JobApplicationCreate
     ) -> JobApplicationSummary:
         """Create an application at ``added`` (company + role title); audit the write."""
-        pk = require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         now = self._clock()
         application = JobApplication(
             user_id=pk,
@@ -86,14 +86,14 @@ class JobApplicationService:
 
     async def list_applications(self, user_id: str) -> list[JobApplicationSummary]:
         """List a user's applications newest-first, each with its linked resume id."""
-        pk = require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         applications = await self._repo.list_applications(pk, limit=DEFAULT_LIST_LIMIT)
         links = await self._repo.linked_resume_ids([app.id for app in applications])
         return [to_summary(app, linked_resume_id=links.get(app.id)) for app in applications]
 
     async def get(self, user_id: str, application_id: int) -> JobApplicationSummary:
         """Read one application with its linked resume id (404 if not the user's)."""
-        pk = require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         application = await self._load(pk, application_id)
         linked = await self._repo.linked_resume_id(application_id)
         return to_summary(application, linked_resume_id=linked)
@@ -108,7 +108,7 @@ class JobApplicationService:
         linked resume is rejected up front and its status stays ``added``. Reverting a
         submitted application to ``added`` is rejected (finalize is terminal).
         """
-        pk = require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         application = await self._load(pk, application_id)
         submitting = (
             request.status is JobApplicationStatus.SUBMITTED

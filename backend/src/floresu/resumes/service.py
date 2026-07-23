@@ -31,6 +31,7 @@ from floresu.core.conflicts import conflict_on_duplicate
 from floresu.core.db import transaction
 from floresu.core.errors import Validation
 from floresu.core.events import SCOPE_METADATA_KEY, Action, emit_write_event
+from floresu.core.identity import resolve_user_pk
 from floresu.core.observability import track_failures
 from floresu.resumes.config import CONCURRENT_WRITE_CONFLICT, DEFAULT_LIST_LIMIT, ENTITY_TYPE
 from floresu.resumes.cow import (
@@ -70,7 +71,6 @@ from floresu.resumes.operations import (
     item_removed_summary,
     promoted_summary,
     reordered_summary,
-    require_user_pk,
     resume_not_found,
     revalidate_document,
     swap_item_to_reference,
@@ -129,7 +129,7 @@ class ResumeService:
         self, user_id: str, actor: Actor, request: ResumeCreateRequest
     ) -> ResumeRecord:
         """Create a resume per the contract; snapshot revision 1 and index its refs."""
-        pk = require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         validate_creation_contract(request)
         document, title, forked_from = await seed_document(self._repo, pk, request)
         if request.kind is ResumeKind.APPLICATION:
@@ -159,7 +159,7 @@ class ResumeService:
 
     async def get(self, user_id: str, resume_id: int) -> ResumeRecord:
         """Read one resume; upcast its document to the current schema, then serve."""
-        pk = require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         resume = await self._load(pk, resume_id)
         return to_record(resume, load_document(resume.document))
 
@@ -172,7 +172,7 @@ class ResumeService:
         limit: int = DEFAULT_LIST_LIMIT,
     ) -> list[ResumeSummary]:
         """List resumes newest-first; active-only by default, optionally filtered by kind."""
-        pk = require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         rows = await self._repo.list_resumes(
             pk, kind=kind, include_archived=include_archived, limit=limit
         )
@@ -182,7 +182,7 @@ class ResumeService:
         self, user_id: str, resume_id: int, actor: Actor, if_match: int, body: ResumeUpdate
     ) -> ResumeRecord:
         """Overwrite the authoritative document (If-Match guarded); snapshot and reindex."""
-        pk = require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         resume = await self._prepare_write(pk, resume_id, if_match)
         document = ResumeDocument(
             schema_version=CURRENT_SCHEMA_VERSION,
@@ -201,7 +201,7 @@ class ResumeService:
         self, user_id: str, resume_id: int, actor: Actor, if_match: int, request: AddItemRequest
     ) -> ResumeRecord:
         """Append one item to a section (server-minted id); snapshot and reindex."""
-        pk = require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         resume = await self._prepare_write(pk, resume_id, if_match)
         document = load_document(resume.document)
         section = find_section(document, request.section_id)
@@ -219,7 +219,7 @@ class ResumeService:
         self, user_id: str, resume_id: int, actor: Actor, if_match: int, item_id: str
     ) -> ResumeRecord:
         """Remove one item from its section; snapshot and reindex."""
-        pk = require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         resume = await self._prepare_write(pk, resume_id, if_match)
         document = load_document(resume.document)
         section = find_item_section(document, item_id)
@@ -241,7 +241,7 @@ class ResumeService:
         request: ResumeReorderRequest,
     ) -> ResumeRecord:
         """Reorder sections and/or items by id (never by index); records a reorder action."""
-        pk = require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         resume = await self._prepare_write(pk, resume_id, if_match)
         document = load_document(resume.document)
         if request.section_order is not None:
@@ -275,7 +275,7 @@ class ResumeService:
         only. Bullet ownership is established by the caller, which resolves the
         bullet in the user's scope before asking.
         """
-        require_user_pk(user_id)
+        resolve_user_pk(user_id)
         return await self._repo.used_in_count(bullet_id)
 
     async def bullet_update(
@@ -290,7 +290,7 @@ class ResumeService:
         reference updates); ``this_resume`` forks a resume-local copy (guarded by the
         resume ``revision``, canonical bullet untouched).
         """
-        pk = require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         used_in = await self._repo.used_in_count(request.bullet_id)
         resolution = resolve_edit_scope(
             channel=channel, requested=request.scope, used_in_count=used_in
@@ -312,7 +312,7 @@ class ResumeService:
         records a ``promote``. The bullet create and the resume write commit in one
         transaction, so a promoted item can never point at an uncommitted bullet.
         """
-        pk = require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         resume = await self._prepare_write(pk, resume_id, if_match)
         document = load_document(resume.document)
         local = find_local_item(document, item_id)

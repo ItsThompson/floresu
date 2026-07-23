@@ -32,6 +32,7 @@ from floresu.core.conflicts import conflict_on_duplicate
 from floresu.core.db import transaction
 from floresu.core.errors import Validation
 from floresu.core.events import Action, emit_write_event
+from floresu.core.identity import resolve_user_pk
 from floresu.core.observability import track_failures
 from floresu.jobapps.config import ENTITY_TYPE as JOB_APPLICATION_ENTITY_TYPE
 from floresu.rendering.config import PDF_MEDIA_TYPE
@@ -49,7 +50,7 @@ from floresu.resumes.models import (
     ResumeRevision,
     ResumeStatus,
 )
-from floresu.resumes.operations import guard_finalizable, require_user_pk, resume_not_found
+from floresu.resumes.operations import guard_finalizable, resume_not_found
 from floresu.resumes.schemas import FinalizeResult
 from floresu.resumes.upcast import CURRENT_SCHEMA_VERSION, load_document
 from floresu.storage.keys import revision_pdf_key
@@ -102,7 +103,7 @@ class ResumeFinalizeService:
 
     async def finalize(self, user_id: str, resume_id: int, actor: Actor) -> FinalizeResult:
         """Freeze the application draft, store its PDF, and submit a linked application."""
-        pk = require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         resume = await self._load(pk, resume_id)
         guard_finalizable(resume)
         frozen = await self._freeze_document(pk, load_document(resume.document))

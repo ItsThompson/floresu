@@ -18,8 +18,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from floresu.core.errors import NotFound
+from floresu.core.identity import resolve_user_pk
 from floresu.core.observability import track_failures
-from floresu.resumes.operations import require_user_pk, resume_not_found
+from floresu.resumes.operations import resume_not_found
 from floresu.resumes.revision_schemas import (
     PublishedVersion,
     PublishedVersionList,
@@ -42,7 +43,7 @@ class ResumeRevisionService:
 
     async def list_published_versions(self, user_id: str, resume_id: int) -> PublishedVersionList:
         """Newest-first list of revisions with a stored PDF; a missing resume is a 404."""
-        pk = require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         await self._load(pk, resume_id)
         revisions = await self._repo.list_revisions_with_pdf(resume_id)
         versions = [PublishedVersion.model_validate(revision) for revision in revisions]
@@ -52,7 +53,7 @@ class ResumeRevisionService:
         self, user_id: str, resume_id: int, revision_no: int
     ) -> VersionPdfUrl:
         """Presigned URL for one version's PDF; a missing resume/version/object is a 404."""
-        pk = require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         await self._load(pk, resume_id)
         revision = await self._repo.get_revision(resume_id, revision_no)
         if revision is None or revision.pdf_object_key is None:

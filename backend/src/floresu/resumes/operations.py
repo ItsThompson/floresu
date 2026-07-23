@@ -10,7 +10,7 @@ on them so its methods stay a thin sequence of load, guard, mutate, and save.
 
 from __future__ import annotations
 
-from floresu.core.errors import Conflict, NotFound, Unauthorized, Validation
+from floresu.core.errors import Conflict, NotFound, Validation
 from floresu.resumes.document import (
     LibraryRefItem,
     LocalItem,
@@ -148,14 +148,6 @@ def guard_revision(resume: Resume, if_match: int) -> None:
             "This resume changed since you loaded it "
             f"(you sent revision {if_match}, current is {resume.revision}); re-read and retry."
         )
-
-
-def require_user_pk(user_id: str) -> int:
-    """Cast the resolved string identity to the bigint PK, or reject as stale."""
-    try:
-        return int(user_id)
-    except ValueError as exc:
-        raise Unauthorized("Session is invalid or expired.") from exc
 
 
 def resume_not_found(resume_id: int) -> NotFound:
