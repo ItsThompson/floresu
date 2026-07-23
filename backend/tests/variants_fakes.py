@@ -3,7 +3,7 @@
 The service is tested sociably: the real :class:`IdentityVariantService` runs over
 this in-memory repository (substituted at the only true external boundary,
 Postgres), the real :class:`WriteEventPublisher` seam wired with a capturing
-consumer, and the profile :class:`FakeSession` recording the ``transaction``
+consumer, and the shared :class:`FakeSession` recording the ``transaction``
 boundary. The repo mirrors the server-minted id and enforces ``UNIQUE (user_id,
 label)`` by raising a unique-violation ``IntegrityError``. The living-resume
 reference seam is seeded directly, standing in for the resume tables that do not

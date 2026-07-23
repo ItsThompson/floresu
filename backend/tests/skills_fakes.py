@@ -3,7 +3,7 @@
 The service is tested sociably: the real :class:`SkillService` runs over this
 in-memory repository (substituted at the only true external boundary, Postgres),
 the real :class:`WriteEventPublisher` seam wired with a capturing consumer, and the
-profile :class:`FakeSession` recording the ``transaction`` boundary. The repo
+shared :class:`FakeSession` recording the ``transaction`` boundary. The repo
 mirrors what the database assigns on insert (the server-minted id and the
 ``sort_order`` server default) and enforces ``UNIQUE (user_id, name)`` by raising a
 unique-violation ``IntegrityError`` so the service's Conflict mapping is exercised
