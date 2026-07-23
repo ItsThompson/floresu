@@ -4,6 +4,7 @@ import { FormInputField } from "@/components/FormInputField";
 import { Button } from "@/components/ui/button";
 
 import type { IdentityVariantRead, IdentityVariantWrite } from "../hooks/useIdentityVariants";
+import type { VariantFormValues } from "../types";
 import { linksToText, textToLinks } from "../variantLinks";
 
 interface VariantFormProps {
@@ -22,35 +23,37 @@ interface VariantFormProps {
  * rule that the first variant is the default. Closes only on a committed write.
  */
 export function VariantForm({ variant, forceDefault, onSubmit, onCancel }: VariantFormProps) {
-  const [label, setLabel] = useState(variant?.label ?? "");
-  const [fullName, setFullName] = useState(variant?.full_name ?? "");
-  const [email, setEmail] = useState(variant?.contact.email ?? "");
-  const [phone, setPhone] = useState(variant?.contact.phone ?? "");
-  const [location, setLocation] = useState(variant?.contact.location ?? "");
-  const [linksText, setLinksText] = useState(variant ? linksToText(variant.links) : "");
-  const [isDefault, setIsDefault] = useState(forceDefault || (variant?.is_default ?? false));
-  const [missing, setMissing] = useState<{ label?: string; full_name?: string }>({});
+  const [values, setValues] = useState<VariantFormValues>({
+    label: variant?.label ?? "",
+    fullName: variant?.full_name ?? "",
+    email: variant?.contact.email ?? "",
+    phone: variant?.contact.phone ?? "",
+    location: variant?.contact.location ?? "",
+    linksText: variant ? linksToText(variant.links) : "",
+    isDefault: forceDefault || (variant?.is_default ?? false),
+  });
+  const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    const errors: { label?: string; full_name?: string } = {};
-    if (!label.trim()) errors.label = "This field is required.";
-    if (!fullName.trim()) errors.full_name = "This field is required.";
-    setMissing(errors);
+    const errors: Record<string, string> = {};
+    if (!values.label.trim()) errors.label = "This field is required.";
+    if (!values.fullName.trim()) errors.full_name = "This field is required.";
+    setLocalErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
     setIsSubmitting(true);
     const committed = await onSubmit({
-      label: label.trim(),
-      full_name: fullName.trim(),
+      label: values.label.trim(),
+      full_name: values.fullName.trim(),
       contact: {
-        email: email.trim() || null,
-        phone: phone.trim() || null,
-        location: location.trim() || null,
+        email: values.email.trim() || null,
+        phone: values.phone.trim() || null,
+        location: values.location.trim() || null,
       },
-      links: textToLinks(linksText),
-      is_default: forceDefault ? true : isDefault,
+      links: textToLinks(values.linksText),
+      is_default: forceDefault ? true : values.isDefault,
     });
     setIsSubmitting(false);
     if (committed) onCancel();
@@ -65,52 +68,52 @@ export function VariantForm({ variant, forceDefault, onSubmit, onCancel }: Varia
       <FormInputField
         label="Label"
         name="label"
-        value={label}
-        error={missing.label}
-        onChange={(event) => setLabel(event.target.value)}
+        value={values.label}
+        error={localErrors.label}
+        onChange={(event) => setValues((prev) => ({ ...prev, label: event.target.value }))}
       />
       <FormInputField
         label="Full name"
         name="full_name"
-        value={fullName}
-        error={missing.full_name}
-        onChange={(event) => setFullName(event.target.value)}
+        value={values.fullName}
+        error={localErrors.full_name}
+        onChange={(event) => setValues((prev) => ({ ...prev, fullName: event.target.value }))}
       />
       <FormInputField
         label="Email"
         name="email"
         type="email"
-        value={email}
-        onChange={(event) => setEmail(event.target.value)}
+        value={values.email}
+        onChange={(event) => setValues((prev) => ({ ...prev, email: event.target.value }))}
       />
       <FormInputField
         label="Phone"
         name="phone"
-        value={phone}
-        onChange={(event) => setPhone(event.target.value)}
+        value={values.phone}
+        onChange={(event) => setValues((prev) => ({ ...prev, phone: event.target.value }))}
       />
       <FormInputField
         label="Location"
         name="location"
-        value={location}
-        onChange={(event) => setLocation(event.target.value)}
+        value={values.location}
+        onChange={(event) => setValues((prev) => ({ ...prev, location: event.target.value }))}
       />
       <label className="flex flex-col gap-1.5">
         <span className="text-foreground text-sm font-medium">Links</span>
         <textarea
           name="links"
           placeholder="Portfolio | https://example.dev"
-          value={linksText}
-          onChange={(event) => setLinksText(event.target.value)}
+          value={values.linksText}
+          onChange={(event) => setValues((prev) => ({ ...prev, linksText: event.target.value }))}
           className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 min-h-16 rounded-md border px-3 py-2 text-sm outline-none focus-visible:ring-[3px]"
         />
       </label>
       <label className="flex items-center gap-2 text-sm font-medium">
         <input
           type="checkbox"
-          checked={forceDefault ? true : isDefault}
+          checked={forceDefault ? true : values.isDefault}
           disabled={forceDefault}
-          onChange={(event) => setIsDefault(event.target.checked)}
+          onChange={(event) => setValues((prev) => ({ ...prev, isDefault: event.target.checked }))}
         />
         Default variant
         {forceDefault && <span className="text-muted-foreground">(your first variant)</span>}
