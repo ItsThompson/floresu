@@ -32,10 +32,24 @@ class InMemoryWorklogRepository:
         self._sources_by_worklog: dict[int, list[int]] = {}
         self._tags_by_worklog: dict[int, list[int]] = {}
         self._owned_sources: dict[int, set[int]] = {}
+        self._bullets_by_worklog: dict[int, list[int]] = {}
+        self._archived_bullets: set[int] = set()
 
     def own_source(self, user_id: int, source_id: int) -> None:
         """Seed a source the user owns, so an entry may attach it."""
         self._owned_sources.setdefault(user_id, set()).add(source_id)
+
+    def frame_bullet(self, worklog_id: int, bullet_id: int, *, archived: bool = False) -> None:
+        """Seed a canonical bullet that frames a worklog entry (test setup).
+
+        Mirrors a ``bullet_worklog`` edge plus the bullet's archive state, so
+        :meth:`bullet_ids_by_worklog` can exclude an archived bullet the way the
+        real join does. A bullet another domain owns is framed here, not added to
+        this repository's own tables.
+        """
+        self._bullets_by_worklog.setdefault(worklog_id, []).append(bullet_id)
+        if archived:
+            self._archived_bullets.add(bullet_id)
 
     async def add(self, entry: WorklogEntry) -> None:
         entry.id = self._next_entry_id
@@ -101,7 +115,19 @@ class InMemoryWorklogRepository:
         return sources
 
     async def bullet_ids_by_worklog(self, worklog_ids: Sequence[int]) -> dict[int, list[int]]:
-        return {}
+        # Mirror the real archived-excluding join: the active (non-archived) bullets
+        # framing each entry, ordered by bullet id, and absent for an entry no
+        # active bullet frames.
+        bullets: dict[int, list[int]] = {}
+        for worklog_id in worklog_ids:
+            active = sorted(
+                bullet_id
+                for bullet_id in self._bullets_by_worklog.get(worklog_id, [])
+                if bullet_id not in self._archived_bullets
+            )
+            if active:
+                bullets[worklog_id] = active
+        return bullets
 
 
 def build_worklog_write(**overrides: Any) -> WorklogWrite:
