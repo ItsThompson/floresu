@@ -20,8 +20,9 @@ from typing import TYPE_CHECKING, Any
 
 from floresu.core.conflicts import conflict_on_duplicate
 from floresu.core.db import transaction
-from floresu.core.errors import Conflict, NotFound, Unauthorized, Validation
+from floresu.core.errors import Conflict, NotFound, Validation
 from floresu.core.events import Action, emit_write_event
+from floresu.core.identity import resolve_user_pk
 from floresu.core.observability import track_failures
 from floresu.profile.injection import Clock, utcnow
 from floresu.profile.skills.config import DEFAULT_LIST_LIMIT, ENTITY_TYPE
@@ -58,7 +59,7 @@ class SkillService:
 
     async def create(self, user_id: str, actor: Actor, write: SkillWrite) -> SkillRead:
         """Add a curated skill; a duplicate name is a Conflict (never auto-promoted)."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         skill = Skill(user_id=pk, name=write.name)
         async with (
             conflict_on_duplicate(_duplicate_message(write.name)),
@@ -70,7 +71,7 @@ class SkillService:
 
     async def get(self, user_id: str, skill_id: int) -> SkillRead:
         """Read one skill with its computed usage count."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         skill = await self._require(pk, skill_id)
         return await self._read(pk, skill)
 
@@ -78,7 +79,7 @@ class SkillService:
         self, user_id: str, *, include_archived: bool = False, limit: int = DEFAULT_LIST_LIMIT
     ) -> list[SkillRead]:
         """List skills in curated order; active-only by default, usage batch-computed."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         skills = await self._repo.list(pk, include_archived=include_archived, limit=limit)
         return await self._read_many(pk, skills)
 
@@ -86,7 +87,7 @@ class SkillService:
         self, user_id: str, skill_id: int, actor: Actor, write: SkillWrite
     ) -> SkillRead:
         """Rename a skill; renaming onto another skill's name is a Conflict."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         skill = await self._require(pk, skill_id)
         async with (
             conflict_on_duplicate(_duplicate_message(write.name)),
@@ -98,7 +99,7 @@ class SkillService:
 
     async def archive(self, user_id: str, skill_id: int, actor: Actor) -> SkillRead:
         """Soft-archive: stamp ``archived_at`` so the skill drops from active lists."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         skill = await self._require(pk, skill_id)
         if skill.archived_at is not None:
             raise Conflict("This skill is already archived.")
@@ -109,7 +110,7 @@ class SkillService:
 
     async def restore(self, user_id: str, skill_id: int, actor: Actor) -> SkillRead:
         """Clear ``archived_at`` so an archived skill returns to active lists."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         skill = await self._require(pk, skill_id)
         if skill.archived_at is None:
             raise Conflict("This skill is not archived.")
@@ -127,7 +128,7 @@ class SkillService:
         every active skill, listed exactly once. A partial submit is rejected, so
         ``sort_order`` can never end up duplicated or partially applied.
         """
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         ordered_ids = request.skill_ids
         if len(set(ordered_ids)) != len(ordered_ids):
             raise Validation("The reorder contains duplicate skill ids.")
@@ -190,14 +191,6 @@ class SkillService:
             summary=summary,
             metadata=metadata,
         )
-
-
-def _require_user_pk(user_id: str) -> int:
-    """Cast the resolved string identity to the bigint PK, or reject as stale."""
-    try:
-        return int(user_id)
-    except ValueError as exc:
-        raise Unauthorized("Session is invalid or expired.") from exc
 
 
 def _not_found(skill_id: int) -> NotFound:

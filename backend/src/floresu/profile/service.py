@@ -20,8 +20,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from floresu.core.db import transaction
-from floresu.core.errors import Conflict, NotFound, Unauthorized, Validation
+from floresu.core.errors import Conflict, NotFound, Validation
 from floresu.core.events import Action, emit_write_event
+from floresu.core.identity import resolve_user_pk
 from floresu.core.observability import track_failures
 from floresu.profile.config import DEFAULT_LIST_LIMIT, ENTITY_TYPE
 from floresu.profile.injection import Clock, utcnow
@@ -67,7 +68,7 @@ class SourceService:
 
     async def create(self, user_id: str, actor: Actor, write: SourceWrite) -> SourceRecord:
         """Create a source: one base row and one kind-locked subtype row atomically."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         source = Source(
             user_id=pk,
             kind=write.kind,
@@ -86,7 +87,7 @@ class SourceService:
 
     async def get(self, user_id: str, source_id: int) -> SourceRecord:
         """Read one source with its typed subtype detail (joins one subtype table)."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         found = await self._repo.get_detail(pk, source_id)
         if found is None:
             raise _not_found(source_id)
@@ -102,7 +103,7 @@ class SourceService:
         limit: int = DEFAULT_LIST_LIMIT,
     ) -> list[SourceSummary]:
         """List sources (common columns only); active-only and per-kind by default."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         rows = await self._repo.list(pk, kind=kind, include_archived=include_archived, limit=limit)
         return [to_summary(row) for row in rows]
 
@@ -110,7 +111,7 @@ class SourceService:
         self, user_id: str, source_id: int, actor: Actor, write: SourceWrite
     ) -> SourceRecord:
         """Overwrite every editable field; ``kind`` is immutable. Records an update."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         found = await self._repo.get_detail(pk, source_id)
         if found is None:
             raise _not_found(source_id)
@@ -134,7 +135,7 @@ class SourceService:
 
     async def archive(self, user_id: str, source_id: int, actor: Actor) -> SourceRecord:
         """Soft-archive: stamp ``archived_at`` so the source drops from active lists."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         found = await self._repo.get_detail(pk, source_id)
         if found is None:
             raise _not_found(source_id)
@@ -150,7 +151,7 @@ class SourceService:
 
     async def restore(self, user_id: str, source_id: int, actor: Actor) -> SourceRecord:
         """Clear ``archived_at`` so an archived source returns to active lists."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         found = await self._repo.get_detail(pk, source_id)
         if found is None:
             raise _not_found(source_id)
@@ -175,7 +176,7 @@ class SourceService:
         applied. Ordering is independent per kind because section lists filter by
         kind, so each kind carries its own 0-based positions.
         """
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         ordered_ids = request.source_ids
         if len(set(ordered_ids)) != len(ordered_ids):
             raise Validation("The reorder contains duplicate source ids.")
@@ -225,14 +226,6 @@ class SourceService:
             summary=summary,
             metadata=metadata,
         )
-
-
-def _require_user_pk(user_id: str) -> int:
-    """Cast the resolved string identity to the bigint PK, or reject as stale."""
-    try:
-        return int(user_id)
-    except ValueError as exc:
-        raise Unauthorized("Session is invalid or expired.") from exc
 
 
 def _not_found(source_id: int) -> NotFound:

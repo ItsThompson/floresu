@@ -22,8 +22,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from floresu.core.db import transaction
-from floresu.core.errors import Conflict, NotFound, Unauthorized, Validation
+from floresu.core.errors import Conflict, NotFound, Validation
 from floresu.core.events import REEMBED_CONTENT_HASH_KEY, Action, emit_write_event
+from floresu.core.identity import resolve_user_pk
 from floresu.core.observability import track_failures
 from floresu.worklog.config import DEFAULT_LIST_LIMIT, ENTITY_TYPE
 from floresu.worklog.hashing import compute_content_hash
@@ -69,7 +70,7 @@ class WorklogService:
 
     async def create(self, user_id: str, actor: Actor, write: WorklogWrite) -> WorklogRecord:
         """Create an entry, attach its sources, and reconcile its tags atomically."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         source_ids = dedupe(write.source_ids)
         await self._require_owned_sources(pk, source_ids)
         labels = normalize_labels(write.tags)
@@ -98,7 +99,7 @@ class WorklogService:
 
     async def get(self, user_id: str, worklog_id: int) -> WorklogRecord:
         """Read one entry with its tags, attached sources, and framing bullets."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         entry = await self._repo.get(pk, worklog_id)
         if entry is None:
             raise _not_found(worklog_id)
@@ -111,7 +112,7 @@ class WorklogService:
         self, user_id: str, *, include_archived: bool = False, limit: int = DEFAULT_LIST_LIMIT
     ) -> list[WorklogSummary]:
         """List entries newest-first; active-only by default (archived are hidden)."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         entries = await self._repo.list_entries(pk, include_archived=include_archived, limit=limit)
         ids = [entry.id for entry in entries]
         tags = await self._repo.tag_labels_by_worklog(ids)
@@ -125,7 +126,7 @@ class WorklogService:
         self, user_id: str, worklog_id: int, actor: Actor, write: WorklogWrite
     ) -> WorklogRecord:
         """Overwrite fields, tags, and attachments; re-embed only if content changed."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         entry = await self._repo.get(pk, worklog_id)
         if entry is None:
             raise _not_found(worklog_id)
@@ -155,7 +156,7 @@ class WorklogService:
 
     async def archive(self, user_id: str, worklog_id: int, actor: Actor) -> WorklogRecord:
         """Soft-archive: stamp ``archived_at`` so the entry drops from active reads."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         entry = await self._repo.get(pk, worklog_id)
         if entry is None:
             raise _not_found(worklog_id)
@@ -170,7 +171,7 @@ class WorklogService:
 
     async def restore(self, user_id: str, worklog_id: int, actor: Actor) -> WorklogRecord:
         """Clear ``archived_at`` so an archived entry returns to active reads."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         entry = await self._repo.get(pk, worklog_id)
         if entry is None:
             raise _not_found(worklog_id)
@@ -212,7 +213,7 @@ class WorklogService:
 
     async def list_tags(self, user_id: str) -> list[TagRead]:
         """List the user's tags for reuse; color is derived from the label downstream."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         tags = await self._repo.list_tags(pk)
         return [to_tag_read(tag) for tag in tags]
 
@@ -233,7 +234,7 @@ class WorklogService:
         rejects a blank label, then writes the new tag set and publishes exactly one
         :class:`WriteEvent` (UPDATE, no re-embed) inside the transaction.
         """
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         entry = await self._repo.get(pk, worklog_id)
         if entry is None:
             raise _not_found(worklog_id)
@@ -308,14 +309,6 @@ class WorklogService:
             summary=summary,
             metadata=metadata,
         )
-
-
-def _require_user_pk(user_id: str) -> int:
-    """Cast the resolved string identity to the bigint PK, or reject as stale."""
-    try:
-        return int(user_id)
-    except ValueError as exc:
-        raise Unauthorized("Session is invalid or expired.") from exc
 
 
 def _require_label(label: str) -> str:

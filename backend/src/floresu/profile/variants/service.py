@@ -22,8 +22,9 @@ from typing import TYPE_CHECKING, Any
 
 from floresu.core.conflicts import conflict_on_duplicate
 from floresu.core.db import transaction
-from floresu.core.errors import Conflict, NotFound, Unauthorized, Validation, Violation
+from floresu.core.errors import Conflict, NotFound, Validation, Violation
 from floresu.core.events import Action, emit_write_event
+from floresu.core.identity import resolve_user_pk
 from floresu.core.observability import track_failures
 from floresu.profile.injection import Clock, utcnow
 from floresu.profile.variants.config import (
@@ -71,7 +72,7 @@ class IdentityVariantService:
         self, user_id: str, actor: Actor, write: IdentityVariantWrite
     ) -> IdentityVariantRead:
         """Create a variant; the first variant (no active default yet) becomes default."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         existing_default = await self._repo.current_default(pk)
         # The first variant is forced default so the invariant holds from the start;
         # a later variant becomes default only if the write asks for it.
@@ -106,14 +107,14 @@ class IdentityVariantService:
 
     async def get(self, user_id: str, variant_id: int) -> IdentityVariantRead:
         """Read one variant."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         return to_read(await self._require(pk, variant_id))
 
     async def list_variants(
         self, user_id: str, *, include_archived: bool = False, limit: int = DEFAULT_LIST_LIMIT
     ) -> list[IdentityVariantRead]:
         """List variants (by label); active-only by default."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         variants = await self._repo.list(pk, include_archived=include_archived, limit=limit)
         return [to_read(variant) for variant in variants]
 
@@ -126,7 +127,7 @@ class IdentityVariantService:
         unsetting the sole default is rejected: promote another variant instead, so
         exactly one default always exists.
         """
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         variant = await self._require(pk, variant_id)
         was_default = variant.is_default
         if not write.is_default and was_default:
@@ -158,7 +159,7 @@ class IdentityVariantService:
 
     async def archive(self, user_id: str, variant_id: int, actor: Actor) -> IdentityVariantRead:
         """Soft-archive; blocked while default or referenced by a living resume."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         variant = await self._require(pk, variant_id)
         if variant.archived_at is not None:
             raise Conflict("This variant is already archived.")
@@ -176,7 +177,7 @@ class IdentityVariantService:
 
     async def restore(self, user_id: str, variant_id: int, actor: Actor) -> IdentityVariantRead:
         """Clear ``archived_at``; a restored variant is not default until promoted."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         variant = await self._require(pk, variant_id)
         if variant.archived_at is None:
             raise Conflict("This variant is not archived.")
@@ -219,14 +220,6 @@ class IdentityVariantService:
             summary=summary,
             metadata=metadata,
         )
-
-
-def _require_user_pk(user_id: str) -> int:
-    """Cast the resolved string identity to the bigint PK, or reject as stale."""
-    try:
-        return int(user_id)
-    except ValueError as exc:
-        raise Unauthorized("Session is invalid or expired.") from exc
 
 
 def _not_found(variant_id: int) -> NotFound:

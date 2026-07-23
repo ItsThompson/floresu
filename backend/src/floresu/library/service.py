@@ -27,8 +27,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from floresu.core.db import transaction
-from floresu.core.errors import Conflict, NotFound, Unauthorized, Validation
+from floresu.core.errors import Conflict, NotFound, Validation
 from floresu.core.events import REEMBED_CONTENT_HASH_KEY, Action, emit_write_event
+from floresu.core.identity import resolve_user_pk
 from floresu.core.observability import track_failures
 from floresu.library.config import DEFAULT_LIST_LIMIT, ENTITY_TYPE
 from floresu.library.hashing import compute_content_hash
@@ -75,7 +76,7 @@ class LibraryService:
         self, user_id: str, actor: Actor, write: BulletpointWrite
     ) -> BulletpointRecord:
         """Create a bullet and its provenance edges atomically; queue it for embedding."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         source_ids = _unique(write.source_ids)
         worklog_ids = _unique(write.worklog_ids)
         await self._require_owned(pk, source_ids, worklog_ids)
@@ -98,7 +99,7 @@ class LibraryService:
 
     async def get(self, user_id: str, bullet_id: int) -> BulletpointRecord:
         """Read one bullet with its framed sources, worklog entries, and usage count."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         bullet = await self._repo.get(pk, bullet_id)
         if bullet is None:
             raise _not_found(bullet_id)
@@ -109,7 +110,7 @@ class LibraryService:
         self, user_id: str, *, include_archived: bool = False, limit: int = DEFAULT_LIST_LIMIT
     ) -> list[BulletpointRecord]:
         """List bullets newest-first; active-only by default (archived are hidden)."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         bullets = await self._repo.list_bullets(pk, include_archived=include_archived, limit=limit)
         ids = [bullet.id for bullet in bullets]
         sources = await self._repo.source_ids_by_bullet(ids)
@@ -138,7 +139,7 @@ class LibraryService:
         token by one atomically. An edges-only edit still runs the swap (advancing the
         token) but signals no re-embed, since the content hash is unchanged.
         """
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         bullet = await self._repo.get(pk, bullet_id)
         if bullet is None:
             raise _not_found(bullet_id)
@@ -170,7 +171,7 @@ class LibraryService:
 
     async def archive(self, user_id: str, bullet_id: int, actor: Actor) -> BulletpointRecord:
         """Soft-archive: stamp ``archived_at`` so the bullet drops from library reads."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         bullet = await self._repo.get(pk, bullet_id)
         if bullet is None:
             raise _not_found(bullet_id)
@@ -185,7 +186,7 @@ class LibraryService:
 
     async def restore(self, user_id: str, bullet_id: int, actor: Actor) -> BulletpointRecord:
         """Clear ``archived_at`` so an archived bullet returns to library reads."""
-        pk = _require_user_pk(user_id)
+        pk = resolve_user_pk(user_id)
         bullet = await self._repo.get(pk, bullet_id)
         if bullet is None:
             raise _not_found(bullet_id)
@@ -271,14 +272,6 @@ class LibraryService:
 def _unique(ids: list[int]) -> list[int]:
     """De-duplicate ids, preserving first-seen order (a clean edge set for insert)."""
     return list(dict.fromkeys(ids))
-
-
-def _require_user_pk(user_id: str) -> int:
-    """Cast the resolved string identity to the bigint PK, or reject as stale."""
-    try:
-        return int(user_id)
-    except ValueError as exc:
-        raise Unauthorized("Session is invalid or expired.") from exc
 
 
 def _not_found(bullet_id: int) -> NotFound:
