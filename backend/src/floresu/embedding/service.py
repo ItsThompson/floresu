@@ -138,7 +138,7 @@ class EmbeddingService:
             await self._repo.delete(kind, item_id)
 
     async def _gate(
-        self, user_id: int, kind: EmbedItemKind, item_id: int, expected_hash: str | None
+        self, pk: int, kind: EmbedItemKind, item_id: int, expected_hash: str | None
     ) -> tuple[EmbedOutcome, CorpusItem | None]:
         """Resolve the item, apply the gate, and remove the vector on missing/archived.
 
@@ -146,7 +146,7 @@ class EmbeddingService:
         write (``APPLIED``); on a skip outcome the item is ``None``. Runs inside the
         caller's open ``transaction`` so the stale-vector removal commits with it.
         """
-        item = await self._resolver.resolve(self._session, user_id, kind, item_id)
+        item = await self._resolver.resolve(self._session, pk, kind, item_id)
         existing = await self._repo.get(kind, item_id)
         outcome = decide(item, existing, expected_hash)
         if outcome in (EmbedOutcome.SKIPPED_MISSING, EmbedOutcome.SKIPPED_ARCHIVED):

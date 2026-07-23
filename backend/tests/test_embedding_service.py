@@ -231,10 +231,18 @@ async def test_embed_item_rejects_a_malformed_identity() -> None:
 
 
 async def test_store_vector_rejects_a_malformed_identity() -> None:
-    service, _repo, _resolver, _provider = _service()
+    service, repo, resolver, _provider = _service()
+    resolver.seed(_WORKLOG, 1, corpus_item("text", "h1"))
+    await repo.upsert(
+        user_id=1, kind=_WORKLOG, item_id=1, content_hash="old", vector=[1.0], model="orig"
+    )
 
     with pytest.raises(Unauthorized):
-        await service.store_vector("not-a-pk", _WORKLOG, 1, "h1", [0.5], "m")
+        await service.store_vector("not-a-pk", _WORKLOG, 1, "h1", [0.5], "worker-model")
+
+    stored = await repo.get(_WORKLOG, 1)
+    assert stored is not None
+    assert stored.model == "orig"  # rejected before any upsert; the stored row is untouched
 
 
 async def test_delete_vector_rejects_a_malformed_identity() -> None:
