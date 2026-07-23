@@ -31,7 +31,7 @@ from typing import TYPE_CHECKING, Protocol
 from floresu.core.conflicts import conflict_on_duplicate
 from floresu.core.db import transaction
 from floresu.core.errors import Validation
-from floresu.core.events import Action, WriteEvent
+from floresu.core.events import Action, emit_write_event
 from floresu.core.observability import track_failures
 from floresu.jobapps.config import ENTITY_TYPE as JOB_APPLICATION_ENTITY_TYPE
 from floresu.rendering.config import PDF_MEDIA_TYPE
@@ -223,15 +223,14 @@ class ResumeFinalizeService:
         summary: str,
         metadata: dict[str, object] | None = None,
     ) -> None:
-        await self._publisher.publish(
+        await emit_write_event(
+            self._publisher,
             self._session,
-            WriteEvent(
-                user_id=user_pk,
-                actor=actor,
-                entity_type=entity_type,
-                entity_id=entity_id,
-                action=action,
-                summary=summary,
-                metadata=metadata,
-            ),
+            user_id=user_pk,
+            actor=actor,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            action=action,
+            summary=summary,
+            metadata=metadata,
         )
