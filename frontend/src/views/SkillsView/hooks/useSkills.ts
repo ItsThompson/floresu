@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { components } from "@/api";
 import { useSessionClient } from "@/api";
 import { extractProblem } from "@/lib/problemDetail";
+import { reorderBySortOrder } from "@/lib/reorder";
 
 export type SkillRead = components["schemas"]["SkillRead"];
 
@@ -99,7 +100,7 @@ export function useSkills(): { state: SkillsState; actions: SkillsActions } {
 
   const reorder = useCallback(
     (orderedIds: number[]) => {
-      setSkills((current) => reorderSkills(current, orderedIds));
+      setSkills((current) => reorderBySortOrder(current, orderedIds));
       void client
         .POST("/skills/reorder", { body: { skill_ids: orderedIds } })
         .then(({ error }) => {
@@ -129,13 +130,4 @@ export function useSkills(): { state: SkillsState; actions: SkillsActions } {
     state: { status, skills, actionError },
     actions: { create, rename, reorder, archive, dismissError },
   };
-}
-
-/** Reassign each skill's local sort_order to match the new id order. */
-function reorderSkills(skills: SkillRead[], orderedIds: number[]): SkillRead[] {
-  const byId = new Map(skills.map((skill) => [skill.id, skill]));
-  return orderedIds.flatMap((id, index) => {
-    const skill = byId.get(id);
-    return skill ? [{ ...skill, sort_order: index }] : [];
-  });
 }
