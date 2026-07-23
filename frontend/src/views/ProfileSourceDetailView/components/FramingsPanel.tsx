@@ -18,6 +18,8 @@ interface FramingsPanelProps {
  */
 export function FramingsPanel({ framings }: FramingsPanelProps) {
   const [draft, setDraft] = useState("");
+  const isAdding = framings.write.status === "saving";
+  const addError = framings.write.status === "error" ? framings.write.message : null;
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -57,19 +59,19 @@ export function FramingsPanel({ framings }: FramingsPanelProps) {
           onChange={(event) => setDraft(event.target.value)}
           className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 min-h-16 rounded-md border px-3 py-2 text-sm outline-none focus-visible:ring-[3px]"
         />
-        {framings.addError && (
+        {addError && (
           <p role="alert" className="text-destructive text-sm">
-            {framings.addError}
+            {addError}
           </p>
         )}
         <Button
           type="submit"
           variant="outline"
           size="sm"
-          disabled={framings.isAdding || !draft.trim()}
+          disabled={isAdding || !draft.trim()}
           className="self-start"
         >
-          <Plus className="size-3.5" /> {framings.isAdding ? "Adding…" : "Add framing"}
+          <Plus className="size-3.5" /> {isAdding ? "Adding…" : "Add framing"}
         </Button>
       </form>
     </section>

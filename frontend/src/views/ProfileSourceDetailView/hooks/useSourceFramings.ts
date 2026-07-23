@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useSessionClient } from "@/api";
+import type { WriteState } from "@/lib/asyncState";
 import { extractProblem } from "@/lib/problemDetail";
 
 import type { BulletpointRecord, LoadStatus } from "../types";
@@ -8,8 +9,7 @@ import type { BulletpointRecord, LoadStatus } from "../types";
 export interface SourceFramings {
   status: LoadStatus;
   framings: BulletpointRecord[];
-  isAdding: boolean;
-  addError: string | null;
+  write: WriteState;
   addFraming: (text: string) => void;
 }
 
@@ -23,8 +23,7 @@ export function useSourceFramings(sourceId: number | null): SourceFramings {
   const client = useSessionClient();
   const [status, setStatus] = useState<LoadStatus>(sourceId === null ? "ready" : "loading");
   const [framings, setFramings] = useState<BulletpointRecord[]>([]);
-  const [isAdding, setIsAdding] = useState(false);
-  const [addError, setAddError] = useState<string | null>(null);
+  const [write, setWrite] = useState<WriteState>({ status: "idle" });
 
   useEffect(() => {
     if (sourceId === null) return;
@@ -52,25 +51,23 @@ export function useSourceFramings(sourceId: number | null): SourceFramings {
   const addFraming = useCallback(
     (text: string) => {
       if (sourceId === null || !text.trim()) return;
-      setIsAdding(true);
-      setAddError(null);
+      setWrite({ status: "saving" });
       void client
         .POST("/bullets", { body: { text: text.trim(), source_ids: [sourceId] } })
         .then(({ data, error }) => {
-          setIsAdding(false);
           if (error || !data) {
-            setAddError(extractProblem(error).message);
+            setWrite({ status: "error", message: extractProblem(error).message });
             return;
           }
+          setWrite({ status: "idle" });
           setFramings((current) => [data, ...current]);
         })
         .catch(() => {
-          setIsAdding(false);
-          setAddError("Could not add that framing.");
+          setWrite({ status: "error", message: "Could not add that framing." });
         });
     },
     [client, sourceId],
   );
 
-  return { status, framings, isAdding, addError, addFraming };
+  return { status, framings, write, addFraming };
 }
