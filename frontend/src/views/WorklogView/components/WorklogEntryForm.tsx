@@ -18,6 +18,14 @@ interface WorklogEntryFormProps {
 
 const FIELD_CLASS = "border-input bg-background rounded-md border px-3 py-2 text-sm";
 
+const INITIAL_VALUES: EntryFormValues = {
+  title: "",
+  entryDate: "",
+  description: "",
+  tags: [],
+  sourceIds: [],
+};
+
 /**
  * The create/edit entry form. Title and date are required (guarded here before a
  * request); description, tags, and source attachment are optional, and zero, one,
@@ -33,39 +41,37 @@ export function WorklogEntryForm({
   onSubmit,
   onCancel,
 }: WorklogEntryFormProps) {
-  const [title, setTitle] = useState(() => initialValues?.title ?? "");
-  const [entryDate, setEntryDate] = useState(() => initialValues?.entryDate ?? "");
-  const [description, setDescription] = useState(() => initialValues?.description ?? "");
-  const [tags, setTags] = useState<string[]>(() => initialValues?.tags ?? []);
-  const [sourceIds, setSourceIds] = useState<number[]>(() => initialValues?.sourceIds ?? []);
+  const [values, setValues] = useState<EntryFormValues>(() => initialValues ?? INITIAL_VALUES);
   const [tagDraft, setTagDraft] = useState("");
-  const [showTitleError, setShowTitleError] = useState(false);
-  const [showDateError, setShowDateError] = useState(false);
+  const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
 
   const addTag = () => {
     const label = tagDraft.trim();
-    if (label === "" || tags.includes(label)) {
+    if (label === "" || values.tags.includes(label)) {
       setTagDraft("");
       return;
     }
-    setTags((prev) => [...prev, label]);
+    setValues((prev) => ({ ...prev, tags: [...prev.tags, label] }));
     setTagDraft("");
   };
 
   const toggleSource = (sourceId: number) => {
-    setSourceIds((prev) =>
-      prev.includes(sourceId) ? prev.filter((id) => id !== sourceId) : [...prev, sourceId],
-    );
+    setValues((prev) => ({
+      ...prev,
+      sourceIds: prev.sourceIds.includes(sourceId)
+        ? prev.sourceIds.filter((id) => id !== sourceId)
+        : [...prev.sourceIds, sourceId],
+    }));
   };
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    const missingTitle = title.trim() === "";
-    const missingDate = entryDate === "";
-    setShowTitleError(missingTitle);
-    setShowDateError(missingDate);
-    if (missingTitle || missingDate) return;
-    onSubmit({ title, entryDate, description, tags, sourceIds });
+    const nextErrors: Record<string, string> = {};
+    if (values.title.trim() === "") nextErrors.title = TITLE_REQUIRED_MESSAGE;
+    if (values.entryDate === "") nextErrors.entryDate = DATE_REQUIRED_MESSAGE;
+    setLocalErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+    onSubmit(values);
   };
 
   return (
@@ -80,11 +86,11 @@ export function WorklogEntryForm({
         Title
         <input
           className={FIELD_CLASS}
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-          aria-invalid={showTitleError}
+          value={values.title}
+          onChange={(event) => setValues((prev) => ({ ...prev, title: event.target.value }))}
+          aria-invalid={Boolean(localErrors.title)}
         />
-        {showTitleError && <span className="text-destructive text-xs">{TITLE_REQUIRED_MESSAGE}</span>}
+        {localErrors.title && <span className="text-destructive text-xs">{localErrors.title}</span>}
       </label>
 
       <label className="flex flex-col gap-1 text-sm font-medium">
@@ -92,11 +98,13 @@ export function WorklogEntryForm({
         <input
           type="date"
           className={FIELD_CLASS}
-          value={entryDate}
-          onChange={(event) => setEntryDate(event.target.value)}
-          aria-invalid={showDateError}
+          value={values.entryDate}
+          onChange={(event) => setValues((prev) => ({ ...prev, entryDate: event.target.value }))}
+          aria-invalid={Boolean(localErrors.entryDate)}
         />
-        {showDateError && <span className="text-destructive text-xs">{DATE_REQUIRED_MESSAGE}</span>}
+        {localErrors.entryDate && (
+          <span className="text-destructive text-xs">{localErrors.entryDate}</span>
+        )}
       </label>
 
       <label className="flex flex-col gap-1 text-sm font-medium">
@@ -104,16 +112,25 @@ export function WorklogEntryForm({
         <textarea
           className={FIELD_CLASS}
           rows={3}
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
+          value={values.description}
+          onChange={(event) => setValues((prev) => ({ ...prev, description: event.target.value }))}
         />
       </label>
 
       <div className="flex flex-col gap-2 text-sm font-medium">
         Tags
         <div className="flex flex-wrap items-center gap-2">
-          {tags.map((tag) => (
-            <TagPill key={tag} label={tag} onRemove={() => setTags((prev) => prev.filter((existingTag) => existingTag !== tag))} />
+          {values.tags.map((tag) => (
+            <TagPill
+              key={tag}
+              label={tag}
+              onRemove={() =>
+                setValues((prev) => ({
+                  ...prev,
+                  tags: prev.tags.filter((existingTag) => existingTag !== tag),
+                }))
+              }
+            />
           ))}
         </div>
         <div className="flex items-center gap-2">
@@ -144,7 +161,7 @@ export function WorklogEntryForm({
               <label key={source.id} className="flex items-center gap-2 font-normal">
                 <input
                   type="checkbox"
-                  checked={sourceIds.includes(source.id)}
+                  checked={values.sourceIds.includes(source.id)}
                   onChange={() => toggleSource(source.id)}
                 />
                 {source.display_label}
