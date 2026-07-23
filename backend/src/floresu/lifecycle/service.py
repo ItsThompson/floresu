@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, Any
 
 from floresu.core.db import transaction
 from floresu.core.errors import NotFound, Unauthorized, Validation
-from floresu.core.events import Action, WriteEvent
+from floresu.core.events import Action, emit_write_event
 from floresu.core.logging import get_logger
 from floresu.core.observability import track_failures
 from floresu.embedding.config import EmbedItemKind
@@ -198,17 +198,16 @@ class LifecycleService:
     async def _publish(
         self, user_pk: int, actor: Actor, entity_type: str, entity_id: int, summary: str
     ) -> None:
-        await self._publisher.publish(
+        await emit_write_event(
+            self._publisher,
             self._session,
-            WriteEvent(
-                user_id=user_pk,
-                actor=actor,
-                entity_type=entity_type,
-                entity_id=entity_id,
-                action=Action.DELETE,
-                summary=summary,
-                metadata={"permanent": True},
-            ),
+            user_id=user_pk,
+            actor=actor,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            action=Action.DELETE,
+            summary=summary,
+            metadata={"permanent": True},
         )
 
 
