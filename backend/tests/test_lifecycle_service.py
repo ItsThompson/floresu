@@ -223,5 +223,8 @@ async def test_export_omits_a_source_missing_its_subtype_detail() -> None:
 
 async def test_a_non_numeric_identity_is_rejected() -> None:
     service, _, _, _ = _service()
-    with pytest.raises(Unauthorized):
+    with pytest.raises(Unauthorized) as excinfo:
         await service.permanently_delete_worklog("not-an-int", 1, _HUMAN, confirm=True)
+    # The migrated cast rejects with the canonical wording, not the divergent
+    # ``_STALE_SESSION`` message the deleted-account path still uses.
+    assert excinfo.value.detail == "Session is invalid or expired."
