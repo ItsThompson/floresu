@@ -117,4 +117,25 @@ describe("ConnectedAgentsPanel", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/couldn.t load your connected agents/i);
   });
+
+  it("keeps the agent listed and surfaces an error when the revoke DELETE fails", async () => {
+    authenticateOnResume();
+    mockClients([buildClient()]);
+    server.use(
+      http.delete("*/me/clients/:clientId", () =>
+        HttpResponse.json({ detail: "Revoke failed." }, { status: 500 }),
+      ),
+    );
+
+    renderApp(["/settings/agents"]);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: /Revoke/ }));
+    const dialog = screen.getByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: /Revoke/ }));
+
+    // The failed revoke sets revokeError (shown) without discarding the list.
+    expect(await screen.findByText(/couldn.t revoke that agent/i)).toBeInTheDocument();
+    expect(screen.getByText("Claude")).toBeInTheDocument();
+  });
 });
