@@ -51,8 +51,8 @@ export function WorklogView() {
           mode={state.form.kind === "edit" ? "edit" : "create"}
           initialValues={state.editingValues}
           sources={state.sources}
-          status={state.writeStatus}
-          error={state.writeError}
+          isSaving={state.write.status === "saving"}
+          error={state.write.status === "error" ? state.write.message : null}
           onSubmit={(values) => void actions.submitEntry(values)}
           onCancel={actions.closeForm}
         />

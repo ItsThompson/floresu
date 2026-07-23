@@ -20,9 +20,6 @@ export type RankedHit = components["schemas"]["RankedHit"];
 /** The timeline's load lifecycle. `ready` covers the empty timeline too. */
 export type WorklogStatus = "loading" | "ready" | "error";
 
-/** The write lifecycle for create/edit/archive. */
-export type WriteStatus = "idle" | "saving" | "error";
-
 /** The three filters that narrow the timeline; all applied together. */
 export interface WorklogFilterValues {
   sourceId: number | null;

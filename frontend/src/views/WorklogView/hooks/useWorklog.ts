@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import useSWR from "swr";
 
 import { useSessionClient } from "@/api";
+import type { WriteState } from "@/lib/asyncState";
 
 import {
   ARCHIVE_ERROR_MESSAGE,
@@ -17,7 +18,6 @@ import type {
   WorklogStatus,
   WorklogSummary,
   WorklogWrite,
-  WriteStatus,
 } from "../types";
 import { filterEntries, groupEntriesByMonth } from "../utils";
 
@@ -43,8 +43,7 @@ export interface WorklogViewState {
   form: FormMode;
   /** Prefilled values when editing; `null` for create or a closed form. */
   editingValues: EntryFormValues | null;
-  writeStatus: WriteStatus;
-  writeError: string | null;
+  write: WriteState;
   archiveError: string | null;
 }
 
@@ -108,8 +107,7 @@ export function useWorklog(): UseWorklog {
 
   const [filters, setFilters] = useState<WorklogFilterValues>(NO_FILTERS);
   const [form, setForm] = useState<FormMode>({ kind: "closed" });
-  const [writeStatus, setWriteStatus] = useState<WriteStatus>("idle");
-  const [writeError, setWriteError] = useState<string | null>(null);
+  const [write, setWrite] = useState<WriteState>({ status: "idle" });
   const [archiveError, setArchiveError] = useState<string | null>(null);
 
   const entries = useMemo(() => timeline.data ?? [], [timeline.data]);
@@ -138,21 +136,18 @@ export function useWorklog(): UseWorklog {
     timeline.data !== undefined ? "ready" : timeline.error ? "error" : "loading";
 
   const openCreate = useCallback(() => {
-    setWriteStatus("idle");
-    setWriteError(null);
+    setWrite({ status: "idle" });
     setForm({ kind: "create" });
   }, []);
 
   const openEdit = useCallback((entryId: number) => {
-    setWriteStatus("idle");
-    setWriteError(null);
+    setWrite({ status: "idle" });
     setForm({ kind: "edit", entryId });
   }, []);
 
   const closeForm = useCallback(() => {
     setForm({ kind: "closed" });
-    setWriteStatus("idle");
-    setWriteError(null);
+    setWrite({ status: "idle" });
   }, []);
 
   const submitEntry = useCallback(
@@ -165,8 +160,7 @@ export function useWorklog(): UseWorklog {
         source_ids: values.sourceIds,
       };
 
-      setWriteStatus("saving");
-      setWriteError(null);
+      setWrite({ status: "saving" });
       try {
         const request =
           form.kind === "edit"
@@ -178,14 +172,13 @@ export function useWorklog(): UseWorklog {
         const { error, response } = await request;
         if (error || !response.ok) throw new Error(SAVE_ERROR_MESSAGE);
       } catch {
-        setWriteStatus("error");
-        setWriteError(SAVE_ERROR_MESSAGE);
+        setWrite({ status: "error", message: SAVE_ERROR_MESSAGE });
         return;
       }
       // The write committed: close the form before revalidating so a failed
       // follow-up read never surfaces as a write failure (which would invite a
       // duplicate re-save).
-      setWriteStatus("idle");
+      setWrite({ status: "idle" });
       setForm({ kind: "closed" });
       void Promise.all([timeline.mutate(), tags.mutate()]).catch(() => {});
     },
@@ -236,8 +229,7 @@ export function useWorklog(): UseWorklog {
       filters,
       form,
       editingValues,
-      writeStatus,
-      writeError,
+      write,
       archiveError,
     },
     actions,

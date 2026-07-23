@@ -3,14 +3,14 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 import { DATE_REQUIRED_MESSAGE, TITLE_REQUIRED_MESSAGE } from "../constants";
-import type { EntryFormValues, SourceSummary, WriteStatus } from "../types";
+import type { EntryFormValues, SourceSummary } from "../types";
 import { TagPill } from "./TagPill";
 
 interface WorklogEntryFormProps {
   mode: "create" | "edit";
   initialValues: EntryFormValues | null;
   sources: SourceSummary[];
-  status: WriteStatus;
+  isSaving: boolean;
   error: string | null;
   onSubmit: (values: EntryFormValues) => void;
   onCancel: () => void;
@@ -28,7 +28,7 @@ export function WorklogEntryForm({
   mode,
   initialValues,
   sources,
-  status,
+  isSaving,
   error,
   onSubmit,
   onCancel,
@@ -161,8 +161,8 @@ export function WorklogEntryForm({
       )}
 
       <div className="flex items-center gap-2">
-        <Button type="submit" disabled={status === "saving"}>
-          {status === "saving" ? "Saving…" : "Save entry"}
+        <Button type="submit" disabled={isSaving}>
+          {isSaving ? "Saving…" : "Save entry"}
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancel
