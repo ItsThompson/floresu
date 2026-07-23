@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router";
 
 import { useSessionClient } from "@/api";
 import { Button } from "@/components/ui/button";
+import { renderPdfToCanvas } from "@/lib/renderPdf";
 import { RESUMES_PATH } from "@/lib/resumePaths";
 
 import { EditorTopBar } from "./components/EditorTopBar";
@@ -14,7 +15,6 @@ import { SectionForm } from "./components/SectionForm";
 import { StaleSaveDialog } from "./components/StaleSaveDialog";
 import { useResumeEditor } from "./hooks/useResumeEditor";
 import type { PreviewStatus } from "./hooks/useResumePreview";
-import { renderPdfToCanvas } from "./pdf/renderPdf";
 
 /**
  * The three-column resume editor: the section form on the left, the live PDF

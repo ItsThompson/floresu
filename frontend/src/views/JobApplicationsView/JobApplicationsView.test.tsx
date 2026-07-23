@@ -12,7 +12,7 @@ import { renderApp } from "@/test/renderWithProviders";
 
 // A linked resume can be opened in the editor; stub the PDF.js boundary so
 // navigating into it never loads the real library under jsdom.
-vi.mock("@/views/ResumeEditorView/pdf/renderPdf", () => ({
+vi.mock("@/lib/renderPdf", () => ({
   renderPdfToCanvas: vi.fn().mockResolvedValue(undefined),
 }));
 

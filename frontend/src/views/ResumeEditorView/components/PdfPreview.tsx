@@ -3,7 +3,7 @@ import { Maximize2 } from "lucide-react";
 
 import { Modal } from "@/components/Modal";
 
-import type { PdfRenderer } from "../pdf/renderPdf";
+import type { PdfRenderer } from "@/lib/renderPdf";
 import { useResumePreview, type PreviewStatus } from "../hooks/useResumePreview";
 
 const THUMBNAIL_SCALE = 0.6;

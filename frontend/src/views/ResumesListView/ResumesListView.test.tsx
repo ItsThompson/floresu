@@ -11,7 +11,7 @@ import { renderApp } from "@/test/renderWithProviders";
 
 // The editor is reachable after a create; stub the PDF.js boundary so navigating
 // into it never loads the real library under jsdom.
-vi.mock("@/views/ResumeEditorView/pdf/renderPdf", () => ({
+vi.mock("@/lib/renderPdf", () => ({
   renderPdfToCanvas: vi.fn().mockResolvedValue(undefined),
 }));
 

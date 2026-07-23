@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { formatDayYear } from "@/lib/formatDate";
 import { cn } from "@/lib/utils";
 
-import type { PdfRenderer } from "../pdf/renderPdf";
+import type { PdfRenderer } from "@/lib/renderPdf";
 import type { PublishedVersion } from "../types";
 import { useResumeHistory } from "../hooks/useResumeHistory";
 

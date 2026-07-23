@@ -18,7 +18,7 @@ import {
 import { server } from "@/mocks/server";
 import { renderApp } from "@/test/renderWithProviders";
 
-vi.mock("@/views/ResumeEditorView/pdf/renderPdf", () => ({
+vi.mock("@/lib/renderPdf", () => ({
   renderPdfToCanvas: vi.fn().mockResolvedValue(undefined),
 }));
 

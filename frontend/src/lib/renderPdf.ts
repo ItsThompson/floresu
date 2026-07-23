@@ -1,7 +1,7 @@
 /**
- * The PDF.js boundary. Isolated in its own module (with a dynamic import) so the
- * rest of the view holds no static dependency on `pdfjs-dist`: preview logic is
- * tested with an injected fake renderer, and only real runtime renders load the
+ * The PDF.js boundary. Isolated in its own module (with a dynamic import) so
+ * callers hold no static dependency on `pdfjs-dist`: preview logic is tested
+ * with an injected fake renderer, and only real runtime renders load the
  * library and its worker.
  */
 export type PdfRenderer = (blob: Blob, canvas: HTMLCanvasElement, scale?: number) => Promise<void>;
