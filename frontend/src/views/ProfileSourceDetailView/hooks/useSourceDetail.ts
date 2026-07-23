@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useSessionClient } from "@/api";
+import type { WriteState } from "@/lib/asyncState";
 import { extractProblem } from "@/lib/problemDetail";
 
 import { emptyValues, SOURCE_KIND_CONFIGS } from "../sourceForm";
@@ -20,9 +21,8 @@ export interface SourceDetail {
   kind: SourceKind | null;
   record: SourceRecord | null;
   initial: { values: SourceFormValues; ongoing: boolean } | null;
-  isSaving: boolean;
+  write: WriteState;
   fieldErrors: Record<string, string>;
-  saveError: string | null;
   save: (values: SourceFormValues, ongoing: boolean) => void;
   archive: () => void;
 }
@@ -45,9 +45,8 @@ export function useSourceDetail({
 
   const [status, setStatus] = useState<LoadStatus>(isCreate ? "ready" : "loading");
   const [record, setRecord] = useState<SourceRecord | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [write, setWrite] = useState<WriteState>({ status: "idle" });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (sourceId === null) return;
@@ -79,26 +78,24 @@ export function useSourceDetail({
     (values: SourceFormValues, ongoing: boolean) => {
       if (!kind) return;
       const body = SOURCE_KIND_CONFIGS[kind].buildWrite(values, ongoing);
-      setIsSaving(true);
+      setWrite({ status: "saving" });
       setFieldErrors({});
-      setSaveError(null);
       const request =
         sourceId === null
           ? client.POST("/sources", { body })
           : client.PUT("/sources/{source_id}", { params: { path: { source_id: sourceId } }, body });
       void request
         .then(({ data, error }) => {
-          setIsSaving(false);
           if (error || !data) {
-            applyError(error, setFieldErrors, setSaveError);
+            applyError(error, setFieldErrors, setWrite);
             return;
           }
+          setWrite({ status: "idle" });
           if (sourceId === null) onCreated(data.id);
           else setRecord(data);
         })
         .catch(() => {
-          setIsSaving(false);
-          setSaveError("Could not save. Please try again.");
+          setWrite({ status: "error", message: "Could not save. Please try again." });
         });
     },
     [client, kind, sourceId, onCreated],
@@ -106,17 +103,17 @@ export function useSourceDetail({
 
   const archive = useCallback(() => {
     if (sourceId === null) return;
-    setSaveError(null);
+    setWrite({ status: "idle" });
     void client
       .POST("/sources/{source_id}/archive", { params: { path: { source_id: sourceId } } })
       .then(({ error }) => {
-        if (error) setSaveError(extractProblem(error).message);
+        if (error) setWrite({ status: "error", message: extractProblem(error).message });
         else onArchived();
       })
-      .catch(() => setSaveError("Could not archive this source."));
+      .catch(() => setWrite({ status: "error", message: "Could not archive this source." }));
   }, [client, sourceId, onArchived]);
 
-  return { status, kind, record, initial, isSaving, fieldErrors, saveError, save, archive };
+  return { status, kind, record, initial, write, fieldErrors, save, archive };
 }
 
 function resolveInitial(
@@ -132,7 +129,7 @@ function resolveInitial(
 function applyError(
   error: unknown,
   setFieldErrors: (fields: Record<string, string>) => void,
-  setSaveError: (message: string) => void,
+  setWrite: (state: WriteState) => void,
 ): void {
   const problem = extractProblem(error);
   if (problem.fields) {
@@ -142,5 +139,5 @@ function applyError(
     );
     setFieldErrors(mapped);
   }
-  setSaveError(problem.message);
+  setWrite({ status: "error", message: problem.message });
 }

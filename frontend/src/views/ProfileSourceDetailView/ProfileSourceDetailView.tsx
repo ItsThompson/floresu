@@ -75,9 +75,9 @@ export function ProfileSourceDetailView() {
       fields={SOURCE_KIND_CONFIGS[detail.kind].fields}
       initialValues={detail.initial.values}
       initialOngoing={detail.initial.ongoing}
-      isSaving={detail.isSaving}
+      isSaving={detail.write.status === "saving"}
       serverErrors={detail.fieldErrors}
-      saveError={detail.saveError}
+      saveError={detail.write.status === "error" ? detail.write.message : null}
       submitLabel={isCreate ? "Create" : "Save changes"}
       onSubmit={detail.save}
     />
