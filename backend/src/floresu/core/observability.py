@@ -11,7 +11,9 @@ Metric names and labels follow a stable convention so alert rules and dashboards
 can be dropped in later:
 
 - ``service_method_failures_total{service,method}`` (counter): one increment when
-  a public service method exits with an *unexpected* error. A model-recoverable
+  a public service method exits with an *unexpected* error, paired with one
+  ``service_method_failed`` error log carrying ``exc_info`` (both behind the same
+  predicate, so the count and the log cannot diverge). A model-recoverable
   4xx (any :class:`~floresu.core.errors.ExpectedError` with ``status < 500``) is a
   domain outcome, not an operational failure, so it is deliberately excluded; an
   ``ExpectedError`` with ``status >= 500`` and any non-``ExpectedError`` exception
@@ -20,18 +22,23 @@ can be dropped in later:
   (gauge): pool observability wired via SQLAlchemy engine events in
   :mod:`floresu.core.db`, which owns the engine.
 
-This module is a leaf: it must not import :mod:`floresu.core.errors` at module
-scope (``errors`` -> ``app_factory`` -> ``metrics`` -> here would cycle). The one
-place that needs the error base imports it lazily on the failure path.
+This module stays clear of the ``errors`` -> ``app_factory`` -> ``metrics`` ->
+here import cycle: it must not import :mod:`floresu.core.errors` at module scope
+(the one place that needs the error base imports it lazily on the failure path).
+Binding the failure logger via :mod:`floresu.core.logging` is safe: that module is
+itself a leaf (only ``structlog`` and the stdlib).
 """
 
 from __future__ import annotations
 
+import contextlib
 import functools
 import inspect
 from typing import TYPE_CHECKING, Any
 
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
+
+from floresu.core.logging import get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -69,14 +76,25 @@ ACTIVE_CONNECTIONS = Gauge(
     registry=FLORESU_REGISTRY,
 )
 
+_log = get_logger("floresu-observability")
+
+# Idempotency marker set on an exception instance once its failure has been
+# logged. The count is per tracked method (nested calls each increment their own
+# series), but the log fires once total: the innermost tracked frame logs and
+# stamps the marker, and every outer frame sees it and skips.
+_LOGGED_MARKER = "_floresu_failure_logged"
+
 
 def track_failures[ServiceT](service: str) -> Callable[[type[ServiceT]], type[ServiceT]]:
-    """Class decorator: count each public async method's *unexpected* failures.
+    """Class decorator: count and log each public async method's *unexpected* failures.
 
     Wraps every public coroutine method (``async def`` not prefixed with ``_``) so
-    that an exception increments ``service_method_failures_total{service,method}``
-    and is then re-raised. Private helpers are left alone, so a public method that
-    delegates to private helpers is counted exactly once (no double-count).
+    that an unexpected exception increments
+    ``service_method_failures_total{service,method}`` and logs one
+    ``service_method_failed`` error carrying ``exc_info``, then re-raises. The
+    decorator is the single owner of both the count and the log, so the two cannot
+    diverge. Private helpers are left alone, so a public method that delegates to
+    private helpers is counted exactly once (no double-count).
     """
 
     def decorate(cls: type[ServiceT]) -> type[ServiceT]:
@@ -92,6 +110,15 @@ def track_failures[ServiceT](service: str) -> Callable[[type[ServiceT]], type[Se
 def _wrap_method(
     service: str, method: str, fn: Callable[..., Awaitable[Any]]
 ) -> Callable[..., Awaitable[Any]]:
+    """Wrap one coroutine method so an unexpected failure is counted and logged once.
+
+    The count and log fire behind the same ``_is_unexpected`` predicate, so a
+    counted failure is always logged and a routine 4xx is neither. The log is
+    guarded by a per-exception marker (see :data:`_LOGGED_MARKER`) so a failure
+    that propagates through nested tracked calls is logged once total while each
+    method still increments its own counter.
+    """
+
     @functools.wraps(fn)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
@@ -99,6 +126,15 @@ def _wrap_method(
         except Exception as exc:
             if _is_unexpected(exc):
                 SERVICE_METHOD_FAILURES.labels(service=service, method=method).inc()
+                if not getattr(exc, _LOGGED_MARKER, False):
+                    _log.error(
+                        "service_method_failed", service=service, method=method, exc_info=exc
+                    )
+                    # Setting an attribute can fail for an exotic exception type;
+                    # swallowing that keeps a marker failure from masking the
+                    # original error. Worst case is a duplicate log line.
+                    with contextlib.suppress(Exception):
+                        setattr(exc, _LOGGED_MARKER, True)
             raise
 
     return wrapper
