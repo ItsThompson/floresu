@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useSessionClient } from "@/api";
+import { extractProblem } from "@/lib/problemDetail";
 
 import {
   ARCHIVE_ERROR_FALLBACK,
@@ -18,7 +19,7 @@ import type {
   LibraryState,
   SearchState,
 } from "../types";
-import { errorMessage, toSearchFilters } from "../utils";
+import { toSearchFilters } from "../utils";
 
 interface UseLibrary {
   state: LibraryState;
@@ -163,7 +164,7 @@ export function useLibrary(): UseLibrary {
           return;
         }
         if (error || !saved) {
-          setSaveError(errorMessage(error, SAVE_ERROR_FALLBACK));
+          setSaveError(extractProblem(error, SAVE_ERROR_FALLBACK).message);
           return;
         }
         setEditor(null);
@@ -198,7 +199,7 @@ export function useLibrary(): UseLibrary {
         .POST("/bullets/{bullet_id}/archive", { params: { path: { bullet_id: bulletId } } })
         .then(async ({ data: archived, error }) => {
           if (error || !archived) {
-            setArchiveError(errorMessage(error, ARCHIVE_ERROR_FALLBACK));
+            setArchiveError(extractProblem(error, ARCHIVE_ERROR_FALLBACK).message);
             return;
           }
           await refreshBullets();

@@ -134,16 +134,6 @@ export function toSearchFilters(filters: LibraryFilters): SearchQueryFilters {
   return result;
 }
 
-/** Pull a human message out of an RFC 9457 problem body, else the fallback. */
-export function errorMessage(error: unknown, fallback: string): string {
-  if (error && typeof error === "object") {
-    const problem = error as { detail?: unknown; title?: unknown };
-    if (typeof problem.detail === "string") return problem.detail;
-    if (typeof problem.title === "string") return problem.title;
-  }
-  return fallback;
-}
-
 /** Toggle a value's membership in a selection list (immutably). */
 export function toggleValue<T>(values: readonly T[], value: T): T[] {
   return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];

@@ -5,7 +5,6 @@ import type { Bullet, LibraryFilters, SearchResult, Source } from "./types";
 import {
   buildRankedRows,
   buildSearchGroups,
-  errorMessage,
   groupBulletsBySource,
   isShared,
   toSearchFilters,
@@ -192,14 +191,6 @@ describe("toSearchFilters", () => {
       tags: ["backend"],
       date_range: { from: "2026-01-01", to: null },
     });
-  });
-});
-
-describe("errorMessage", () => {
-  it("prefers the problem detail, then title, then the fallback", () => {
-    expect(errorMessage({ detail: "Too long" }, "fallback")).toBe("Too long");
-    expect(errorMessage({ title: "Conflict" }, "fallback")).toBe("Conflict");
-    expect(errorMessage(null, "fallback")).toBe("fallback");
   });
 });
 
