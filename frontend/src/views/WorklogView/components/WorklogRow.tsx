@@ -1,8 +1,9 @@
 import { Link } from "react-router";
 
 import { sourceDetailHref } from "../constants";
+import { formatDayLabel } from "../dateFormat";
+import { sourceLabel } from "../sourceLabel";
 import type { SourceSummary, WorklogSummary } from "../types";
-import { formatDayLabel, sourceLabel } from "../utils";
 import { EntryOverflowMenu } from "./EntryOverflowMenu";
 import { TagPill } from "./TagPill";
 

@@ -1,26 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { buildEntry, buildSearchResult, buildSource } from "./__mocks__/fixtures";
+import { buildEntry } from "./__mocks__/fixtures";
+import { filterEntries, groupEntriesByMonth } from "./entryList";
 import type { WorklogFilterValues } from "./types";
-import {
-  filterEntries,
-  formatDayLabel,
-  formatMonthLabel,
-  groupEntriesByMonth,
-  resolveRankedHits,
-  sourceLabel,
-} from "./utils";
 
 const NO_FILTERS: WorklogFilterValues = { sourceId: null, tag: null, dateFrom: null, dateTo: null };
-
-describe("formatMonthLabel / formatDayLabel", () => {
-  it("formats a calendar date in UTC without a timezone off-by-one", () => {
-    expect(formatMonthLabel("2026-07-01")).toBe("July 2026");
-    expect(formatDayLabel("2026-07-18")).toBe("Jul 18");
-    // The first of the month must not slip to the previous month/day.
-    expect(formatDayLabel("2026-01-01")).toBe("Jan 01");
-  });
-});
 
 describe("filterEntries", () => {
   const entries = [
@@ -83,51 +67,5 @@ describe("groupEntriesByMonth", () => {
       buildEntry({ id: 9, entry_date: "2026-07-18" }),
     ]);
     expect(groups[0].entries.map((entry) => entry.id)).toEqual([9, 5]);
-  });
-});
-
-describe("sourceLabel", () => {
-  const sources = [buildSource({ id: 10, display_label: "Acme — Senior Engineer" })];
-
-  it("returns the display label for a known source", () => {
-    expect(sourceLabel(sources, 10)).toBe("Acme — Senior Engineer");
-  });
-
-  it("falls back to a stable placeholder for an unknown source", () => {
-    expect(sourceLabel(sources, 99)).toBe("Source 99");
-  });
-});
-
-describe("resolveRankedHits", () => {
-  it("joins each ranked hit to its graph node, preserving the fused order", () => {
-    const result = buildSearchResult({
-      ranked: [
-        { type: "worklog", id: 1, score: 0.9 },
-        { type: "bullet", id: 100, score: 0.5 },
-        { type: "source", id: 10, score: 0.3 },
-      ],
-      graph: {
-        sources: [{ id: 10, kind: "role", label: "Acme", match_score: 0.3, score: 0.3 }],
-        worklog: [{ id: 1, title: "Shipped payments", date: "2026-07-18", score: 0.9, source_ids: [10] }],
-        bullets: [{ id: 100, text: "Cut latency 40%", score: 0.5, worklog_ids: [1], source_ids: [10] }],
-      },
-    });
-
-    const resolved = resolveRankedHits(result);
-
-    expect(resolved.map((hit) => [hit.type, hit.label])).toEqual([
-      ["worklog", "Shipped payments"],
-      ["bullet", "Cut latency 40%"],
-      ["source", "Acme"],
-    ]);
-    expect(resolved[0].detail).toBe("Jul 18");
-    expect(resolved[2].detail).toBe("role");
-  });
-
-  it("drops a ranked hit that has no matching graph node", () => {
-    const result = buildSearchResult({
-      ranked: [{ type: "worklog", id: 42, score: 0.9 }],
-    });
-    expect(resolveRankedHits(result)).toEqual([]);
   });
 });

@@ -19,7 +19,7 @@ import type {
   WorklogSummary,
   WorklogWrite,
 } from "../types";
-import { filterEntries, groupEntriesByMonth } from "../utils";
+import { filterEntries, groupEntriesByMonth } from "../entryList";
 
 const TIMELINE_KEY = "/worklog";
 const SOURCES_KEY = "/sources";

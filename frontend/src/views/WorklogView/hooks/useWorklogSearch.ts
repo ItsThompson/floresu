@@ -8,7 +8,7 @@ import type {
   WorklogSearchState,
   WorklogSearchViewState,
 } from "../types";
-import { resolveRankedHits } from "../utils";
+import { resolveRankedHits } from "../searchHits";
 
 export interface UseWorklogSearch {
   state: WorklogSearchViewState;
