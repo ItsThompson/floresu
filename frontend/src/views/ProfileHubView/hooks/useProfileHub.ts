@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useSessionClient } from "@/api";
 import { extractProblem } from "@/lib/problemDetail";
+import { reorderBySortOrder } from "@/lib/reorder";
 
 import type {
   HubData,
@@ -112,10 +113,11 @@ function applyReorder(
   kind: SourceKind,
   orderedIds: number[],
 ): SourceSummary[] {
-  const inKind = new Map(sources.filter((source) => source.kind === kind).map((s) => [s.id, s]));
-  const reordered = orderedIds.flatMap((id, index) => {
-    const source = inKind.get(id);
-    return source ? [{ ...source, sort_order: index }] : [];
-  });
-  return [...sources.filter((source) => source.kind !== kind), ...reordered];
+  return [
+    ...sources.filter((source) => source.kind !== kind),
+    ...reorderBySortOrder(
+      sources.filter((source) => source.kind === kind),
+      orderedIds,
+    ),
+  ];
 }
