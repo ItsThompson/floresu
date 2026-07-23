@@ -4,15 +4,15 @@ import { FormInputField } from "@/components/FormInputField";
 import { Modal } from "@/components/Modal";
 import { Button } from "@/components/ui/button";
 
-import type { ResumeCreateRequest, ResumeSummary } from "../types";
-
-type SourceMode = "blank" | "duplicate" | "from_resume";
+import type { ResumeCreateRequest, ResumeFormValues, ResumeSummary, SourceMode } from "../types";
 
 const SOURCE_OPTIONS: { mode: SourceMode; label: string }[] = [
   { mode: "blank", label: "A blank resume" },
   { mode: "duplicate", label: "A copy of an existing resume" },
   { mode: "from_resume", label: "Seeded from an existing resume" },
 ];
+
+const INITIAL_VALUES: ResumeFormValues = { title: "", mode: "blank", sourceId: null };
 
 interface NewResumeDialogProps {
   isOpen: boolean;
@@ -39,19 +39,17 @@ export function NewResumeDialog({
   onCreate,
   onCreated,
 }: NewResumeDialogProps) {
-  const [title, setTitle] = useState("");
-  const [mode, setMode] = useState<SourceMode>("blank");
-  const [sourceId, setSourceId] = useState<number | null>(null);
+  const [values, setValues] = useState<ResumeFormValues>(INITIAL_VALUES);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const needsSource = mode !== "blank";
-  const canSubmit = !isSubmitting && (!needsSource || sourceId !== null);
+  const needsSource = values.mode !== "blank";
+  const canSubmit = !isSubmitting && (!needsSource || values.sourceId !== null);
 
   const submit = async () => {
     setIsSubmitting(true);
     setError(null);
-    const request = buildCreateRequest(mode, sourceId, title.trim());
+    const request = buildCreateRequest(values.mode, values.sourceId, values.title.trim());
     const id = await onCreate(request);
     setIsSubmitting(false);
     if (id === null) {
@@ -67,8 +65,8 @@ export function NewResumeDialog({
         label="Title"
         name="resume-title"
         placeholder="e.g. Backend Engineer"
-        value={title}
-        onChange={(event) => setTitle(event.target.value)}
+        value={values.title}
+        onChange={(event) => setValues((prev) => ({ ...prev, title: event.target.value }))}
       />
 
       <fieldset className="flex flex-col gap-2">
@@ -78,8 +76,8 @@ export function NewResumeDialog({
             <input
               type="radio"
               name="source-mode"
-              checked={mode === option.mode}
-              onChange={() => setMode(option.mode)}
+              checked={values.mode === option.mode}
+              onChange={() => setValues((prev) => ({ ...prev, mode: option.mode }))}
             />
             {option.label}
           </label>
@@ -91,8 +89,13 @@ export function NewResumeDialog({
           <span className="text-foreground text-sm font-medium">Source resume</span>
           <select
             className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-            value={sourceId ?? ""}
-            onChange={(event) => setSourceId(event.target.value ? Number(event.target.value) : null)}
+            value={values.sourceId ?? ""}
+            onChange={(event) =>
+              setValues((prev) => ({
+                ...prev,
+                sourceId: event.target.value ? Number(event.target.value) : null,
+              }))
+            }
           >
             <option value="">Select a resume…</option>
             {livingResumes.map((resume) => (
