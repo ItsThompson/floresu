@@ -28,4 +28,13 @@ describe("toAuthResult", () => {
       fields: undefined,
     });
   });
+
+  it("degrades a non-string detail to the fallback message", () => {
+    const result = toAuthResult({ detail: { nested: "oops" } });
+    expect(result).toEqual({
+      ok: false,
+      message: "Something went wrong. Please try again.",
+      fields: undefined,
+    });
+  });
 });
