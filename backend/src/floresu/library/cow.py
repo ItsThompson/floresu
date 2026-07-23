@@ -28,7 +28,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Protocol
 
 from floresu.core.errors import Conflict, NotFound, Validation
-from floresu.core.events import REEMBED_CONTENT_HASH_KEY, SCOPE_METADATA_KEY, Action, WriteEvent
+from floresu.core.events import (
+    REEMBED_CONTENT_HASH_KEY,
+    SCOPE_METADATA_KEY,
+    Action,
+    emit_write_event,
+)
 from floresu.library.config import ENTITY_TYPE
 from floresu.library.hashing import compute_content_hash
 from floresu.library.models import Bulletpoint
@@ -185,17 +190,16 @@ class LibraryCanonicalBulletWriter:
         summary: str,
         metadata: dict[str, Any],
     ) -> None:
-        await self._publisher.publish(
+        await emit_write_event(
+            self._publisher,
             self._session,
-            WriteEvent(
-                user_id=user_id,
-                actor=actor,
-                entity_type=ENTITY_TYPE,
-                entity_id=entity_id,
-                action=action,
-                summary=summary,
-                metadata=metadata,
-            ),
+            user_id=user_id,
+            actor=actor,
+            entity_type=ENTITY_TYPE,
+            entity_id=entity_id,
+            action=action,
+            summary=summary,
+            metadata=metadata,
         )
 
 
