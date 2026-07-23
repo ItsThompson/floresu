@@ -33,6 +33,9 @@ export function ContextualWorklogPanel({ worklog }: ContextualWorklogPanelProps)
     setIsAdding(true);
   };
 
+  const isSubmitting = worklog.write.status === "saving";
+  const addError = worklog.write.status === "error" ? worklog.write.message : null;
+
   return (
     <section aria-label="Work log" className="flex flex-col gap-3">
       <header className="flex items-center justify-between">
@@ -46,8 +49,8 @@ export function ContextualWorklogPanel({ worklog }: ContextualWorklogPanelProps)
 
       {isAdding && (
         <AddWorklogEntryForm
-          isAdding={worklog.isAdding}
-          error={worklog.addError}
+          isAdding={isSubmitting}
+          error={addError}
           onAdd={worklog.addEntry}
           onCancel={() => setIsAdding(false)}
         />

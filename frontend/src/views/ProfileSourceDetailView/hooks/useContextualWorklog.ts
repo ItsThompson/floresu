@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useSessionClient } from "@/api";
+import type { WriteState } from "@/lib/asyncState";
 import { monthKey, monthKeyLabel } from "@/lib/formatDate";
 import { extractProblem } from "@/lib/problemDetail";
 
@@ -16,8 +17,7 @@ export interface ContextualWorklog {
   status: LoadStatus;
   months: WorklogMonth[];
   entryCount: number;
-  isAdding: boolean;
-  addError: string | null;
+  write: WriteState;
   addEntry: (entry: Omit<WorklogWrite, "source_ids">) => void;
 }
 
@@ -31,8 +31,7 @@ export function useContextualWorklog(sourceId: number | null): ContextualWorklog
   const client = useSessionClient();
   const [status, setStatus] = useState<LoadStatus>(sourceId === null ? "ready" : "loading");
   const [entries, setEntries] = useState<WorklogSummary[]>([]);
-  const [isAdding, setIsAdding] = useState(false);
-  const [addError, setAddError] = useState<string | null>(null);
+  const [write, setWrite] = useState<WriteState>({ status: "idle" });
 
   useEffect(() => {
     if (sourceId === null) return;
@@ -62,29 +61,27 @@ export function useContextualWorklog(sourceId: number | null): ContextualWorklog
   const addEntry = useCallback(
     (entry: Omit<WorklogWrite, "source_ids">) => {
       if (sourceId === null) return;
-      setIsAdding(true);
-      setAddError(null);
+      setWrite({ status: "saving" });
       void client
         .POST("/worklog", { body: { ...entry, source_ids: [sourceId] } })
         .then(({ data, error }) => {
-          setIsAdding(false);
           if (error || !data) {
-            setAddError(extractProblem(error).message);
+            setWrite({ status: "error", message: extractProblem(error).message });
             return;
           }
+          setWrite({ status: "idle" });
           // The record carries the same fields as a summary row plus provenance;
           // keep only the summary shape for the timeline.
           setEntries((current) => [toSummary(data, sourceId), ...current]);
         })
         .catch(() => {
-          setIsAdding(false);
-          setAddError("Could not add that entry.");
+          setWrite({ status: "error", message: "Could not add that entry." });
         });
     },
     [client, sourceId],
   );
 
-  return { status, months, entryCount: entries.length, isAdding, addError, addEntry };
+  return { status, months, entryCount: entries.length, write, addEntry };
 }
 
 /** Group entries into month buckets, newest month first and newest entry first. */
