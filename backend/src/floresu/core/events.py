@@ -42,6 +42,7 @@ from floresu.core.post_commit import enqueue_post_commit
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
+    from starlette.applications import Starlette
 
 _log = get_logger("floresu-events")
 
@@ -196,3 +197,66 @@ def _bind(consumer: PostCommitConsumer, recorded: RecordedWrite) -> Callable[[],
         await consumer(recorded)
 
     return task
+
+
+# The ``app.state`` attribute the write-event seam is set on and read from.
+EVENTS_ATTR = "events"
+
+
+def get_events(app: Starlette) -> WriteEventPublisher:
+    """The injected write-event publisher.
+
+    Unlike :func:`~floresu.core.identity.get_session_verifier`'s deny-all default,
+    this fails loud when the seam is unset or the wrong type: a missing publisher
+    would silently drop the audit/feed/embed fan-out, which is worse than a
+    startup-time failure. Both composition roots set ``app.state.events``, so an
+    unset seam is a wiring bug. Starlette's ``app.state`` launders to ``Any``, so
+    this typed accessor is the one place the seam is read.
+    """
+    publisher = getattr(app.state, EVENTS_ATTR, None)
+    if not isinstance(publisher, WriteEventPublisher):
+        raise RuntimeError("app.state.events is not wired to a WriteEventPublisher.")
+    return publisher
+
+
+async def emit_write_event(
+    publisher: WriteEventPublisher,
+    session: AsyncSession,
+    *,
+    user_id: int,
+    actor: Actor,
+    entity_type: str,
+    entity_id: int,
+    action: Action,
+    summary: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    """Build one :class:`WriteEvent`, publish it through the seam, and log the publish.
+
+    The single construction site for a :class:`WriteEvent`. Per-domain ``_publish``
+    wrappers bind their own ``entity_type``/``action`` and delegate here; the
+    divergent sites (render, lifecycle, finalize) pass their own
+    ``entity_type``/``action``/``metadata`` as arguments, so there is no second
+    code path.
+
+    The publish log fires here, inside the caller's ``transaction`` block before
+    commit. A later rollback still leaves this line emitted (the intent to publish
+    is real; the post-commit fan-out is deferred to commit), matching the
+    warning-on-skip behavior in :meth:`WriteEventPublisher.publish`.
+    """
+    event = WriteEvent(
+        user_id=user_id,
+        actor=actor,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        action=action,
+        summary=summary,
+        metadata=metadata,
+    )
+    await publisher.publish(session, event)
+    _log.info(
+        "write_event_published",
+        entity_type=entity_type,
+        entity_id=entity_id,
+        action=action.value,
+    )
