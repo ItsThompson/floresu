@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, Any
 
 from floresu.core.db import transaction
 from floresu.core.errors import Conflict, NotFound, Unauthorized, Validation
-from floresu.core.events import Action, WriteEvent
+from floresu.core.events import Action, emit_write_event
 from floresu.core.observability import track_failures
 from floresu.profile.config import DEFAULT_LIST_LIMIT, ENTITY_TYPE
 from floresu.profile.injection import Clock, utcnow
@@ -214,17 +214,16 @@ class SourceService:
         summary: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> None:
-        await self._publisher.publish(
+        await emit_write_event(
+            self._publisher,
             self._session,
-            WriteEvent(
-                user_id=user_pk,
-                actor=actor,
-                entity_type=ENTITY_TYPE,
-                entity_id=entity_id,
-                action=action,
-                summary=summary,
-                metadata=metadata,
-            ),
+            user_id=user_pk,
+            actor=actor,
+            entity_type=ENTITY_TYPE,
+            entity_id=entity_id,
+            action=action,
+            summary=summary,
+            metadata=metadata,
         )
 
 
