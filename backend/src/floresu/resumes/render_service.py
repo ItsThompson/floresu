@@ -27,7 +27,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from floresu.core.db import transaction
-from floresu.core.events import Action, WriteEvent
+from floresu.core.events import Action, emit_write_event
 from floresu.core.observability import track_failures
 from floresu.rendering.config import PDF_MEDIA_TYPE
 from floresu.rendering.errors import RenderError
@@ -151,15 +151,14 @@ class ResumeRenderService:
     async def _publish(
         self, pk: int, actor: Actor, resume_id: int, revision_no: int, template_id: str
     ) -> None:
-        await self._publisher.publish(
+        await emit_write_event(
+            self._publisher,
             self._session,
-            WriteEvent(
-                user_id=pk,
-                actor=actor,
-                entity_type=ENTITY_TYPE,
-                entity_id=resume_id,
-                action=Action.RENDER,
-                summary=_EXPORT_SUMMARY,
-                metadata={"template": template_id, "revision": revision_no},
-            ),
+            user_id=pk,
+            actor=actor,
+            entity_type=ENTITY_TYPE,
+            entity_id=resume_id,
+            action=Action.RENDER,
+            summary=_EXPORT_SUMMARY,
+            metadata={"template": template_id, "revision": revision_no},
         )
