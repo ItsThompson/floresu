@@ -20,7 +20,7 @@ import type {
   LibraryState,
   SearchState,
 } from "../types";
-import { toSearchFilters } from "../utils";
+import { toSearchFilters } from "../searchFilters";
 
 interface UseLibrary {
   state: LibraryState;
@@ -40,7 +40,7 @@ const EMPTY_DATA: LibraryData = {
  * needs (sources, bullets, worklog, tags), runs hybrid search, and drives the
  * bullet create/edit/archive writes. It calls the session client directly (the
  * app's established boundary) and holds no business rules: grouping and filter
- * mapping live in pure `utils`, and every everywhere/embedding rule is enforced
+ * mapping live in pure `bulletGrouping`/`searchFilters`, and every everywhere/embedding rule is enforced
  * by the backend. Writes refresh the bullet list and re-run an active search so
  * an edit or archive is reflected without a manual reload.
  */

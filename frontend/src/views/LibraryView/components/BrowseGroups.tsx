@@ -5,7 +5,7 @@ import { BulletRow } from "./BulletRow";
 /**
  * Browse mode: bullets grouped under each source they link to, one section per
  * group. A bullet linked to several sources is rendered once under each. The
- * grouping itself is computed in `utils.groupBulletsBySource`; this component
+ * grouping itself is computed in `bulletGrouping.groupBulletsBySource`; this component
  * only lays the groups out.
  */
 export function BrowseGroups({ groups, onEdit, onArchive }: BrowseGroupsProps) {

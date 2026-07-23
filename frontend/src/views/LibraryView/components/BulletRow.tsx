@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 
 import type { BulletRowProps } from "../types";
-import { isShared, usedInLabel } from "../utils";
+import { isShared, usedInLabel } from "../bulletUsage";
 
 /**
  * One canonical bullet: its statement text, a "used in N" usage badge, a shared

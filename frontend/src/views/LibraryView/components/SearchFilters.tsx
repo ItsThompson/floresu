@@ -1,6 +1,6 @@
 import { SEARCH_LAYER_OPTIONS, SOURCE_KIND_OPTIONS } from "../constants";
 import type { SearchFiltersProps } from "../types";
-import { toggleValue } from "../utils";
+import { toggleValue } from "@/lib/toggleValue";
 import { FilterCheckboxGroup } from "./FilterCheckboxGroup";
 
 /**

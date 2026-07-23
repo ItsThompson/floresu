@@ -3,7 +3,7 @@ import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 import type { BulletFormProps, BulletFormValues } from "../types";
-import { toggleValue } from "../utils";
+import { toggleValue } from "@/lib/toggleValue";
 import { FilterCheckboxGroup } from "./FilterCheckboxGroup";
 
 /**

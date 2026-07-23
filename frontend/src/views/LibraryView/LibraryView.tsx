@@ -11,13 +11,13 @@ import { StaleBulletDialog } from "./components/StaleBulletDialog";
 import { EMPTY_LIBRARY_MESSAGE, LOAD_ERROR_MESSAGE } from "./constants";
 import { useLibrary } from "./hooks/useLibrary";
 import type { BulletFormValues } from "./types";
-import { groupBulletsBySource } from "./utils";
+import { groupBulletsBySource } from "./bulletGrouping";
 
 /**
  * The Library screen: bullets grouped by source, an embedded hybrid search over
  * the same corpus that powers the agent's search tool, and canonical bullet
  * create/edit/archive. Composition only: state, data, search, and writes live in
- * `useLibrary`; grouping lives in `utils`; every everywhere/embedding rule is the
+ * `useLibrary`; grouping lives in `bulletGrouping`; every everywhere/embedding rule is the
  * backend's. Browse (grouped bullets) is the resting view; a submitted query
  * swaps in ranked results, and clearing it returns to browse.
  */
