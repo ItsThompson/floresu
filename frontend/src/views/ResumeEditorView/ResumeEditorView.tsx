@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { Link, useParams } from "react-router";
 
 import { useSessionClient } from "@/api";
+import { Button } from "@/components/ui/button";
 import { RESUMES_PATH } from "@/lib/resumePaths";
 
 import { EditorTopBar } from "./components/EditorTopBar";
@@ -50,12 +51,21 @@ export function ResumeEditorView() {
     return data as Blob;
   }, [client, resumeId]);
 
-  if (Number.isNaN(resumeId) || state.status === "error") {
+  const loadError = state.load.status === "error" ? state.load.message : null;
+  const saveError = state.write.status === "error" ? state.write.message : null;
+  const isStale = state.write.status === "stale";
+
+  if (Number.isNaN(resumeId) || state.load.status === "error") {
     return (
-      <section className="mx-auto flex w-full max-w-[860px] flex-col gap-4 p-8">
+      <section className="mx-auto flex w-full max-w-[860px] flex-col items-start gap-4 p-8">
         <p role="alert" className="text-destructive text-sm">
-          {state.error ?? "This resume could not be found."}
+          {loadError ?? "This resume could not be found."}
         </p>
+        {state.load.status === "error" && (
+          <Button type="button" variant="outline" onClick={actions.reload}>
+            Try again
+          </Button>
+        )}
         <Link to={RESUMES_PATH} className="text-primary text-sm underline">
           Back to resumes
         </Link>
@@ -63,7 +73,7 @@ export function ResumeEditorView() {
     );
   }
 
-  if (state.status === "loading" || !state.record) {
+  if (state.load.status === "loading" || !state.record) {
     return <p className="text-muted-foreground p-8 text-sm">Loading resume…</p>;
   }
 
@@ -88,9 +98,9 @@ export function ResumeEditorView() {
             onRequestHistory={() => setIsHistoryOpen(true)}
           />
 
-          {state.saveError && (
+          {saveError && (
             <p role="alert" className="text-destructive text-sm">
-              {state.saveError}
+              {saveError}
             </p>
           )}
 
@@ -128,7 +138,7 @@ export function ResumeEditorView() {
         onCancel={() => setIsFinalizeOpen(false)}
       />
       <StaleSaveDialog
-        isOpen={state.isStale}
+        isOpen={isStale}
         onReload={actions.reload}
         onDismiss={actions.dismissStale}
       />

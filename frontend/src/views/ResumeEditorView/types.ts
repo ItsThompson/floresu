@@ -1,4 +1,5 @@
 import type { components } from "@/api";
+import type { LoadState, WriteState } from "@/lib/asyncState";
 
 export type ResumeRecord = components["schemas"]["ResumeRecord"];
 export type ResumeSection = components["schemas"]["ResumeSection"];
@@ -13,9 +14,6 @@ export type ResumeUpdate = components["schemas"]["ResumeUpdate"];
 export type PublishedVersion = components["schemas"]["PublishedVersion"];
 export type VersionPdfUrl = components["schemas"]["VersionPdfUrl"];
 
-/** The editor load lifecycle. */
-export type EditorStatus = "loading" | "ready" | "error";
-
 /**
  * A pending shared-bullet edit awaiting a scope choice. Set only when the backend
  * responds `prompt` (the bullet is used in two or more resumes); the view renders
@@ -28,18 +26,15 @@ export interface ScopePromptContext {
 }
 
 export interface ResumeEditorState {
-  status: EditorStatus;
+  /** Load lifecycle; the message lives in the `error` arm, so nothing goes stale on reload. */
+  load: LoadState;
+  /** Write lifecycle; a 409 enters `stale`, any other failure enters `error` with the message. */
+  write: WriteState;
   record: ResumeRecord | null;
   /** Canonical bullets referenced by the document, keyed by id (text + used-in count). */
   bullets: Record<number, BulletpointRecord>;
   variants: IdentityVariant[];
   templates: TemplateInfo[];
-  /** Load error (the resume could not be fetched). */
-  error: string | null;
-  /** Inline write error, preserved for retry (never a false success). */
-  saveError: string | null;
-  /** A write was rejected as stale (409); the view prompts to re-read. */
-  isStale: boolean;
   /** A shared-bullet edit awaiting a scope choice, or null. */
   scopePrompt: ScopePromptContext | null;
   /** Finalized resumes are read-only (fork to edit). */

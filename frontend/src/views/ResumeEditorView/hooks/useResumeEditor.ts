@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useSessionClient } from "@/api";
+import type { LoadState, WriteState } from "@/lib/asyncState";
+import { extractProblem } from "@/lib/problemDetail";
 
 import { toResumeUpdate, withLocalItemText } from "../documentOps";
 import type {
   BulletpointRecord,
-  EditorStatus,
   IdentityVariant,
   ResumeEditScope,
   ResumeEditor,
@@ -22,20 +23,18 @@ const FINALIZE_ERROR = "This resume could not be finalized. Please try again.";
  * The resume editor's state and write actions. It loads the resume, the canonical
  * bullets its items reference, the identity variants, and the templates, then
  * exposes every edit the form performs. Every write carries the current revision
- * as `If-Match`; a 409 sets the stale flag so the view can prompt to re-read
- * (last-write-wins is never silent). Editing a library_ref item runs the
+ * as `If-Match`; a 409 enters the write `stale` state so the view can prompt to
+ * re-read (last-write-wins is never silent). Editing a library_ref item runs the
  * copy-on-write scope flow; the view renders the prompt and never decides scope.
  */
 export function useResumeEditor(resumeId: number): ResumeEditor {
   const client = useSessionClient();
-  const [status, setStatus] = useState<EditorStatus>("loading");
+  const [loadState, setLoadState] = useState<LoadState>({ status: "loading" });
   const [record, setRecordState] = useState<ResumeRecord | null>(null);
   const [bullets, setBullets] = useState<Record<number, BulletpointRecord>>({});
   const [variants, setVariants] = useState<IdentityVariant[]>([]);
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [isStale, setIsStale] = useState(false);
+  const [writeState, setWriteState] = useState<WriteState>({ status: "idle" });
   const [scopePrompt, setScopePrompt] = useState<ScopePromptContext | null>(null);
   const [previewKey, setPreviewKey] = useState(0);
 
@@ -54,9 +53,8 @@ export function useResumeEditor(resumeId: number): ResumeEditor {
   }, [client]);
 
   const load = useCallback(async () => {
-    setStatus("loading");
-    setIsStale(false);
-    setSaveError(null);
+    setLoadState({ status: "loading" });
+    setWriteState({ status: "idle" });
     setScopePrompt(null);
     const [resumeRes, bulletsRes, variantsRes, templatesRes] = await Promise.all([
       client.GET("/resumes/{resume_id}", { params: { path: { resume_id: resumeId } } }),
@@ -65,8 +63,7 @@ export function useResumeEditor(resumeId: number): ResumeEditor {
       client.GET("/resumes/templates"),
     ]);
     if (resumeRes.error || !resumeRes.data) {
-      setStatus("error");
-      setError("Could not load this resume.");
+      setLoadState({ status: "error", message: "Could not load this resume." });
       return;
     }
     recordRef.current = resumeRes.data;
@@ -74,7 +71,7 @@ export function useResumeEditor(resumeId: number): ResumeEditor {
     setBullets(indexById(bulletsRes.data ?? []));
     setVariants(variantsRes.data ?? []);
     setTemplates(templatesRes.data ?? []);
-    setStatus("ready");
+    setLoadState({ status: "ready" });
   }, [client, resumeId]);
 
   useEffect(() => {
@@ -84,17 +81,18 @@ export function useResumeEditor(resumeId: number): ResumeEditor {
   /** Run a record-returning write, mapping 409 → stale and other errors → inline. */
   const runWrite = useCallback(
     async (call: () => Promise<WriteResult>): Promise<boolean> => {
-      setSaveError(null);
+      setWriteState({ status: "saving" });
       const { data, error: writeError, response } = await call();
       if (response.status === 409) {
-        setIsStale(true);
+        setWriteState({ status: "stale" });
         return false;
       }
       if (writeError || !data) {
-        setSaveError(SAVE_ERROR);
+        setWriteState({ status: "error", message: extractProblem(writeError, SAVE_ERROR).message });
         return false;
       }
       applyRecord(data);
+      setWriteState({ status: "idle" });
       return true;
     },
     [applyRecord],
@@ -107,7 +105,7 @@ export function useResumeEditor(resumeId: number): ResumeEditor {
     async (bulletId: number, newText: string, scope?: ResumeEditScope) => {
       const current = recordRef.current;
       if (!current) return;
-      setSaveError(null);
+      setWriteState({ status: "saving" });
       const {
         data,
         error: editError,
@@ -126,21 +124,23 @@ export function useResumeEditor(resumeId: number): ResumeEditor {
         // A concurrent change conflicts: drop any open scope prompt so the stale
         // re-read dialog does not stack over a lingering scope dialog.
         setScopePrompt(null);
-        setIsStale(true);
+        setWriteState({ status: "stale" });
         return;
       }
       if (editError || !data) {
-        setSaveError(SAVE_ERROR);
+        setWriteState({ status: "error", message: extractProblem(editError, SAVE_ERROR).message });
         return;
       }
       if (data.outcome === "prompt") {
         setScopePrompt({ bulletId, newText, usedInCount: data.used_in_count });
+        setWriteState({ status: "idle" });
         return;
       }
       setScopePrompt(null);
       if (data.outcome === "forked_this_resume") applyRecord(data.resume);
       else setPreviewKey((key) => key + 1);
       await refreshBullets();
+      setWriteState({ status: "idle" });
     },
     [client, bullets, applyRecord, refreshBullets],
   );
@@ -179,7 +179,7 @@ export function useResumeEditor(resumeId: number): ResumeEditor {
 
   const actions: ResumeEditor["actions"] = {
     reload: () => void load(),
-    dismissStale: () => setIsStale(false),
+    dismissStale: () => setWriteState({ status: "idle" }),
     editItemText,
     resolveScope: (scope) => {
       if (scopePrompt) void submitBulletEdit(scopePrompt.bulletId, scopePrompt.newText, scope);
@@ -267,7 +267,7 @@ export function useResumeEditor(resumeId: number): ResumeEditor {
     finalizeResume: async () => {
       const current = recordRef.current;
       if (!current) return false;
-      setSaveError(null);
+      setWriteState({ status: "saving" });
       const {
         data,
         error: finalizeError,
@@ -276,11 +276,14 @@ export function useResumeEditor(resumeId: number): ResumeEditor {
         params: { path: { resume_id: current.id } },
       });
       if (response.status === 409) {
-        setIsStale(true);
+        setWriteState({ status: "stale" });
         return false;
       }
       if (finalizeError || !data) {
-        setSaveError(FINALIZE_ERROR);
+        setWriteState({
+          status: "error",
+          message: extractProblem(finalizeError, FINALIZE_ERROR).message,
+        });
         return false;
       }
       // Finalize returns a summary, not the record. Re-read the resume (now frozen
@@ -290,20 +293,19 @@ export function useResumeEditor(resumeId: number): ResumeEditor {
       });
       if (refreshed) applyRecord(refreshed);
       await refreshBullets();
+      setWriteState({ status: "idle" });
       return true;
     },
   };
 
   return {
     state: {
-      status,
+      load: loadState,
+      write: writeState,
       record,
       bullets,
       variants,
       templates,
-      error,
-      saveError,
-      isStale,
       scopePrompt,
       isReadOnly: record?.status === "finalized",
       previewKey,
