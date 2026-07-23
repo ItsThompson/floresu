@@ -8,7 +8,8 @@ provider call, and transaction all live in the service.
 
 ``kind`` is the corpus discriminator (``worklog | bullet | source``); FastAPI
 validates it against the enum. ``user_id`` arrives as the trusted ``X-User-ID``
-string and is cast to the bigint PK at this boundary (the service works in the PK).
+string and is handed to the service, which casts it to the bigint PK at its own
+method boundary (a router performs no identity casting).
 Purge is a ``POST .../purge``, not a ``DELETE``: the internal (agent-facing) app
 exposes no DELETE routes, so the worker's vector removal rides a POST.
 """
@@ -20,7 +21,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Response
 
-from floresu.core.errors import NotFound, Unauthorized
+from floresu.core.errors import NotFound
 from floresu.embedding.config import EmbedItemKind
 from floresu.embedding.schemas import CorpusItem, StoreResult, VectorWrite
 from floresu.embedding.service import EmbeddingService
@@ -44,7 +45,7 @@ def create_embedding_router(
         user_id: str = Depends(identity),
         service: EmbeddingService = Depends(service_provider),
     ) -> CorpusItem:
-        item = await service.resolve_item(_user_pk(user_id), kind, item_id)
+        item = await service.resolve_item(user_id, kind, item_id)
         if item is None:
             raise NotFound(f"No {kind.value} with id {item_id}.")
         return item
@@ -58,7 +59,7 @@ def create_embedding_router(
         service: EmbeddingService = Depends(service_provider),
     ) -> StoreResult:
         outcome = await service.store_vector(
-            _user_pk(user_id), kind, item_id, body.content_hash, body.vector, body.model
+            user_id, kind, item_id, body.content_hash, body.vector, body.model
         )
         return StoreResult(status=outcome)
 
@@ -69,15 +70,7 @@ def create_embedding_router(
         user_id: str = Depends(identity),
         service: EmbeddingService = Depends(service_provider),
     ) -> Response:
-        await service.delete_vector(_user_pk(user_id), kind, item_id)
+        await service.delete_vector(user_id, kind, item_id)
         return Response(status_code=204)
 
     return router
-
-
-def _user_pk(user_id: str) -> int:
-    """Cast the trusted-header identity to the bigint PK, or reject as invalid."""
-    try:
-        return int(user_id)
-    except ValueError as exc:
-        raise Unauthorized("Session is invalid or expired.") from exc

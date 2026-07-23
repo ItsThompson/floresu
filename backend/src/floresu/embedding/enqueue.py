@@ -116,9 +116,9 @@ def build_sync_embed_fastpath_consumer(
             )
             if isinstance(intent, EmbedIntent):
                 await service.embed_item(
-                    intent.user_id, intent.kind, intent.item_id, intent.content_hash
+                    str(intent.user_id), intent.kind, intent.item_id, intent.content_hash
                 )
             else:
-                await service.delete_vector(intent.user_id, intent.kind, intent.item_id)
+                await service.delete_vector(str(intent.user_id), intent.kind, intent.item_id)
 
     return consume

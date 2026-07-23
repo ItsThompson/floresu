@@ -26,6 +26,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from floresu.core.db import transaction
+from floresu.core.identity import resolve_user_pk
 from floresu.core.observability import track_failures
 from floresu.embedding.schemas import CorpusItem, EmbedOutcome
 
@@ -76,22 +77,24 @@ class EmbeddingService:
         self._provider = provider
 
     async def resolve_item(
-        self, user_id: int, kind: EmbedItemKind, item_id: int
+        self, user_id: str, kind: EmbedItemKind, item_id: int
     ) -> CorpusItem | None:
         """Read the item's embeddable text + current hash + archive state."""
-        return await self._resolver.resolve(self._session, user_id, kind, item_id)
+        pk = resolve_user_pk(user_id)
+        return await self._resolver.resolve(self._session, pk, kind, item_id)
 
     async def embed_item(
-        self, user_id: int, kind: EmbedItemKind, item_id: int, expected_hash: str | None
+        self, user_id: str, kind: EmbedItemKind, item_id: int, expected_hash: str | None
     ) -> EmbedOutcome:
         """Fast-path: resolve, gate, and (if applying) embed inline and store."""
+        pk = resolve_user_pk(user_id)
         async with transaction(self._session):
-            outcome, target = await self._gate(user_id, kind, item_id, expected_hash)
+            outcome, target = await self._gate(pk, kind, item_id, expected_hash)
             if outcome is not EmbedOutcome.APPLIED or target is None:
                 return outcome
             vectors = await self._provider.embed([target.text])
             await self._repo.upsert(
-                user_id=user_id,
+                user_id=pk,
                 kind=kind,
                 item_id=item_id,
                 content_hash=target.content_hash,
@@ -102,7 +105,7 @@ class EmbeddingService:
 
     async def store_vector(
         self,
-        user_id: int,
+        user_id: str,
         kind: EmbedItemKind,
         item_id: int,
         source_hash: str,
@@ -110,12 +113,13 @@ class EmbeddingService:
         model: str,
     ) -> EmbedOutcome:
         """Worker write-back: re-gate against current state, then store if current."""
+        pk = resolve_user_pk(user_id)
         async with transaction(self._session):
-            outcome, target = await self._gate(user_id, kind, item_id, source_hash)
+            outcome, target = await self._gate(pk, kind, item_id, source_hash)
             if outcome is not EmbedOutcome.APPLIED or target is None:
                 return outcome
             await self._repo.upsert(
-                user_id=user_id,
+                user_id=pk,
                 kind=kind,
                 item_id=item_id,
                 content_hash=target.content_hash,
@@ -124,8 +128,12 @@ class EmbeddingService:
             )
             return EmbedOutcome.APPLIED
 
-    async def delete_vector(self, user_id: int, kind: EmbedItemKind, item_id: int) -> None:
+    async def delete_vector(self, user_id: str, kind: EmbedItemKind, item_id: int) -> None:
         """Purge an item's vector (archive/delete); a no-op if it has none."""
+        # Reject a malformed identity at the boundary so a bad id still yields 401;
+        # the purge is keyed by (kind, item_id), not the caller, so the resolved pk
+        # is not needed past this guard.
+        resolve_user_pk(user_id)
         async with transaction(self._session):
             await self._repo.delete(kind, item_id)
 
