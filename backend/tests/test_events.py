@@ -161,19 +161,10 @@ async def _capture_emitted(**kwargs: Any) -> WriteEvent:
 async def test_emit_builds_the_event_publishes_it_and_logs_the_publish(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    captured: list[WriteEvent] = []
-
-    async def capture(_session: AsyncSession, event: WriteEvent) -> RecordedWrite | None:
-        captured.append(event)
-        return None
-
-    publisher = WriteEventPublisher(transactional=[capture])
     cap = structlog.testing.CapturingLogger()
     monkeypatch.setattr("floresu.core.events._log", cap)
 
-    await emit_write_event(
-        publisher,
-        _as_session(_FakeSession()),
+    event = await _capture_emitted(
         user_id=7,
         actor=human_actor(),
         entity_type="worklog",
@@ -184,17 +175,15 @@ async def test_emit_builds_the_event_publishes_it_and_logs_the_publish(
     )
 
     # The seam received exactly the event the emitter constructed from its params.
-    assert captured == [
-        WriteEvent(
-            user_id=7,
-            actor=human_actor(),
-            entity_type="worklog",
-            entity_id=100,
-            action=Action.CREATE,
-            summary="Added an entry",
-            metadata={"content_hash": "abc"},
-        )
-    ]
+    assert event == WriteEvent(
+        user_id=7,
+        actor=human_actor(),
+        entity_type="worklog",
+        entity_id=100,
+        action=Action.CREATE,
+        summary="Added an entry",
+        metadata={"content_hash": "abc"},
+    )
     # Exactly one publish log carrying entity_type, entity_id, and action.value.
     info_calls = [call for call in cap.calls if call.method_name == "info"]
     assert len(info_calls) == 1
