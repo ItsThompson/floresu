@@ -1,0 +1,1 @@
+export { colorForName } from "./colorForName";
