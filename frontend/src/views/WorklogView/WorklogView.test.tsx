@@ -135,6 +135,25 @@ describe("WorklogView", () => {
     expect(screen.queryByRole("list", { name: "Search results" })).not.toBeInTheDocument();
   });
 
+  it("shows 'No matches.' when a non-empty search returns zero results", async () => {
+    const calls = installWorklogApi({
+      entries: [buildEntry({ id: 1, title: "Shipped payments" })],
+      sources: [ACME],
+      search: buildSearchResult(),
+    });
+
+    renderWorklog();
+    const user = userEvent.setup();
+    await screen.findByText("Shipped payments");
+
+    await user.type(screen.getByLabelText("Search worklog and bullets"), "nothing matches this");
+    await user.click(screen.getByRole("button", { name: "Search" }));
+
+    expect(await screen.findByText("No matches.")).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Search results" })).not.toBeInTheDocument();
+    expect(calls.searched).toEqual(["nothing matches this"]);
+  });
+
   it("adds an entry from just a title and a date; description, tags, and sources are optional", async () => {
     const calls = installWorklogApi({ entries: [], sources: [ACME] });
 
