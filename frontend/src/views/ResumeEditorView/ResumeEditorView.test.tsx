@@ -72,6 +72,33 @@ describe("ResumeEditorView", () => {
     expect(screen.getByDisplayValue("Local bullet text")).toBeInTheDocument();
   });
 
+  it("recovers from a failed load via Try again and exposes no stale error", async () => {
+    authenticate();
+    const { handlers } = createResumeApiMock({
+      resumes: [seedResume()],
+      bullets: [
+        buildBulletpoint({ id: 100, text: "Cut checkout latency by 40%.", used_in_count: 1 }),
+      ],
+    });
+    // Fail only the first resume fetch; the seeded handler serves the retry.
+    server.use(
+      http.get("*/resumes/1", () => new HttpResponse(null, { status: 500 }), { once: true }),
+      ...handlers,
+    );
+    renderApp(["/resumes/1"]);
+    const user = userEvent.setup();
+
+    // The failed load surfaces the error and a retry affordance.
+    expect(await screen.findByText("Could not load this resume.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+
+    // The successful reload renders the resume and leaves no residual load error.
+    expect(await screen.findByDisplayValue("Cut checkout latency by 40%.")).toBeInTheDocument();
+    expect(screen.queryByText("Could not load this resume.")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("saves a local item edit (guarded by the revision)", async () => {
     authenticate();
     const { handlers, resumes } = createResumeApiMock({
