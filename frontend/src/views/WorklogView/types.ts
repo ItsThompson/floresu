@@ -70,3 +70,35 @@ export interface DerivedBullet {
   id: number;
   text: string;
 }
+
+/** A soft search notice, e.g. semantic retrieval degraded to lexical-only. */
+export type SearchNotice = NonNullable<SearchResult["notices"]>[number];
+
+/**
+ * The submitted-search lifecycle. Mirrors LibraryView's `SearchState` skeleton
+ * but carries worklog's eagerly-resolved payload (`ResolvedHit[]`) and its
+ * separate `notices` channel. The `results` arm covers the zero-match case too:
+ * an empty `results` array drives the "No matches." branch. The `searching` arm
+ * carries no payload, so a re-search shows no stale prior hits.
+ */
+export type WorklogSearchState =
+  | { status: "idle" }
+  | { status: "searching" }
+  | { status: "results"; results: ResolvedHit[]; notices: SearchNotice[] }
+  | { status: "error"; message: string };
+
+export interface WorklogSearchActions {
+  setQuery: (query: string) => void;
+  submit: () => Promise<void>;
+  clear: () => void;
+}
+
+/**
+ * What the WorklogSearch field renders from: the controlled `query` beside the
+ * search lifecycle. `query` is a separate concern from the lifecycle, so it sits
+ * next to the union rather than inside it.
+ */
+export interface WorklogSearchViewState {
+  query: string;
+  search: WorklogSearchState;
+}

@@ -3,31 +3,15 @@ import { useCallback, useMemo, useState } from "react";
 import { useSessionClient } from "@/api";
 
 import { SEARCH_ERROR_MESSAGE } from "../constants";
-import type { ResolvedHit, SearchResult } from "../types";
+import type {
+  WorklogSearchActions,
+  WorklogSearchState,
+  WorklogSearchViewState,
+} from "../types";
 import { resolveRankedHits } from "../utils";
 
-type SearchNotice = NonNullable<SearchResult["notices"]>[number];
-type SearchStatus = "idle" | "searching" | "error";
-
-export interface WorklogSearchState {
-  query: string;
-  /** The flat ranked mix (worklog + bullets + directly-matching sources). */
-  results: ResolvedHit[];
-  /** Soft notices, e.g. semantic retrieval degraded to lexical-only. */
-  notices: SearchNotice[];
-  status: SearchStatus;
-  /** True once a non-empty query has run, so the results region can show. */
-  hasSearched: boolean;
-}
-
-export interface WorklogSearchActions {
-  setQuery: (query: string) => void;
-  submit: () => Promise<void>;
-  clear: () => void;
-}
-
 export interface UseWorklogSearch {
-  state: WorklogSearchState;
+  state: WorklogSearchViewState;
   actions: WorklogSearchActions;
 }
 
@@ -42,41 +26,29 @@ export function useWorklogSearch(): UseWorklogSearch {
   const client = useSessionClient();
 
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<ResolvedHit[]>([]);
-  const [notices, setNotices] = useState<SearchNotice[]>([]);
-  const [status, setStatus] = useState<SearchStatus>("idle");
-  const [hasSearched, setHasSearched] = useState(false);
+  const [search, setSearch] = useState<WorklogSearchState>({ status: "idle" });
 
   const clear = useCallback(() => {
     setQuery("");
-    setResults([]);
-    setNotices([]);
-    setStatus("idle");
-    setHasSearched(false);
+    setSearch({ status: "idle" });
   }, []);
 
   const submit = useCallback(async () => {
     if (query.trim() === "") {
       // An empty query returns nothing; never a full dump.
-      setResults([]);
-      setNotices([]);
-      setStatus("idle");
-      setHasSearched(false);
+      setSearch({ status: "idle" });
       return;
     }
 
-    setStatus("searching");
-    setHasSearched(true);
+    // The `searching` arm carries no payload, so any prior results clear here
+    // and a re-search never shows stale hits while the new ones resolve.
+    setSearch({ status: "searching" });
     try {
       const { data, error } = await client.POST("/search", { body: { query } });
       if (error || !data) throw new Error(SEARCH_ERROR_MESSAGE);
-      setResults(resolveRankedHits(data));
-      setNotices(data.notices ?? []);
-      setStatus("idle");
+      setSearch({ status: "results", results: resolveRankedHits(data), notices: data.notices ?? [] });
     } catch {
-      setResults([]);
-      setNotices([]);
-      setStatus("error");
+      setSearch({ status: "error", message: SEARCH_ERROR_MESSAGE });
     }
   }, [client, query]);
 
@@ -86,7 +58,7 @@ export function useWorklogSearch(): UseWorklogSearch {
   );
 
   return {
-    state: { query, results, notices, status, hasSearched },
+    state: { query, search },
     actions,
   };
 }
