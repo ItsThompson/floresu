@@ -176,4 +176,27 @@ describe("ProfileSourceDetailView", () => {
     await waitFor(() => expect(archivedId).toBe(100));
     expect(await screen.findByRole("heading", { name: "Career Profile" })).toBeInTheDocument();
   });
+
+  it("renders a 422 field error against the company field, stripping the body. prefix", async () => {
+    authenticate();
+    server.use(
+      http.post("*/sources", () =>
+        HttpResponse.json({ fields: { "body.company": "Required" } }, { status: 422 }),
+      ),
+    );
+    mockDetail({});
+
+    renderApp(["/profile/sources/new?kind=role"]);
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText("Company"), "Acme");
+    await user.type(screen.getByLabelText("Job title"), "Engineer");
+    await user.click(screen.getByRole("button", { name: "Create" }));
+
+    // applyError strips the "body." prefix so the message binds to the "company"
+    // field; without the strip the "body.company" key would match no field.
+    const company = await screen.findByLabelText("Company");
+    await waitFor(() => expect(company).toBeInvalid());
+    expect(company).toHaveAccessibleDescription("Required");
+  });
 });
