@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Download, History, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import type { ExportState } from "@/lib/asyncState";
 
 import type { ResumeRecord, TemplateInfo } from "../types";
 import { TemplateSelect } from "./TemplateSelect";
@@ -49,21 +50,19 @@ export function EditorTopBar({
     setTitle(record.title);
   }
 
-  const [exportUrl, setExportUrl] = useState<string | null>(null);
-  const [exportError, setExportError] = useState<string | null>(null);
-  const [isExporting, setIsExporting] = useState(false);
+  const [exportState, setExportState] = useState<ExportState>({ status: "idle" });
 
   const doExport = async () => {
-    setIsExporting(true);
-    setExportError(null);
-    setExportUrl(null);
+    setExportState({ status: "saving" });
     const url = await onExport();
-    setIsExporting(false);
     if (!url) {
-      setExportError("Export failed. Fix any preview error and try again.");
+      setExportState({
+        status: "error",
+        message: "Export failed. Fix any preview error and try again.",
+      });
       return;
     }
-    setExportUrl(url);
+    setExportState({ status: "done", url });
     window.open(url, "_blank", "noopener");
   };
 
@@ -94,7 +93,7 @@ export function EditorTopBar({
           variant="outline"
           size="sm"
           onClick={() => void doExport()}
-          disabled={!canExport || isExporting}
+          disabled={!canExport || exportState.status === "saving"}
         >
           <Download aria-hidden /> Export
         </Button>
@@ -111,9 +110,9 @@ export function EditorTopBar({
         )}
       </div>
 
-      {exportUrl && (
+      {exportState.status === "done" && (
         <a
-          href={exportUrl}
+          href={exportState.url}
           target="_blank"
           rel="noopener"
           className="text-primary text-sm underline"
@@ -121,9 +120,9 @@ export function EditorTopBar({
           Download exported PDF
         </a>
       )}
-      {exportError && (
+      {exportState.status === "error" && (
         <p role="alert" className="text-destructive text-sm">
-          {exportError}
+          {exportState.message}
         </p>
       )}
     </header>
