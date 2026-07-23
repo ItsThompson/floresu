@@ -2,9 +2,10 @@
 
 Two doubles are identical across the domain ``*_fakes.py`` modules: a no-op session
 that records the ``transaction`` boundary, and the real write-event publisher wired
-with a capturing consumer. They live here once so each domain module imports them
-rather than re-declaring an identical stand-in, and the tests still exercise the
-real publisher fan-out (sociable) rather than a hand-rolled fake seam.
+with a capturing consumer. They live here once so each domain module keeps only its
+own repository fake, and the tests import the shared doubles from here rather than
+re-declaring an identical stand-in per domain. The publisher subclasses the real
+seam, so tests still exercise the real fan-out (sociable) rather than a fake seam.
 """
 
 from __future__ import annotations
