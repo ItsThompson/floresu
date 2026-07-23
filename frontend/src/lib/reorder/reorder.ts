@@ -31,6 +31,23 @@ export function reorderIds(ids: readonly ReorderId[], fromId: ReorderId, toId: R
   return moveItem(ids, fromIndex, toIndex);
 }
 
+/**
+ * Rebuild `items` in `orderedIds` order, reassigning each `sort_order` to its new
+ * index. Ids absent from `items` are dropped; the input is not mutated. This is the
+ * downstream partner of `reorderIds`: a drag produces the new id order, then this
+ * writes the positional `sort_order` the backend persists.
+ */
+export function reorderBySortOrder<T extends { id: number; sort_order: number }>(
+  items: readonly T[],
+  orderedIds: number[],
+): T[] {
+  const byId = new Map(items.map((item) => [item.id, item]));
+  return orderedIds.flatMap((id, index) => {
+    const item = byId.get(id);
+    return item ? [{ ...item, sort_order: index }] : [];
+  });
+}
+
 export interface DragSourceProps {
   draggable: true;
   onDragStart: () => void;
