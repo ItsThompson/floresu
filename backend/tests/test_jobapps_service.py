@@ -11,6 +11,7 @@ is an idempotent no-op when already submitted, and refuses to revert to added.
 from __future__ import annotations
 
 import pytest
+import structlog
 
 from floresu.core.actor import Actor, ActorType
 from floresu.core.errors import Conflict, NotFound
@@ -178,3 +179,42 @@ async def test_revert_submitted_to_added_is_rejected() -> None:
 def test_empty_update_is_rejected_at_the_schema() -> None:
     with pytest.raises(ValueError, match="company, role_title"):
         JobApplicationUpdate()
+
+
+@pytest.mark.asyncio
+async def test_submit_without_linked_resume_logs_a_warning(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, repo, _captured, _finalizer = _setup()
+    application = repo.seed(build_application())
+    cap = structlog.testing.CapturingLogger()
+    monkeypatch.setattr("floresu.jobapps.service._log", cap)
+    with pytest.raises(Conflict):
+        await service.update(
+            _USER,
+            _HUMAN,
+            application.id,
+            JobApplicationUpdate(status=JobApplicationStatus.SUBMITTED),
+        )
+    warnings = [call for call in cap.calls if call.method_name == "warning"]
+    assert len(warnings) == 1
+    assert warnings[0].args == ("job_application_finalize_missing_resume",)
+    assert warnings[0].kwargs == {"application_id": application.id}
+
+
+@pytest.mark.asyncio
+async def test_revert_submitted_to_added_logs_a_warning(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, repo, _captured, _finalizer = _setup()
+    application = repo.seed(build_application(status=JobApplicationStatus.SUBMITTED))
+    cap = structlog.testing.CapturingLogger()
+    monkeypatch.setattr("floresu.jobapps.service._log", cap)
+    with pytest.raises(Conflict):
+        await service.update(
+            _USER, _HUMAN, application.id, JobApplicationUpdate(status=JobApplicationStatus.ADDED)
+        )
+    warnings = [call for call in cap.calls if call.method_name == "warning"]
+    assert len(warnings) == 1
+    assert warnings[0].args == ("job_application_revert_conflict",)
+    assert warnings[0].kwargs == {"application_id": application.id}

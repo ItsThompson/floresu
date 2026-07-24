@@ -20,6 +20,7 @@ from floresu.core.db import transaction
 from floresu.core.errors import Conflict, NotFound
 from floresu.core.events import Action, emit_write_event
 from floresu.core.identity import resolve_user_pk
+from floresu.core.logging import get_logger
 from floresu.core.observability import track_failures
 from floresu.jobapps.config import DEFAULT_LIST_LIMIT, ENTITY_TYPE
 from floresu.jobapps.schemas import (
@@ -38,6 +39,8 @@ if TYPE_CHECKING:
     from floresu.core.events import WriteEventPublisher
     from floresu.jobapps.repository import JobApplicationRepository
     from floresu.resumes.finalize import ResumeFinalizer
+
+_log = get_logger("floresu-job-applications")
 
 
 @track_failures("job_applications")
@@ -118,11 +121,15 @@ class JobApplicationService:
             request.status is JobApplicationStatus.ADDED
             and application.status is JobApplicationStatus.SUBMITTED
         ):
+            _log.warning("job_application_revert_conflict", application_id=application_id)
             raise Conflict("A submitted application cannot return to added.")
         resume_id: int | None = None
         if submitting:
             resume_id = await self._repo.linked_resume_id(application_id)
             if resume_id is None:
+                _log.warning(
+                    "job_application_finalize_missing_resume", application_id=application_id
+                )
                 raise Conflict(
                     "This application has no linked resume to finalize; link an application "
                     "resume before submitting. The status stays added."
