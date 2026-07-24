@@ -7,9 +7,12 @@ The in-memory repository stands in for Postgres; everything else is the real cod
 
 from __future__ import annotations
 
+import pytest
+
 from floresu.audit.schemas import AuditEntry
 from floresu.audit.service import AuditService
 from floresu.core.actor import ActorType
+from floresu.core.errors import Unauthorized
 from floresu.core.events import Action
 from tests.audit_fakes import InMemoryAuditRepository, agent_actor, build_write_event, human_actor
 
@@ -113,11 +116,13 @@ async def test_item_history_reflects_both_human_and_agent_writes() -> None:
     assert {entry.actor_type for entry in history} == {ActorType.HUMAN, ActorType.AGENT}
 
 
-async def test_reads_return_empty_for_a_malformed_user_id() -> None:
+async def test_reads_reject_a_malformed_user_id_with_unauthorized() -> None:
     service = _service()
     await service.append(build_write_event(user_id=7))
-    assert await service.activity_feed("not-a-number") == []
-    assert await service.item_history("not-a-number", "worklog", 100) == []
+    with pytest.raises(Unauthorized):
+        await service.activity_feed("not-a-number")
+    with pytest.raises(Unauthorized):
+        await service.item_history("not-a-number", "worklog", 100)
 
 
 async def test_activity_feed_respects_the_limit() -> None:

@@ -7,8 +7,10 @@ activity feed (newest-first for a user) and per-item history (newest-first for o
 ``entity_type``/``entity_id``), both reflecting human and agent writes alike.
 
 Identity crosses the read boundary as a string (the resolved ``user_id``); a
-malformed value resolves to an empty result rather than raising, mirroring the
-accounts repository's "no such user" handling.
+malformed value is rejected with ``Unauthorized`` (HTTP 401) via the shared
+``resolve_user_pk`` cast, not swallowed as an empty result. A non-numeric id here
+cannot be a real "no rows" case: it means a stale or invalid session, so the read
+boundary answers it the same way every other read path does.
 """
 
 from __future__ import annotations
@@ -18,6 +20,7 @@ from typing import TYPE_CHECKING
 from floresu.audit.config import DEFAULT_FEED_LIMIT, DEFAULT_ITEM_HISTORY_LIMIT
 from floresu.audit.models import AuditLog
 from floresu.audit.schemas import AuditEntry
+from floresu.core.identity import resolve_user_pk
 from floresu.core.logging import get_logger
 from floresu.core.observability import track_failures
 
@@ -60,9 +63,7 @@ class AuditService:
         self, user_id: str, *, limit: int = DEFAULT_FEED_LIMIT
     ) -> list[AuditEntry]:
         """The user's activity feed: their audit rows, newest-first."""
-        pk = _as_user_pk(user_id)
-        if pk is None:
-            return []
+        pk = resolve_user_pk(user_id)
         rows = await self._repo.activity_feed(pk, limit=limit)
         return [_to_entry(row) for row in rows]
 
@@ -75,19 +76,9 @@ class AuditService:
         limit: int = DEFAULT_ITEM_HISTORY_LIMIT,
     ) -> list[AuditEntry]:
         """One item's history: rows for a single ``(entity_type, entity_id)``, newest-first."""
-        pk = _as_user_pk(user_id)
-        if pk is None:
-            return []
+        pk = resolve_user_pk(user_id)
         rows = await self._repo.item_history(pk, entity_type, entity_id, limit=limit)
         return [_to_entry(row) for row in rows]
-
-
-def _as_user_pk(user_id: str) -> int | None:
-    """Map a resolved string identity to the bigint PK, or ``None`` if malformed."""
-    try:
-        return int(user_id)
-    except ValueError:
-        return None
 
 
 def _to_entry(row: AuditLog) -> AuditEntry:

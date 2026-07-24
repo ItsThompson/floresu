@@ -123,3 +123,18 @@ def test_feed_history_returns_recent_rows_newest_first() -> None:
     rows = response.json()
     assert [row["entity_id"] for row in rows] == [11, 10]  # newest-first
     assert rows[0]["id"] > rows[1]["id"]
+
+
+def test_feed_history_malformed_identity_returns_401_not_200_empty() -> None:
+    repo = InMemoryAuditRepository()
+    service = AuditService(repo)
+    store = _FakeStore(replay=[], live=[])
+    client = TestClient(_build_app(store, service, user_id="not-a-pk"))
+
+    response = client.get("/feed/history")
+
+    # A malformed identity is rejected at the read boundary, matching /feed (SSE)
+    # rather than the former 200-empty answer.
+    assert response.status_code == 401
+    assert response.headers["content-type"] == "application/problem+json"
+    assert response.json()["detail"] == "Session is invalid or expired."
