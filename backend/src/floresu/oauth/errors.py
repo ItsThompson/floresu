@@ -37,7 +37,6 @@ class OAuthErrorCode(StrEnum):
     INVALID_TARGET = "invalid_target"  # RFC 8707: unknown/mismatched resource
     ACCESS_DENIED = "access_denied"
     INVALID_CLIENT_METADATA = "invalid_client_metadata"  # RFC 7591 DCR
-    SERVER_ERROR = "server_error"
 
 
 class OAuthError(ExpectedError):
@@ -45,8 +44,7 @@ class OAuthError(ExpectedError):
 
     Subclasses :class:`floresu.core.errors.ExpectedError` so the failure
     classifier treats a routine 4xx (``invalid_grant``, ``invalid_client``) as
-    model-recoverable and leaves ``service_method_failures_total`` untouched, while
-    a ``server_error`` (``status=500``) is still counted as an operational fault.
+    model-recoverable and leaves ``service_method_failures_total`` untouched.
     ``status`` is set per-instance (default 400).
     """
 
