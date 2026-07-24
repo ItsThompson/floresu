@@ -1,5 +1,7 @@
 import type { components } from "@/api";
 
+import { buildEntry } from "./worklogFixtures";
+
 type AuthUser = components["schemas"]["AuthenticatedUser"];
 type FeedEvent = components["schemas"]["AuditEntry"];
 type SourceSummary = components["schemas"]["SourceSummary"];
@@ -126,16 +128,12 @@ export function buildBullet(overrides?: Partial<BulletpointRecord>): Bulletpoint
   };
 }
 
-/** Build a worklog timeline row. */
+/**
+ * Build a profile-context worklog row (attached to the demo source #100).
+ * Derived from the canonical `buildEntry` so the row shape and shared defaults
+ * live in one place; the profile deviations (source #100, no tags, no
+ * description) stay explicit here.
+ */
 export function buildWorklogSummary(overrides?: Partial<WorklogSummary>): WorklogSummary {
-  return {
-    id: 500,
-    title: "Shipped payments migration",
-    entry_date: "2025-09-18",
-    description: null,
-    tags: [],
-    source_ids: [100],
-    archived_at: null,
-    ...overrides,
-  };
+  return buildEntry({ id: 500, source_ids: [100], description: null, tags: [], ...overrides });
 }
