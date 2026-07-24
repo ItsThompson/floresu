@@ -14,13 +14,14 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from typing import TYPE_CHECKING
 
+import structlog
 from fastapi import APIRouter, FastAPI
 from starlette.requests import Request
 from starlette.responses import Response
 
 from floresu.core.correlation import CorrelationMiddleware
 from floresu.core.health import ReadinessCheck, create_health_router
-from floresu.core.logging import configure_logging, get_logger
+from floresu.core.logging import configure_logging
 from floresu.core.metrics import instrument
 
 if TYPE_CHECKING:
@@ -43,7 +44,9 @@ def create_app(
 ) -> FastAPI:
     """Assemble a configured FastAPI app from injected settings and mount points."""
     configure_logging(environment=settings.environment, log_level=settings.log_level)
-    log = get_logger(settings.service)
+    # App identity lives under ``app`` (get_logger owns the component ``service``
+    # field); bind it here so the startup line matches the per-request lines.
+    log = structlog.get_logger().bind(app=settings.service)
 
     app = FastAPI(title=f"floresu ({settings.service})", version="0.0.0", lifespan=lifespan)
     app.state.settings = settings

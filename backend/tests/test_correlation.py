@@ -20,9 +20,9 @@ def _bound_request_id_app() -> FastAPI:
     return app
 
 
-def test_mints_a_request_id_and_binds_the_service() -> None:
+def test_mints_a_request_id_and_binds_the_app() -> None:
     ctx = TestClient(_bound_request_id_app()).get("/echo").json()["ctx"]
-    assert ctx["service"] == "floresu-test"
+    assert ctx["app"] == "floresu-test"
     # A fresh id is a 32-char lowercase hex uuid.
     assert len(ctx["request_id"]) == 32
 

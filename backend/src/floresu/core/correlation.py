@@ -1,8 +1,8 @@
 """Per-request correlation via structlog contextvars.
 
 A pure-ASGI middleware that, once per HTTP request, clears any contextvars left
-over from a reused worker context and binds a ``request_id`` (and the app's
-``service`` tag). ``merge_contextvars`` is already first in the structlog chain
+over from a reused worker context and binds a ``request_id`` and the app identity
+(under ``app``). ``merge_contextvars`` is already first in the structlog chain
 (:mod:`floresu.core.logging`), so every subsequent log line carries the same
 ``request_id`` with no processor-chain change.
 
@@ -59,11 +59,15 @@ def _inbound_request_id(scope: Scope) -> str | None:
 
 
 class CorrelationMiddleware:
-    """Bind a per-request ``request_id`` (and the app ``service``) into contextvars.
+    """Bind a per-request ``request_id`` and the app identity (as ``app``) into contextvars.
 
-    ``service`` is injected per app (``floresu-external`` / ``floresu-internal``) so
-    lines from loggers that do not bind their own component ``service`` stay
-    attributable to the originating app even when both run in one process.
+    The app identity (``floresu-external`` / ``floresu-internal``) is bound under
+    ``app`` so every per-request line stays attributable to the originating app
+    even when both apps run in one process. The field is deliberately distinct
+    from the component ``service`` bound by
+    :func:`floresu.core.logging.get_logger`: a component ``service`` is already in
+    the event dict before ``merge_contextvars`` runs, so its ``setdefault`` would
+    drop an app tag sharing that name.
     """
 
     def __init__(self, app: ASGIApp, *, service: str) -> None:
@@ -76,5 +80,5 @@ class CorrelationMiddleware:
             # prior request's bindings must not leak into this one.
             structlog.contextvars.clear_contextvars()
             request_id = _inbound_request_id(scope) or _mint_request_id()
-            structlog.contextvars.bind_contextvars(request_id=request_id, service=self._service)
+            structlog.contextvars.bind_contextvars(request_id=request_id, app=self._service)
         await self.app(scope, receive, send)

@@ -1,10 +1,11 @@
 """structlog configuration.
 
 Configured once per process. In development, logs render as a human-readable
-console stream; everywhere else they render as JSON. The ``service`` field is
-bound per app via :func:`get_logger`, so external and internal traffic is
-distinguishable without a process-global that would collide when both apps run in
-one process (the smoke test).
+console stream; everywhere else they render as JSON. :func:`get_logger` binds a
+``service`` field naming the emitting component (e.g. ``floresu-search``); the
+correlation middleware binds a separate ``app`` field naming the external or
+internal app. The two are kept distinct so a per-request line carries both the
+component and the app, instead of the component shadowing the app under one name.
 """
 
 from __future__ import annotations
@@ -67,7 +68,7 @@ def configure_logging(*, environment: str, log_level: str) -> None:
 
 
 def get_logger(service: str) -> structlog.stdlib.BoundLogger:
-    """Return a logger with the ``service`` field bound onto every line."""
+    """Return a logger binding ``service`` (the emitting component) onto every line."""
     return cast(
         "structlog.stdlib.BoundLogger",
         structlog.get_logger().bind(service=service),

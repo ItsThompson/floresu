@@ -24,3 +24,21 @@ def test_get_logger_binds_the_service_field() -> None:
     logger = get_logger("floresu-external")
     # The bound service travels on the logger's context.
     assert logger._context["service"] == "floresu-external"
+
+
+def test_per_request_line_carries_both_component_service_and_app() -> None:
+    # A component logger binds ``service``; the correlation middleware binds
+    # ``app`` into contextvars. merge_contextvars (first in the chain) keeps both:
+    # its setdefault leaves the already-present component ``service`` untouched and
+    # adds ``app`` from the contextvars, so neither shadows the other.
+    component = get_logger("floresu-search")
+    structlog.contextvars.clear_contextvars()
+    structlog.contextvars.bind_contextvars(request_id="req-1", app="floresu-external")
+    try:
+        event_dict = {**component._context, "event": "search_started"}
+        merged = structlog.contextvars.merge_contextvars(None, "info", event_dict)
+    finally:
+        structlog.contextvars.clear_contextvars()
+    assert merged["service"] == "floresu-search"
+    assert merged["app"] == "floresu-external"
+    assert merged["request_id"] == "req-1"
