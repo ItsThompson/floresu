@@ -9,19 +9,23 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
+from typing import TYPE_CHECKING, cast
 
-from floresu.core.events import WriteEventPublisher
 from floresu.rendering.module import RenderModule
 from floresu.resumes.render_service import ResumeRenderService
 from floresu.resumes.render_wiring import build_resume_render_service_provider
 from tests.rendering_fakes import FakeTypstCompiler
 from tests.storage_fakes import FakeObjectStore
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def test_provider_binds_the_session_render_module_store_and_publisher() -> None:
-    publisher = WriteEventPublisher()
+    publisher = CapturingWriteEventPublisher()
     request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(events=publisher)))
-    session = object()  # the repository and resolvers only store the session reference
+    session = cast("AsyncSession", FakeSession())  # resolvers only store the reference
     module = RenderModule(FakeTypstCompiler(), templates_dir=Path("/tmpl"))
     store = FakeObjectStore()
 
@@ -29,3 +33,9 @@ def test_provider_binds_the_session_render_module_store_and_publisher() -> None:
     service = provider(request, session)
 
     assert isinstance(service, ResumeRenderService)
+    # Each injected dependency the service stores is bound by identity: a provider
+    # that dropped any of them (or ignored app.state.events) would fail here.
+    assert service._publisher is publisher
+    assert service._session is session
+    assert service._render is module
+    assert service._store is store

@@ -8,19 +8,27 @@ session, so the composition root wires the same seam both apps share.
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import TYPE_CHECKING, cast
 
-from floresu.core.events import WriteEventPublisher
 from floresu.profile.service import SourceService
 from floresu.profile.wiring import build_source_service_provider
+from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def test_provider_binds_the_session_and_the_app_publisher() -> None:
-    publisher = WriteEventPublisher()
+    publisher = CapturingWriteEventPublisher()
     # A stand-in request exposing only what the provider reads: app.state.events.
     request = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(events=publisher)))
-    session = object()  # the repository only stores the session reference
+    session = cast("AsyncSession", FakeSession())  # the repository only stores the reference
 
     provider = build_source_service_provider()
     service = provider(request, session)
 
     assert isinstance(service, SourceService)
+    # The provider consumed the events seam and bound the request session: a
+    # provider that ignored app.state.events would fail the publisher identity.
+    assert service._publisher is publisher
+    assert service._session is session
