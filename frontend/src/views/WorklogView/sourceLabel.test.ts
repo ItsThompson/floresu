@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildSource } from "./__mocks__/fixtures";
+import { buildSource } from "./test-support/fixtures";
 import { sourceLabel } from "./sourceLabel";
 
 describe("sourceLabel", () => {
