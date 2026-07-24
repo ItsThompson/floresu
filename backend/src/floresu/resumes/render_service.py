@@ -29,6 +29,7 @@ from typing import TYPE_CHECKING
 from floresu.core.db import transaction
 from floresu.core.events import Action, emit_write_event
 from floresu.core.identity import resolve_user_pk
+from floresu.core.logging import get_logger
 from floresu.core.observability import track_failures
 from floresu.rendering.config import PDF_MEDIA_TYPE
 from floresu.rendering.errors import RenderError
@@ -58,6 +59,7 @@ if TYPE_CHECKING:
     from floresu.storage.store import ObjectStore
 
 _EXPORT_SUMMARY = "Exported resume PDF"
+_log = get_logger("floresu-resume-rendering")
 
 
 @track_failures("resume_rendering")
@@ -100,6 +102,7 @@ class ResumeRenderService:
         await self._load(pk, resume_id)
         revision = await self._repo.latest_revision(resume_id)
         if revision is None:
+            _log.warning("resume_export_no_revision", user_id=pk, resume_id=resume_id)
             raise RenderError("This resume has no saved revision to export.")
         document = load_document(revision.document)
         resolved = await self._resolve_frozen(pk, document)
@@ -130,6 +133,7 @@ class ResumeRenderService:
         missing = [bullet_id for bullet_id in ref_ids if bullet_id not in texts]
         if missing:
             missing_ids = ", ".join(str(bullet_id) for bullet_id in missing)
+            _log.warning("resume_render_missing_bullets", user_id=pk, missing=missing)
             raise RenderError(
                 f"This resume references a bulletpoint that no longer exists: {missing_ids}."
             )

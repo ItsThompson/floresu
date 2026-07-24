@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 
 from floresu.core.errors import NotFound
 from floresu.core.identity import resolve_user_pk
+from floresu.core.logging import get_logger
 from floresu.core.observability import track_failures
 from floresu.resumes.operations import resume_not_found
 from floresu.resumes.revision_schemas import (
@@ -31,6 +32,8 @@ if TYPE_CHECKING:
     from floresu.resumes.models import Resume
     from floresu.resumes.render_repository import RenderRepository
     from floresu.storage.store import ObjectStore
+
+_log = get_logger("floresu-resume-revisions")
 
 
 @track_failures("resume_revisions")

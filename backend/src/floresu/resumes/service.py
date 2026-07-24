@@ -29,9 +29,10 @@ from typing import TYPE_CHECKING, Any
 
 from floresu.core.conflicts import conflict_on_duplicate
 from floresu.core.db import transaction
-from floresu.core.errors import Validation
+from floresu.core.errors import Conflict, Validation
 from floresu.core.events import SCOPE_METADATA_KEY, Action, emit_write_event
 from floresu.core.identity import resolve_user_pk
+from floresu.core.logging import get_logger
 from floresu.core.observability import track_failures
 from floresu.resumes.config import CONCURRENT_WRITE_CONFLICT, DEFAULT_LIST_LIMIT, ENTITY_TYPE
 from floresu.resumes.cow import (
@@ -100,6 +101,8 @@ if TYPE_CHECKING:
     from floresu.resumes.repository import ResumeRepository
     from floresu.resumes.resolver import BulletTextResolver
     from floresu.resumes.schemas import ResumeRecord
+
+_log = get_logger("floresu-resumes")
 
 
 @track_failures("resumes")
@@ -393,7 +396,16 @@ class ResumeService:
         """Load the resume and enforce the write preconditions (editable + fresh revision)."""
         resume = await self._load(pk, resume_id)
         guard_editable(resume)
-        guard_revision(resume, if_match)
+        try:
+            guard_revision(resume, if_match)
+        except Conflict:
+            _log.warning(
+                "resume_stale_write",
+                resume_id=resume_id,
+                if_match=if_match,
+                current=resume.revision,
+            )
+            raise
         return resume
 
     async def _apply_save(
@@ -443,16 +455,25 @@ class ResumeService:
                 fields={"items": f"Unknown bullet id(s): {missing}."},
             )
         resolved = resolve_document(document, texts)
-        await self._repo.set_bullet_refs(resume.id, sorted(ref_ids))
-        async with conflict_on_duplicate(CONCURRENT_WRITE_CONFLICT):
-            await self._repo.add_revision(
-                ResumeRevision(
-                    resume_id=resume.id,
-                    revision_no=resume.revision,
-                    document=resolved.model_dump(mode="json"),
-                    schema_version=CURRENT_SCHEMA_VERSION,
+        # Capture the ids before the write: a duplicate-key collision fails the flush
+        # and expires the ORM attributes, so reading them in the except would trigger
+        # a reload on the rolled-back session instead of logging the conflict.
+        resume_id = resume.id
+        revision = resume.revision
+        await self._repo.set_bullet_refs(resume_id, sorted(ref_ids))
+        try:
+            async with conflict_on_duplicate(CONCURRENT_WRITE_CONFLICT):
+                await self._repo.add_revision(
+                    ResumeRevision(
+                        resume_id=resume_id,
+                        revision_no=revision,
+                        document=resolved.model_dump(mode="json"),
+                        schema_version=CURRENT_SCHEMA_VERSION,
+                    )
                 )
-            )
+        except Conflict:
+            _log.warning("resume_write_conflict", resume_id=resume_id, revision=revision)
+            raise
         await self._publish(
             pk,
             actor,

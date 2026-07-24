@@ -30,9 +30,10 @@ from typing import TYPE_CHECKING, Protocol
 
 from floresu.core.conflicts import conflict_on_duplicate
 from floresu.core.db import transaction
-from floresu.core.errors import Validation
+from floresu.core.errors import Conflict, Validation
 from floresu.core.events import Action, emit_write_event
 from floresu.core.identity import resolve_user_pk
+from floresu.core.logging import get_logger
 from floresu.core.observability import track_failures
 from floresu.jobapps.config import ENTITY_TYPE as JOB_APPLICATION_ENTITY_TYPE
 from floresu.rendering.config import PDF_MEDIA_TYPE
@@ -66,6 +67,8 @@ if TYPE_CHECKING:
     from floresu.resumes.repository import ResumeRepository
     from floresu.resumes.resolver import BulletTextResolver
     from floresu.storage.store import ObjectStore
+
+_log = get_logger("floresu-resume-finalize")
 
 
 class ResumeFinalizer(Protocol):
@@ -121,16 +124,24 @@ class ResumeFinalizeService:
             # committed revision_no first would collide on the (resume_id,
             # revision_no) PK. Remap that race to a recoverable conflict, mirroring
             # ResumeService, rather than surfacing a 500.
-            async with conflict_on_duplicate(CONCURRENT_WRITE_CONFLICT):
-                await self._repo.add_revision(
-                    ResumeRevision(
-                        resume_id=resume_id,
-                        revision_no=revision_no,
-                        document=frozen.model_dump(mode="json"),
-                        schema_version=CURRENT_SCHEMA_VERSION,
-                        pdf_object_key=key,
+            try:
+                async with conflict_on_duplicate(CONCURRENT_WRITE_CONFLICT):
+                    await self._repo.add_revision(
+                        ResumeRevision(
+                            resume_id=resume_id,
+                            revision_no=revision_no,
+                            document=frozen.model_dump(mode="json"),
+                            schema_version=CURRENT_SCHEMA_VERSION,
+                            pdf_object_key=key,
+                        )
                     )
+            except Conflict:
+                _log.warning(
+                    "resume_finalize_write_conflict",
+                    resume_id=resume_id,
+                    revision_no=revision_no,
                 )
+                raise
             await self._sync_job_application(pk, resume, actor)
             await self._publish_finalize(pk, actor, resume_id, revision_no, key, frozen.template_id)
         return FinalizeResult(

@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 import pytest
+import structlog
 
 from floresu.core.errors import NotFound
 from floresu.core.events import Action
@@ -251,6 +252,38 @@ async def test_export_without_a_revision_is_a_render_error() -> None:
 
     with pytest.raises(RenderError):
         await h.service.export("1", 7, _HUMAN)
+
+
+async def test_export_without_a_revision_logs_a_warning(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    h = _harness()
+    h.repo.seed_resume(resume_row(resume_id=7, user_id=1, document=build_resolved_document()))
+    cap = structlog.testing.CapturingLogger()
+    monkeypatch.setattr("floresu.resumes.render_service._log", cap)
+    with pytest.raises(RenderError):
+        await h.service.export("1", 7, _HUMAN)
+    warnings = [call for call in cap.calls if call.method_name == "warning"]
+    assert len(warnings) == 1
+    assert warnings[0].args == ("resume_export_no_revision",)
+    assert warnings[0].kwargs == {"user_id": 1, "resume_id": 7}
+
+
+async def test_a_missing_referenced_bullet_logs_a_render_warning(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    h = _harness()
+    h.repo.seed_resume(resume_row(resume_id=1, user_id=1, document=_live_document()))
+    h.identity.own_variant(1, 5, build_snapshot())
+    cap = structlog.testing.CapturingLogger()
+    monkeypatch.setattr("floresu.resumes.render_service._log", cap)
+    # Bullet 100 is never seeded, so the live reference no longer resolves to text.
+    with pytest.raises(RenderError):
+        await h.service.preview("1", 1)
+    warnings = [call for call in cap.calls if call.method_name == "warning"]
+    assert len(warnings) == 1
+    assert warnings[0].args == ("resume_render_missing_bullets",)
+    assert warnings[0].kwargs == {"user_id": 1, "missing": [100]}
 
 
 async def test_a_render_failure_blocks_export_without_persisting_or_publishing() -> None:
