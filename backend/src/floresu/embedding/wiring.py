@@ -22,9 +22,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import httpx
-from fastapi import Depends
 
-from floresu.core.db import get_session
+from floresu.core.providers import ServiceProvider, session_provider
 from floresu.embedding.corpus import CorpusResolver
 from floresu.embedding.provider import OpenAIEmbeddingProvider
 from floresu.embedding.queue import ArqEmbedQueue, create_arq_pool
@@ -32,10 +31,6 @@ from floresu.embedding.repository import SqlAlchemyEmbeddingRepository
 from floresu.embedding.service import EmbeddingService
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from sqlalchemy.ext.asyncio import AsyncSession
-
     from floresu.core.settings import AppSettings
     from floresu.embedding.provider import EmbeddingProvider
 
@@ -62,15 +57,13 @@ def create_embedding_provider(http_client: httpx.AsyncClient) -> OpenAIEmbedding
 
 def build_embedding_service_provider(
     provider: EmbeddingProvider,
-) -> Callable[..., EmbeddingService]:
+) -> ServiceProvider[EmbeddingService]:
     """A FastAPI dependency that builds a request-scoped :class:`EmbeddingService`."""
-
-    def build(session: AsyncSession = Depends(get_session)) -> EmbeddingService:
-        return EmbeddingService(
+    return session_provider(
+        lambda session: EmbeddingService(
             session, SqlAlchemyEmbeddingRepository(session), _RESOLVER, provider
         )
-
-    return build
+    )
 
 
 def build_embed_queue(redis_url: str) -> ArqEmbedQueue:

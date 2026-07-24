@@ -1,25 +1,21 @@
 """Compose the OAuth AS dependency graph for the external app.
 
-Keeps wiring (which request-scoped session backs the repository) out of the router
-and entrypoint. The signing key set and access-token codec are process-wide
-singletons; the service providers resolve a per-request ``AsyncSession`` via
-``get_session`` and bind the SQLAlchemy repository, mirroring the accounts wiring.
+Declares how the request-scoped OAuth services are built and defers the wiring
+mechanics (resolving the session) to :func:`session_provider`. The signing key
+set and access-token codec are process-wide singletons captured by the ``build``
+closures, mirroring the accounts wiring.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastapi import Depends
-
-from floresu.core.db import get_session
+from floresu.core.providers import ServiceProvider, session_provider
 from floresu.oauth.authorization import AuthorizationService
 from floresu.oauth.repository import SqlAlchemyOAuthRepository
 from floresu.oauth.token_exchange import TokenService
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from floresu.oauth.config import OAuthConfig
@@ -28,13 +24,11 @@ if TYPE_CHECKING:
 
 def build_authorization_service_provider(
     config: OAuthConfig,
-) -> Callable[[AsyncSession], AuthorizationService]:
+) -> ServiceProvider[AuthorizationService]:
     """A FastAPI dependency that builds a request-scoped :class:`AuthorizationService`."""
-
-    def provider(session: AsyncSession = Depends(get_session)) -> AuthorizationService:
-        return AuthorizationService(SqlAlchemyOAuthRepository(session), config)
-
-    return provider
+    return session_provider(
+        lambda session: AuthorizationService(SqlAlchemyOAuthRepository(session), config)
+    )
 
 
 def build_token_service(
@@ -51,10 +45,6 @@ def build_token_service(
 
 def build_token_service_provider(
     config: OAuthConfig, codec: AccessTokenCodec
-) -> Callable[[AsyncSession], TokenService]:
+) -> ServiceProvider[TokenService]:
     """A FastAPI dependency that builds a request-scoped :class:`TokenService`."""
-
-    def provider(session: AsyncSession = Depends(get_session)) -> TokenService:
-        return build_token_service(session, config, codec)
-
-    return provider
+    return session_provider(lambda session: build_token_service(session, config, codec))

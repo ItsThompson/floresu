@@ -16,15 +16,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastapi import Depends
-
 from floresu.audit.repository import SqlAlchemyAuditRepository
 from floresu.audit.service import AuditService
-from floresu.core.db import get_session
 from floresu.core.events import RecordedWrite, TransactionalConsumer, WriteEventPublisher
+from floresu.core.providers import ServiceProvider, session_provider
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Sequence
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -53,14 +51,10 @@ def build_write_event_publisher(
     return WriteEventPublisher(transactional=[build_audit_consumer()], post_commit=post_commit)
 
 
-def build_audit_service_provider() -> Callable[..., AuditService]:
+def build_audit_service_provider() -> ServiceProvider[AuditService]:
     """A FastAPI dependency that builds a request-scoped :class:`AuditService`.
 
     Backs the read endpoints (the activity-feed initial load; the future item
     history) over a per-request session, mirroring the accounts service provider.
     """
-
-    def provider(session: AsyncSession = Depends(get_session)) -> AuditService:
-        return AuditService(SqlAlchemyAuditRepository(session))
-
-    return provider
+    return session_provider(lambda session: AuditService(SqlAlchemyAuditRepository(session)))
