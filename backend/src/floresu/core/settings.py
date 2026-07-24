@@ -160,33 +160,14 @@ class AppSettings(BaseModel):
 
 
 def build_app_settings(*, service: str, port: int, env: EnvSettings | None = None) -> AppSettings:
-    """Compose per-app settings from injected identity and shared env config."""
+    """Compose per-app settings from injected identity and shared env config.
+
+    Every :class:`EnvSettings` field maps 1:1 onto an :class:`AppSettings` field of
+    the same name, so the env config is forwarded as one ``model_dump()`` splat
+    rather than a hand-maintained field-by-field copy that drifts as knobs are
+    added. The python-mode dump keeps ``SecretStr`` fields wrapped (not the plain
+    value), so masking survives the round-trip; only ``service`` and ``port`` are
+    the per-app identity supplied by the caller.
+    """
     env = env or EnvSettings()
-    return AppSettings(
-        service=service,
-        port=port,
-        environment=env.environment,
-        log_level=env.log_level,
-        host=env.host,
-        database_url=env.database_url,
-        redis_url=env.redis_url,
-        internal_api_token=env.internal_api_token,
-        session_jwt_secret=env.session_jwt_secret,
-        cookie_domain=env.cookie_domain,
-        cors_origin=env.cors_origin,
-        public_base_url=env.public_base_url,
-        app_public_url=env.app_public_url,
-        mcp_public_url=env.mcp_public_url,
-        oauth_private_key_path=env.oauth_private_key_path,
-        oauth_key_id=env.oauth_key_id,
-        oauth_access_ttl_seconds=env.oauth_access_ttl_seconds,
-        oauth_refresh_ttl_seconds=env.oauth_refresh_ttl_seconds,
-        oauth_client_cleanup_interval_seconds=env.oauth_client_cleanup_interval_seconds,
-        oauth_stale_client_max_age_seconds=env.oauth_stale_client_max_age_seconds,
-        openai_api_key=env.openai_api_key,
-        openai_base_url=env.openai_base_url,
-        r2_endpoint_url=env.r2_endpoint_url,
-        r2_access_key_id=env.r2_access_key_id,
-        r2_secret_access_key=env.r2_secret_access_key,
-        r2_bucket=env.r2_bucket,
-    )
+    return AppSettings(service=service, port=port, **env.model_dump())
