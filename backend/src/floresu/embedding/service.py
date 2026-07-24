@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING
 
 from floresu.core.db import transaction
 from floresu.core.identity import resolve_user_pk
+from floresu.core.logging import get_logger
 from floresu.core.observability import track_failures
 from floresu.embedding.schemas import CorpusItem, EmbedOutcome
 
@@ -38,6 +39,18 @@ if TYPE_CHECKING:
     from floresu.embedding.models import Embedding
     from floresu.embedding.provider import EmbeddingProvider
     from floresu.embedding.repository import EmbeddingRepository
+
+_log = get_logger("floresu-embedding")
+
+# Gate outcomes where a requested embed did not apply (a degraded outcome), as
+# opposed to the idempotent no-op and the applied write.
+_GATE_DROPPED = frozenset(
+    {
+        EmbedOutcome.SKIPPED_MISSING,
+        EmbedOutcome.SKIPPED_ARCHIVED,
+        EmbedOutcome.SKIPPED_SUPERSEDED,
+    }
+)
 
 
 def decide(
@@ -149,6 +162,10 @@ class EmbeddingService:
         item = await self._resolver.resolve(self._session, pk, kind, item_id)
         existing = await self._repo.get(kind, item_id)
         outcome = decide(item, existing, expected_hash)
+        if outcome in _GATE_DROPPED:
+            _log.warning(
+                "embedding_gate_dropped", kind=kind.value, item_id=item_id, outcome=outcome.value
+            )
         if outcome in (EmbedOutcome.SKIPPED_MISSING, EmbedOutcome.SKIPPED_ARCHIVED):
             await self._repo.delete(kind, item_id)
             return outcome, None

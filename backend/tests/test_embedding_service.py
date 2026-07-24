@@ -9,6 +9,7 @@ without Postgres or OpenAI.
 from __future__ import annotations
 
 import pytest
+import structlog
 
 from floresu.core.errors import Unauthorized
 from floresu.embedding.config import EmbedItemKind
@@ -117,6 +118,39 @@ async def test_embed_item_superseded_does_not_embed() -> None:
 
     assert outcome is EmbedOutcome.SKIPPED_SUPERSEDED
     assert provider.calls == []
+
+
+async def test_a_dropped_gate_outcome_logs_a_degraded_warning(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, _repo, resolver, _provider = _service()
+    resolver.seed(_WORKLOG, 1, corpus_item("text", "h2"))
+    cap = structlog.testing.CapturingLogger()
+    monkeypatch.setattr("floresu.embedding.service._log", cap)
+    assert await service.embed_item("1", _WORKLOG, 1, "h1") is EmbedOutcome.SKIPPED_SUPERSEDED
+    warnings = [call for call in cap.calls if call.method_name == "warning"]
+    assert len(warnings) == 1
+    assert warnings[0].args == ("embedding_gate_dropped",)
+    assert warnings[0].kwargs == {
+        "kind": _WORKLOG.value,
+        "item_id": 1,
+        "outcome": EmbedOutcome.SKIPPED_SUPERSEDED.value,
+    }
+
+
+async def test_an_idempotent_gate_outcome_is_not_logged(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, repo, resolver, _provider = _service()
+    resolver.seed(_WORKLOG, 1, corpus_item("text", "h1"))
+    await repo.upsert(
+        user_id=1, kind=_WORKLOG, item_id=1, content_hash="h1", vector=[1.0], model="m"
+    )
+    cap = structlog.testing.CapturingLogger()
+    monkeypatch.setattr("floresu.embedding.service._log", cap)
+    # A re-embed of unchanged content is a routine no-op, not a degraded drop.
+    assert await service.embed_item("1", _WORKLOG, 1, "h1") is EmbedOutcome.SKIPPED_IDEMPOTENT
+    assert cap.calls == []
 
 
 async def test_embed_item_archived_removes_the_vector() -> None:
