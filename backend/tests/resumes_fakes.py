@@ -23,6 +23,7 @@ from floresu.resumes.schemas import (
     ResumeUpdate,
 )
 from tests.library_fakes import InMemoryLibraryRepository
+from tests.support.fakes import owned_from
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -92,8 +93,7 @@ class InMemoryResumeRepository:
     async def owned_job_application_ids(
         self, user_id: int, job_application_ids: Sequence[int]
     ) -> set[int]:
-        owned = self._owned_job_applications.get(user_id, set())
-        return {japp_id for japp_id in job_application_ids if japp_id in owned}
+        return owned_from(self._owned_job_applications.get(user_id, set()), job_application_ids)
 
     async def job_application_link_exists(self, job_application_id: int) -> bool:
         return any(

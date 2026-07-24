@@ -15,7 +15,21 @@ from typing import TYPE_CHECKING, Any
 from floresu.core.events import WriteEvent, WriteEventPublisher
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from sqlalchemy.ext.asyncio import AsyncSession
+
+
+def owned_from(owned: set[int], candidate_ids: Sequence[int]) -> set[int]:
+    """In-memory mirror of :func:`floresu.core.db.owned_ids` for the repository fakes.
+
+    The subset of ``candidate_ids`` present in ``owned``, so each domain's fake
+    scopes ownership through one shared filter instead of re-declaring the set
+    comprehension per repository double. The fakes cannot call the SQLAlchemy
+    helper (it runs a real query), so this is where the fake side of the contract
+    lives once.
+    """
+    return {candidate_id for candidate_id in candidate_ids if candidate_id in owned}
 
 
 class FakeSession:

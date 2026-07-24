@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 
 from floresu.library.models import Bulletpoint
 from floresu.library.schemas import BulletpointWrite
+from tests.support.fakes import owned_from
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -79,12 +80,10 @@ class InMemoryLibraryRepository:
         return True
 
     async def owned_source_ids(self, user_id: int, source_ids: Sequence[int]) -> set[int]:
-        owned = self._owned_sources.get(user_id, set())
-        return {source_id for source_id in source_ids if source_id in owned}
+        return owned_from(self._owned_sources.get(user_id, set()), source_ids)
 
     async def owned_worklog_ids(self, user_id: int, worklog_ids: Sequence[int]) -> set[int]:
-        owned = self._owned_worklogs.get(user_id, set())
-        return {worklog_id for worklog_id in worklog_ids if worklog_id in owned}
+        return owned_from(self._owned_worklogs.get(user_id, set()), worklog_ids)
 
     async def set_sources(self, bullet_id: int, source_ids: Sequence[int]) -> None:
         self._sources_by_bullet[bullet_id] = list(source_ids)

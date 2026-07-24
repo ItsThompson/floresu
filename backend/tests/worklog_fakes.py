@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 
 from floresu.worklog.models import Tag, WorklogEntry
 from floresu.worklog.schemas import WorklogWrite
+from tests.support.fakes import owned_from
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -72,8 +73,7 @@ class InMemoryWorklogRepository:
         return rows[:limit]
 
     async def owned_source_ids(self, user_id: int, source_ids: Sequence[int]) -> set[int]:
-        owned = self._owned_sources.get(user_id, set())
-        return {source_id for source_id in source_ids if source_id in owned}
+        return owned_from(self._owned_sources.get(user_id, set()), source_ids)
 
     async def get_or_create_tag(self, user_id: int, label: str) -> Tag:
         for tag in self._tags.values():
