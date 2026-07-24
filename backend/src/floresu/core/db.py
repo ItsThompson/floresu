@@ -277,8 +277,8 @@ def group_pairs_into_dict[K, V](rows: Iterable[tuple[K, V]]) -> dict[K, list[V]]
     """Group ``(key, value)`` rows into an ordered dict of lists, no de-duplication.
 
     Values are appended in iteration order, so a caller that orders its query keeps
-    that order in each bucket. The canonical grouping for a batched edge read
-    (``select(parent_id, child_id).order_by(child_id)``) mapping to ``{parent:
+    that order in each bucket. It is the canonical grouping for a batched edge read
+    (``select(parent_id, child_id).order_by(child_id)``) that maps to ``{parent:
     [children]}``.
     """
     grouped: dict[K, list[V]] = {}
