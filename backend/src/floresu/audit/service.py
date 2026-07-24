@@ -18,11 +18,14 @@ from typing import TYPE_CHECKING
 from floresu.audit.config import DEFAULT_FEED_LIMIT, DEFAULT_ITEM_HISTORY_LIMIT
 from floresu.audit.models import AuditLog
 from floresu.audit.schemas import AuditEntry
+from floresu.core.logging import get_logger
 from floresu.core.observability import track_failures
 
 if TYPE_CHECKING:
     from floresu.audit.repository import AuditRepository
     from floresu.core.events import WriteEvent
+
+_log = get_logger("floresu-audit")
 
 
 @track_failures("audit")
