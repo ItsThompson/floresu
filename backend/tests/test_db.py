@@ -21,10 +21,13 @@ from floresu.core.db import (
     create_sessionmaker,
     db_readiness_check,
     get_session,
+    group_pairs_into_dict,
     is_unique_violation,
+    owned_ids,
     transaction,
 )
 from floresu.core.post_commit import enqueue_post_commit
+from floresu.profile.models import Source
 
 _DSN = "postgresql+asyncpg://floresu:floresu@localhost:5432/floresu"
 
@@ -153,3 +156,40 @@ async def test_db_lifespan_disposes_the_pool_on_shutdown() -> None:
         pass
     # dispose() is idempotent; a second call after lifespan shutdown must not raise.
     await engine.dispose()
+
+
+class _NoQuerySession:
+    """A session stand-in whose ``execute`` must never run (short-circuit guard)."""
+
+    async def execute(self, *_: object) -> object:
+        raise AssertionError("owned_ids must not query when candidate_ids is empty")
+
+
+async def test_owned_ids_short_circuits_without_a_query_for_empty_candidate_ids() -> None:
+    # The empty guard returns before touching the session, so a live query is never
+    # issued for a write that frames nothing.
+    result = await owned_ids(
+        _NoQuerySession(),  # type: ignore[arg-type]
+        user_pk_column=Source.user_id,
+        id_column=Source.id,
+        user_pk=1,
+        candidate_ids=[],
+    )
+    assert result == set()
+
+
+def test_group_pairs_into_dict_groups_values_in_input_order() -> None:
+    grouped = group_pairs_into_dict([(1, "a"), (2, "b"), (1, "c"), (2, "d"), (1, "e")])
+    assert grouped == {1: ["a", "c", "e"], 2: ["b", "d"]}
+    # Keys keep first-seen order, mirroring an ordered edge read.
+    assert list(grouped) == [1, 2]
+
+
+def test_group_pairs_into_dict_keeps_duplicate_values_without_dedup() -> None:
+    grouped = group_pairs_into_dict([(1, 7), (1, 7), (1, 8)])
+    assert grouped == {1: [7, 7, 8]}
+
+
+def test_group_pairs_into_dict_returns_empty_for_no_rows() -> None:
+    rows: list[tuple[int, str]] = []
+    assert group_pairs_into_dict(rows) == {}

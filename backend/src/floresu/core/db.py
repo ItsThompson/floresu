@@ -20,7 +20,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import Select, event, text
+from sqlalchemy import Select, event, select, text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -39,9 +39,10 @@ from floresu.core.observability import ACTIVE_CONNECTIONS, DB_QUERY_DURATION
 from floresu.core.post_commit import discard_post_commit, run_post_commit
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Iterable, Sequence
 
     from fastapi import FastAPI
+    from sqlalchemy.orm import InstrumentedAttribute
     from starlette.types import Lifespan
 
 # Pool sized for one backend instance. ``pool_pre_ping`` discards connections
@@ -248,3 +249,39 @@ async def fetch_optional[T](session: AsyncSession, statement: Select[tuple[T]]) 
     """
     result = await session.execute(statement)
     return result.scalar_one_or_none()
+
+
+async def owned_ids(
+    session: AsyncSession,
+    *,
+    user_pk_column: InstrumentedAttribute[int],
+    id_column: InstrumentedAttribute[int],
+    user_pk: int,
+    candidate_ids: Sequence[int],
+) -> set[int]:
+    """Return the subset of ``candidate_ids`` that exist and belong to ``user_pk``.
+
+    The scoped-ownership existence check a write path runs before it frames or links
+    a row another domain owns: an id absent from the result is one the user does not
+    own (or that does not exist), which the service turns into a validation error.
+    An empty ``candidate_ids`` short-circuits with no query.
+    """
+    if not candidate_ids:
+        return set()
+    statement = select(id_column).where(user_pk_column == user_pk, id_column.in_(candidate_ids))
+    result = await session.execute(statement)
+    return set(result.scalars())
+
+
+def group_pairs_into_dict[K, V](rows: Iterable[tuple[K, V]]) -> dict[K, list[V]]:
+    """Group ``(key, value)`` rows into an ordered dict of lists, no de-duplication.
+
+    Values are appended in iteration order, so a caller that orders its query keeps
+    that order in each bucket. The canonical grouping for a batched edge read
+    (``select(parent_id, child_id).order_by(child_id)``) mapping to ``{parent:
+    [children]}``.
+    """
+    grouped: dict[K, list[V]] = {}
+    for key, value in rows:
+        grouped.setdefault(key, []).append(value)
+    return grouped
