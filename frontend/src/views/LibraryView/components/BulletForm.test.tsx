@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { buildSource, buildWorklogEntry } from "../__tests__/fixtures";
+import { buildSource, buildWorklogEntry } from "../test-support/fixtures";
 import type { BulletFormValues } from "../types";
 import { BulletForm } from "./BulletForm";
 

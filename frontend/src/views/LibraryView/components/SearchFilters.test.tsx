@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_FILTERS } from "../constants";
-import { buildSource, buildTag } from "../__tests__/fixtures";
+import { buildSource, buildTag } from "../test-support/fixtures";
 import { SearchFilters } from "./SearchFilters";
 
 function renderFilters(onChange = vi.fn()) {

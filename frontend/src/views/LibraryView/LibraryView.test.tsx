@@ -8,14 +8,14 @@ import { renderWithProviders } from "@/test/renderWithProviders";
 
 import { LibraryView } from "./LibraryView";
 import { SAVE_ERROR_FALLBACK } from "./constants";
-import { installLibraryApi } from "./__tests__/api";
+import { installLibraryApi } from "./test-support/api";
 import {
   buildBullet,
   buildSearchResult,
   buildSource,
   buildTag,
   buildWorklogEntry,
-} from "./__tests__/fixtures";
+} from "./test-support/fixtures";
 
 const acme = buildSource({ id: 1, display_label: "Acme — Senior Engineer", sort_order: 0 });
 const floresu = buildSource({ id: 2, kind: "project", display_label: "Floresu", sort_order: 1 });
