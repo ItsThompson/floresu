@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { buildEntry } from "./test-support/fixtures";
+import { buildEntry } from "@/mocks/worklogFixtures";
+
 import { filterEntries, groupEntriesByMonth } from "./entryList";
 import type { WorklogFilterValues } from "./types";
 

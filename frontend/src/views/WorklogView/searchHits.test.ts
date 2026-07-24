@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { buildSearchResult } from "./test-support/fixtures";
+import { buildSearchResult } from "@/mocks/worklogFixtures";
+
 import { resolveRankedHits } from "./searchHits";
 
 describe("resolveRankedHits", () => {

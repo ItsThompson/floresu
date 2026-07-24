@@ -1,6 +1,7 @@
 import { http, HttpResponse } from "msw";
 
 import { server } from "@/mocks/server";
+import { buildEntryRecord } from "@/mocks/worklogFixtures";
 
 import type {
   BulletpointRecord,
@@ -10,7 +11,6 @@ import type {
   WorklogSummary,
   WorklogWrite,
 } from "../types";
-import { buildEntryRecord } from "./fixtures";
 
 interface WorklogApiOptions {
   entries?: WorklogSummary[];

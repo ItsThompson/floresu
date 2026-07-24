@@ -1,11 +1,18 @@
-import type {
-  BulletpointRecord,
-  SearchResult,
-  SourceSummary,
-  TagRead,
-  WorklogRecord,
-  WorklogSummary,
-} from "../types";
+import type { components } from "@/api";
+
+type WorklogSummary = components["schemas"]["WorklogSummary"];
+type WorklogRecord = components["schemas"]["WorklogRecord"];
+type SourceSummary = components["schemas"]["SourceSummary"];
+type TagRead = components["schemas"]["TagRead"];
+type BulletpointRecord = components["schemas"]["BulletpointRecord"];
+type SearchResult = components["schemas"]["SearchResult"];
+
+/**
+ * Canonical worklog builder factories, shared by the WorklogView test-support
+ * layer and the `dev:mock` handlers so the worklog fixture data has one source
+ * of truth. Each default is a valid demo object; tests and seeds override the
+ * fields they care about (see "Test Fixtures: Factories Over Inline Objects").
+ */
 
 /** Build a timeline row. Defaults to a tagged, single-source July entry. */
 export function buildEntry(overrides?: Partial<WorklogSummary>): WorklogSummary {

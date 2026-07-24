@@ -3,10 +3,10 @@ import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { SWRConfig } from "swr";
 import { describe, expect, it } from "vitest";
+import { buildBullet, buildEntry, buildSearchResult, buildSource, buildTag } from "@/mocks/worklogFixtures";
 import { renderWithProviders } from "@/test/renderWithProviders";
 
 import { installWorklogApi } from "./test-support/api";
-import { buildBullet, buildEntry, buildSearchResult, buildSource, buildTag } from "./test-support/fixtures";
 import {
   ARCHIVE_ERROR_MESSAGE,
   DATE_REQUIRED_MESSAGE,
