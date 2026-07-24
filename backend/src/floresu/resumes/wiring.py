@@ -25,8 +25,6 @@ def build_resume_service_provider() -> ServiceProvider[ResumeService]:
             SqlAlchemyResumeRepository(session),
             SqlAlchemyBulletTextResolver(session),
             publisher,
-            LibraryCanonicalBulletWriter(
-                session, SqlAlchemyLibraryRepository(session), publisher
-            ),
+            LibraryCanonicalBulletWriter(session, SqlAlchemyLibraryRepository(session), publisher),
         )
     )
