@@ -30,6 +30,7 @@ from floresu.core.db import transaction
 from floresu.core.errors import Conflict, NotFound, Validation
 from floresu.core.events import REEMBED_CONTENT_HASH_KEY, Action, emit_write_event
 from floresu.core.identity import resolve_user_pk
+from floresu.core.logging import get_logger
 from floresu.core.observability import track_failures
 from floresu.library.config import DEFAULT_LIST_LIMIT, ENTITY_TYPE
 from floresu.library.hashing import compute_content_hash
@@ -51,6 +52,8 @@ if TYPE_CHECKING:
     from floresu.library.repository import LibraryRepository
     from floresu.library.schemas import BulletpointWrite
     from floresu.library.usage import BulletUsageCounter
+
+_log = get_logger("floresu-library")
 
 
 @track_failures("library")
@@ -153,6 +156,7 @@ class LibraryService:
                 pk, bullet_id, if_match, write.text, new_hash
             )
             if not swapped:
+                _log.warning("bulletpoint_stale_write", bullet_id=bullet_id, if_match=if_match)
                 raise Conflict("This bulletpoint changed since you loaded it; re-read and retry.")
             await self._attach(bullet_id, source_ids, worklog_ids)
             # Signal a re-embed (carry the new hash) only when the text changed; an
@@ -176,6 +180,7 @@ class LibraryService:
         if bullet is None:
             raise _not_found(bullet_id)
         if bullet.archived_at is not None:
+            _log.warning("bulletpoint_archive_conflict", bullet_id=bullet_id)
             raise Conflict("This bulletpoint is already archived.")
         async with transaction(self._session):
             bullet.archived_at = self._clock()
@@ -191,6 +196,7 @@ class LibraryService:
         if bullet is None:
             raise _not_found(bullet_id)
         if bullet.archived_at is None:
+            _log.warning("bulletpoint_restore_conflict", bullet_id=bullet_id)
             raise Conflict("This bulletpoint is not archived.")
         async with transaction(self._session):
             bullet.archived_at = None

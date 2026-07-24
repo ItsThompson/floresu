@@ -12,6 +12,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
+import structlog
 
 from floresu.core.actor import Actor, ActorType
 from floresu.core.errors import Conflict, NotFound, Unauthorized, Validation
@@ -285,6 +286,26 @@ async def test_update_rejects_a_foreign_source() -> None:
         await service.update(
             _USER, created.id, _HUMAN, build_bullet_write(source_ids=[999]), created.revision
         )
+
+
+async def test_a_stale_if_match_logs_a_conflict_warning(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, _, _, _ = _service()
+    created = await service.create(_USER, _HUMAN, build_bullet_write())
+    await service.update(
+        _USER, created.id, _HUMAN, build_bullet_write(text="First edit."), created.revision
+    )
+    cap = structlog.testing.CapturingLogger()
+    monkeypatch.setattr("floresu.library.service._log", cap)
+    with pytest.raises(Conflict):
+        await service.update(
+            _USER, created.id, _HUMAN, build_bullet_write(text="Stale edit."), created.revision
+        )
+    warnings = [call for call in cap.calls if call.method_name == "warning"]
+    assert len(warnings) == 1
+    assert warnings[0].args == ("bulletpoint_stale_write",)
+    assert warnings[0].kwargs == {"bullet_id": created.id, "if_match": created.revision}
 
 
 async def test_archive_hides_from_active_reads_and_records_archive() -> None:

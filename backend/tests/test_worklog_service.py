@@ -12,6 +12,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
+import structlog
 
 from floresu.core.actor import Actor, ActorType
 from floresu.core.errors import Conflict, NotFound, Unauthorized, Validation
@@ -235,6 +236,36 @@ async def test_restore_of_an_active_entry_is_a_conflict() -> None:
     created = await service.create(_USER, _HUMAN, build_worklog_write())
     with pytest.raises(Conflict):
         await service.restore(_USER, created.id, _HUMAN)
+
+
+async def test_double_archive_logs_an_archive_conflict_warning(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, _, _, _ = _service()
+    created = await service.create(_USER, _HUMAN, build_worklog_write())
+    await service.archive(_USER, created.id, _HUMAN)
+    cap = structlog.testing.CapturingLogger()
+    monkeypatch.setattr("floresu.worklog.service._log", cap)
+    with pytest.raises(Conflict):
+        await service.archive(_USER, created.id, _HUMAN)
+    # The concurrency/stale-state boundary emits exactly one warning naming the entry.
+    warnings = [call for call in cap.calls if call.method_name == "warning"]
+    assert len(warnings) == 1
+    assert warnings[0].args == ("worklog_archive_conflict",)
+    assert warnings[0].kwargs == {"worklog_id": created.id}
+
+
+async def test_a_routine_validation_error_is_not_logged(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service, repo, _, _ = _service()
+    repo.own_source(1, 10)
+    cap = structlog.testing.CapturingLogger()
+    monkeypatch.setattr("floresu.worklog.service._log", cap)
+    # A foreign-source rejection is a routine 4xx from user input: no boundary log.
+    with pytest.raises(Validation):
+        await service.create(_USER, _HUMAN, build_worklog_write(source_ids=[999]))
+    assert cap.calls == []
 
 
 async def test_list_tags_is_scoped_to_the_user_and_ordered() -> None:

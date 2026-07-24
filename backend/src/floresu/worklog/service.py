@@ -25,6 +25,7 @@ from floresu.core.db import transaction
 from floresu.core.errors import Conflict, NotFound, Validation
 from floresu.core.events import REEMBED_CONTENT_HASH_KEY, Action, emit_write_event
 from floresu.core.identity import resolve_user_pk
+from floresu.core.logging import get_logger
 from floresu.core.observability import track_failures
 from floresu.worklog.config import DEFAULT_LIST_LIMIT, ENTITY_TYPE
 from floresu.worklog.hashing import compute_content_hash
@@ -49,6 +50,8 @@ if TYPE_CHECKING:
     from floresu.core.events import WriteEventPublisher
     from floresu.worklog.repository import WorklogRepository
     from floresu.worklog.schemas import WorklogWrite
+
+_log = get_logger("floresu-worklog")
 
 
 @track_failures("worklog")
@@ -161,6 +164,7 @@ class WorklogService:
         if entry is None:
             raise _not_found(worklog_id)
         if entry.archived_at is not None:
+            _log.warning("worklog_archive_conflict", worklog_id=worklog_id)
             raise Conflict("This worklog entry is already archived.")
         async with transaction(self._session):
             entry.archived_at = self._clock()
@@ -176,6 +180,7 @@ class WorklogService:
         if entry is None:
             raise _not_found(worklog_id)
         if entry.archived_at is None:
+            _log.warning("worklog_restore_conflict", worklog_id=worklog_id)
             raise Conflict("This worklog entry is not archived.")
         async with transaction(self._session):
             entry.archived_at = None
