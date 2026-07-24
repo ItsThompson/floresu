@@ -12,19 +12,7 @@ so the database assigns it on insert (see :mod:`floresu.accounts.repository`).
 
 from __future__ import annotations
 
-import uuid
-from collections.abc import Callable
-from datetime import UTC, datetime
+from floresu.core.clock import Clock, utcnow
+from floresu.core.ids import IdFactory, new_hex_id
 
-Clock = Callable[[], datetime]
-OpaqueIdFactory = Callable[[], str]
-
-
-def utcnow() -> datetime:
-    """Behavior-preserving default clock: the current UTC wall-clock time."""
-    return datetime.now(UTC)
-
-
-def new_hex_id() -> str:
-    """A uuid4 hex identifier for the session ``sid``."""
-    return uuid.uuid4().hex
+__all__ = ["Clock", "IdFactory", "new_hex_id", "utcnow"]

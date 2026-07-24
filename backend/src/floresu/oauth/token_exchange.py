@@ -26,7 +26,7 @@ from floresu.oauth.config import (
     OAuthConfig,
 )
 from floresu.oauth.errors import OAuthError
-from floresu.oauth.injection import Clock, OpaqueIdFactory, utcnow
+from floresu.oauth.injection import Clock, IdFactory, utcnow
 from floresu.oauth.models import OAuthRefreshToken
 from floresu.oauth.pkce import is_valid_s256
 from floresu.oauth.schemas import ConnectedClient, TokenRequest, TokenResponse
@@ -61,7 +61,7 @@ class TokenService:
         codec: AccessTokenCodec,
         *,
         clock: Clock = utcnow,
-        new_id: OpaqueIdFactory = mint_refresh_token,
+        new_id: IdFactory = mint_refresh_token,
         issued_counter: IssuedCounter = _default_issued_counter,
     ) -> None:
         self._repo = repo

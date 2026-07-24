@@ -53,7 +53,7 @@ from floresu.resumes.document import (
     referenced_bullet_ids,
     resolve_document,
 )
-from floresu.resumes.injection import Clock, IdFactory, new_item_id, utcnow
+from floresu.resumes.injection import Clock, IdFactory, new_hex_id, utcnow
 from floresu.resumes.models import Resume, ResumeKind, ResumeRevision, ResumeStatus
 from floresu.resumes.operations import (
     apply_item_order,
@@ -118,7 +118,7 @@ class ResumeService:
         bullet_writer: CanonicalBulletWriter,
         *,
         clock: Clock = utcnow,
-        id_factory: IdFactory = new_item_id,
+        id_factory: IdFactory = new_hex_id,
     ) -> None:
         self._session = session
         self._repo = repo

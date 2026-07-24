@@ -30,7 +30,7 @@ from floresu.oauth.config import (
     OAuthConfig,
 )
 from floresu.oauth.errors import OAuthError
-from floresu.oauth.injection import Clock, OpaqueIdFactory, new_hex_id, new_urlsafe_id, utcnow
+from floresu.oauth.injection import Clock, IdFactory, new_hex_id, new_urlsafe_id, utcnow
 from floresu.oauth.models import OAuthAuthorizationCode, OAuthAuthRequest, OAuthClient
 from floresu.oauth.redirects import is_allowed_redirect, is_loopback
 from floresu.oauth.schemas import (
@@ -67,8 +67,8 @@ class AuthorizationService:
         config: OAuthConfig,
         *,
         clock: Clock = utcnow,
-        new_id: OpaqueIdFactory = new_urlsafe_id,
-        new_record_id: OpaqueIdFactory = new_hex_id,
+        new_id: IdFactory = new_urlsafe_id,
+        new_record_id: IdFactory = new_hex_id,
     ) -> None:
         self._repo = repo
         self._config = config

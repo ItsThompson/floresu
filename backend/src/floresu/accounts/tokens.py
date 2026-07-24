@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Any
 
 import jwt
 
-from floresu.accounts.injection import Clock, OpaqueIdFactory, new_hex_id, utcnow
+from floresu.accounts.injection import Clock, IdFactory, new_hex_id, utcnow
 
 if TYPE_CHECKING:
     from floresu.accounts.config import SessionConfig
@@ -69,7 +69,7 @@ class SessionTokenCodec:
         config: SessionConfig,
         *,
         clock: Clock = utcnow,
-        new_id: OpaqueIdFactory = new_hex_id,
+        new_id: IdFactory = new_hex_id,
     ) -> None:
         self._config = config
         # Injected so mint and verify share one clock (tests advance it to assert

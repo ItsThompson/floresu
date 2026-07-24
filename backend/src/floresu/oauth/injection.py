@@ -17,28 +17,17 @@ The defaults reproduce the ambient calls:
 from __future__ import annotations
 
 import secrets
-import uuid
-from collections.abc import Callable
-from datetime import UTC, datetime
 
-Clock = Callable[[], datetime]
-OpaqueIdFactory = Callable[[], str]
+from floresu.core.clock import Clock, utcnow
+from floresu.core.ids import IdFactory, new_hex_id
+
+__all__ = ["Clock", "IdFactory", "new_hex_id", "new_urlsafe_id", "utcnow"]
 
 # Opaque protocol identifiers are high-entropy url-safe tokens (~43 chars from 32
 # bytes); unguessability is defense-in-depth (authorization is by row scoping).
 _URLSAFE_ID_BYTES = 32
 
 
-def utcnow() -> datetime:
-    """Behavior-preserving default clock: the current UTC wall-clock time."""
-    return datetime.now(UTC)
-
-
 def new_urlsafe_id() -> str:
     """A high-entropy url-safe opaque identifier (client_id, request_id, code)."""
     return secrets.token_urlsafe(_URLSAFE_ID_BYTES)
-
-
-def new_hex_id() -> str:
-    """A uuid4 hex surrogate key (grant id, access-token jti)."""
-    return uuid.uuid4().hex

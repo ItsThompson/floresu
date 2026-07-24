@@ -9,12 +9,6 @@ database, so they are not decided here.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from datetime import UTC, datetime
+from floresu.core.clock import Clock, utcnow
 
-Clock = Callable[[], datetime]
-
-
-def utcnow() -> datetime:
-    """Behavior-preserving default clock: the current UTC wall-clock time."""
-    return datetime.now(UTC)
+__all__ = ["Clock", "utcnow"]

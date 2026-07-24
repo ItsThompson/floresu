@@ -22,7 +22,7 @@ from joserfc import jwt
 from joserfc.errors import JoseError
 from joserfc.jwt import JWTClaimsRegistry
 
-from floresu.oauth.injection import Clock, OpaqueIdFactory, new_hex_id, utcnow
+from floresu.oauth.injection import Clock, IdFactory, new_hex_id, utcnow
 
 if TYPE_CHECKING:
     from floresu.oauth.config import OAuthConfig
@@ -62,7 +62,7 @@ class AccessTokenCodec:
         config: OAuthConfig,
         *,
         clock: Clock = utcnow,
-        new_id: OpaqueIdFactory = new_hex_id,
+        new_id: IdFactory = new_hex_id,
     ) -> None:
         self._keyset = keyset
         self._config = config
