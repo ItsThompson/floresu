@@ -23,6 +23,7 @@ from floresu.core.db import transaction
 from floresu.core.errors import Conflict, NotFound, Validation
 from floresu.core.events import Action, emit_write_event
 from floresu.core.identity import resolve_user_pk
+from floresu.core.logging import get_logger
 from floresu.core.observability import track_failures
 from floresu.profile.injection import Clock, utcnow
 from floresu.profile.skills.config import DEFAULT_LIST_LIMIT, ENTITY_TYPE
@@ -38,6 +39,8 @@ if TYPE_CHECKING:
     from floresu.core.events import WriteEventPublisher
     from floresu.profile.skills.repository import SkillRepository
     from floresu.profile.skills.schemas import SkillReorderRequest, SkillWrite
+
+_log = get_logger("floresu-skills")
 
 
 @track_failures("skills")
@@ -102,6 +105,7 @@ class SkillService:
         pk = resolve_user_pk(user_id)
         skill = await self._require(pk, skill_id)
         if skill.archived_at is not None:
+            _log.warning("skill_archive_conflict", skill_id=skill_id)
             raise Conflict("This skill is already archived.")
         async with transaction(self._session):
             skill.archived_at = self._clock()
@@ -113,6 +117,7 @@ class SkillService:
         pk = resolve_user_pk(user_id)
         skill = await self._require(pk, skill_id)
         if skill.archived_at is None:
+            _log.warning("skill_restore_conflict", skill_id=skill_id)
             raise Conflict("This skill is not archived.")
         async with transaction(self._session):
             skill.archived_at = None

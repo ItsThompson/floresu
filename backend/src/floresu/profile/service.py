@@ -23,6 +23,7 @@ from floresu.core.db import transaction
 from floresu.core.errors import Conflict, NotFound, Validation
 from floresu.core.events import Action, emit_write_event
 from floresu.core.identity import resolve_user_pk
+from floresu.core.logging import get_logger
 from floresu.core.observability import track_failures
 from floresu.profile.config import DEFAULT_LIST_LIMIT, ENTITY_TYPE
 from floresu.profile.injection import Clock, utcnow
@@ -42,6 +43,8 @@ if TYPE_CHECKING:
     from floresu.core.events import WriteEventPublisher
     from floresu.profile.repository import SourceRepository
     from floresu.profile.schemas import ReorderRequest, SourceWrite
+
+_log = get_logger("floresu-profile")
 
 
 @track_failures("profile")
@@ -141,6 +144,7 @@ class SourceService:
             raise _not_found(source_id)
         source, subtype = found
         if source.archived_at is not None:
+            _log.warning("source_archive_conflict", source_id=source_id)
             raise Conflict("This source is already archived.")
         async with transaction(self._session):
             source.archived_at = self._clock()
@@ -157,6 +161,7 @@ class SourceService:
             raise _not_found(source_id)
         source, subtype = found
         if source.archived_at is None:
+            _log.warning("source_restore_conflict", source_id=source_id)
             raise Conflict("This source is not archived.")
         async with transaction(self._session):
             source.archived_at = None

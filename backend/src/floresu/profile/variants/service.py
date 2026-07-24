@@ -25,6 +25,7 @@ from floresu.core.db import transaction
 from floresu.core.errors import Conflict, NotFound, Validation, Violation
 from floresu.core.events import Action, emit_write_event
 from floresu.core.identity import resolve_user_pk
+from floresu.core.logging import get_logger
 from floresu.core.observability import track_failures
 from floresu.profile.injection import Clock, utcnow
 from floresu.profile.variants.config import (
@@ -49,6 +50,8 @@ if TYPE_CHECKING:
     from floresu.core.events import WriteEventPublisher
     from floresu.profile.variants.repository import IdentityVariantRepository
     from floresu.profile.variants.schemas import IdentityVariantWrite
+
+_log = get_logger("floresu-identity-variants")
 
 
 @track_failures("identity_variants")
@@ -162,6 +165,7 @@ class IdentityVariantService:
         pk = resolve_user_pk(user_id)
         variant = await self._require(pk, variant_id)
         if variant.archived_at is not None:
+            _log.warning("identity_variant_archive_conflict", variant_id=variant_id)
             raise Conflict("This variant is already archived.")
         if variant.is_default:
             raise Conflict(
@@ -180,6 +184,7 @@ class IdentityVariantService:
         pk = resolve_user_pk(user_id)
         variant = await self._require(pk, variant_id)
         if variant.archived_at is None:
+            _log.warning("identity_variant_restore_conflict", variant_id=variant_id)
             raise Conflict("This variant is not archived.")
         async with transaction(self._session):
             variant.archived_at = None
