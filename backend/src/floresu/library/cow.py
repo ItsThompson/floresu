@@ -27,6 +27,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Protocol
 
+from floresu.core.dedup import dedupe
 from floresu.core.errors import Conflict, NotFound, Validation
 from floresu.core.events import (
     REEMBED_CONTENT_HASH_KEY,
@@ -139,8 +140,8 @@ class LibraryCanonicalBulletWriter:
         never frame a foreign source), the content hash is computed, and the create
         is published with the re-embed trigger so the new bullet enters the corpus.
         """
-        unique_sources = _unique(source_ids)
-        unique_worklogs = _unique(worklog_ids)
+        unique_sources = dedupe(source_ids)
+        unique_worklogs = dedupe(worklog_ids)
         await self._require_owned(user_id, unique_sources, unique_worklogs)
         content_hash = compute_content_hash(text)
         bullet = Bulletpoint(user_id=user_id, text=text, content_hash=content_hash)
@@ -201,8 +202,3 @@ class LibraryCanonicalBulletWriter:
             summary=summary,
             metadata=metadata,
         )
-
-
-def _unique(ids: list[int]) -> list[int]:
-    """De-duplicate ids, preserving first-seen order (a clean edge set for insert)."""
-    return list(dict.fromkeys(ids))

@@ -27,6 +27,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from floresu.core.db import transaction
+from floresu.core.dedup import dedupe
 from floresu.core.errors import Conflict, NotFound, Validation
 from floresu.core.events import REEMBED_CONTENT_HASH_KEY, Action, emit_write_event
 from floresu.core.identity import resolve_user_pk
@@ -80,8 +81,8 @@ class LibraryService:
     ) -> BulletpointRecord:
         """Create a bullet and its provenance edges atomically; queue it for embedding."""
         pk = resolve_user_pk(user_id)
-        source_ids = _unique(write.source_ids)
-        worklog_ids = _unique(write.worklog_ids)
+        source_ids = dedupe(write.source_ids)
+        worklog_ids = dedupe(write.worklog_ids)
         await self._require_owned(pk, source_ids, worklog_ids)
         content_hash = compute_content_hash(write.text)
         bullet = Bulletpoint(user_id=pk, text=write.text, content_hash=content_hash)
@@ -146,8 +147,8 @@ class LibraryService:
         bullet = await self._repo.get(pk, bullet_id)
         if bullet is None:
             raise _not_found(bullet_id)
-        source_ids = _unique(write.source_ids)
-        worklog_ids = _unique(write.worklog_ids)
+        source_ids = dedupe(write.source_ids)
+        worklog_ids = dedupe(write.worklog_ids)
         await self._require_owned(pk, source_ids, worklog_ids)
         new_hash = compute_content_hash(write.text)
         content_changed = new_hash != bullet.content_hash
@@ -273,11 +274,6 @@ class LibraryService:
             summary=summary,
             metadata=metadata,
         )
-
-
-def _unique(ids: list[int]) -> list[int]:
-    """De-duplicate ids, preserving first-seen order (a clean edge set for insert)."""
-    return list(dict.fromkeys(ids))
 
 
 def _not_found(bullet_id: int) -> NotFound:

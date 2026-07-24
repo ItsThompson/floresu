@@ -22,6 +22,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from floresu.core.db import transaction
+from floresu.core.dedup import dedupe
 from floresu.core.errors import Conflict, NotFound, Validation
 from floresu.core.events import REEMBED_CONTENT_HASH_KEY, Action, emit_write_event
 from floresu.core.identity import resolve_user_pk
@@ -31,7 +32,7 @@ from floresu.worklog.config import DEFAULT_LIST_LIMIT, ENTITY_TYPE
 from floresu.worklog.hashing import compute_content_hash
 from floresu.worklog.injection import Clock, utcnow
 from floresu.worklog.models import WorklogEntry
-from floresu.worklog.normalize import dedupe, normalize_labels
+from floresu.worklog.normalize import normalize_labels
 from floresu.worklog.schemas import (
     TagRead,
     WorklogRecord,
