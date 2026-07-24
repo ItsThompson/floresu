@@ -3,12 +3,12 @@ import { useCallback, useMemo, useState } from "react";
 import { useSessionClient } from "@/api";
 
 import { SEARCH_ERROR_MESSAGE } from "../constants";
+import { resolveRankedHits } from "../searchHits";
 import type {
   WorklogSearchActions,
   WorklogSearchState,
   WorklogSearchViewState,
 } from "../types";
-import { resolveRankedHits } from "../searchHits";
 
 export interface UseWorklogSearch {
   state: WorklogSearchViewState;

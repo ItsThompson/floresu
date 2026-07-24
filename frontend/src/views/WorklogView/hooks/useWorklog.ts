@@ -9,6 +9,7 @@ import {
   SAVE_ERROR_MESSAGE,
   TIMELINE_ERROR_MESSAGE,
 } from "../constants";
+import { filterEntries, groupEntriesByMonth } from "../entryList";
 import type {
   EntryFormValues,
   FormMode,
@@ -19,7 +20,6 @@ import type {
   WorklogSummary,
   WorklogWrite,
 } from "../types";
-import { filterEntries, groupEntriesByMonth } from "../entryList";
 
 const TIMELINE_KEY = "/worklog";
 const SOURCES_KEY = "/sources";
