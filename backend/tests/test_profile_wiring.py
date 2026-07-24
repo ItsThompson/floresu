@@ -28,7 +28,5 @@ def test_provider_binds_the_session_and_the_app_publisher() -> None:
     service = provider(request, session)
 
     assert isinstance(service, SourceService)
-    # The provider consumed the events seam and bound the request session: a
-    # provider that ignored app.state.events would fail the publisher identity.
     assert service._publisher is publisher
     assert service._session is session
