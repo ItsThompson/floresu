@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+import structlog
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import func, select
@@ -395,6 +396,7 @@ async def test_finalized_resume_is_read_only(migrated_url: str) -> None:
 
 async def test_finalize_remaps_a_revision_pk_race_to_a_recoverable_conflict(
     migrated_url: str,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     engine = create_db_engine(migrated_url)
     sessionmaker = create_sessionmaker(engine)
@@ -413,17 +415,26 @@ async def test_finalize_remaps_a_revision_pk_race_to_a_recoverable_conflict(
         async with sessionmaker() as session, transaction(session):
             resume = await session.get(Resume, resume_id)
             assert resume is not None
+            raced_revision_no = resume.revision + 1
             session.add(
                 ResumeRevision(
                     resume_id=resume_id,
-                    revision_no=resume.revision + 1,
+                    revision_no=raced_revision_no,
                     document={"schema_version": 1, "template_id": "classic", "sections": []},
                     schema_version=1,
                 )
             )
 
+        cap = structlog.testing.CapturingLogger()
+        monkeypatch.setattr("floresu.resumes.finalize._log", cap)
         async with sessionmaker() as session:
             with pytest.raises(Conflict):
                 await _finalizer(session, store).finalize(str(user_id), resume_id, _HUMAN)
+        # The remap emits exactly one warning naming the colliding resume/revision,
+        # read from locals so the failed flush never triggers an ORM reload.
+        warnings = [call for call in cap.calls if call.method_name == "warning"]
+        assert len(warnings) == 1
+        assert warnings[0].args == ("resume_finalize_write_conflict",)
+        assert warnings[0].kwargs == {"resume_id": resume_id, "revision_no": raced_revision_no}
     finally:
         await engine.dispose()

@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+import structlog
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import func, select
@@ -336,7 +337,9 @@ async def test_stale_if_match_is_rejected(migrated_url: str) -> None:
     assert reread.revision == 2
 
 
-async def test_a_concurrent_snapshot_collision_is_a_recoverable_conflict(migrated_url: str) -> None:
+async def test_a_concurrent_snapshot_collision_is_a_recoverable_conflict(
+    migrated_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     engine = create_db_engine(migrated_url)
     sessionmaker = create_sessionmaker(engine)
     try:
@@ -359,6 +362,8 @@ async def test_a_concurrent_snapshot_collision_is_a_recoverable_conflict(migrate
                     schema_version=1,
                 )
             )
+        cap = structlog.testing.CapturingLogger()
+        monkeypatch.setattr("floresu.resumes.service._log", cap)
         with pytest.raises(Conflict):
             async with sessionmaker() as session:
                 await _resumes(session).update(
@@ -370,6 +375,12 @@ async def test_a_concurrent_snapshot_collision_is_a_recoverable_conflict(migrate
                         {"title": "Racing", "template_id": "default", "header": {}, "sections": []}
                     ),
                 )
+        # The remap emits exactly one warning naming the colliding resume/revision,
+        # read from locals captured before the failed flush (no ORM reload).
+        warnings = [call for call in cap.calls if call.method_name == "warning"]
+        assert len(warnings) == 1
+        assert warnings[0].args == ("resume_write_conflict",)
+        assert warnings[0].kwargs == {"resume_id": created.id, "revision": 2}
         async with sessionmaker() as session:
             reread = await _resumes(session).get(str(user_id), created.id)
     finally:
