@@ -1,9 +1,6 @@
 # Floresu
 
-Floresu is a premium career tracker. It stores a user's professional history and
-exposes it to the user's own AI agent over MCP. Floresu runs no LLM of its own.
-
-This is a polyglot monorepo. Each deployable is self-contained.
+Floresu is a career tracker that stores a user's professional history and exposes it to the user's own AI agent over MCP.
 
 ## Layout
 

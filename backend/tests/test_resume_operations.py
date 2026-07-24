@@ -48,6 +48,7 @@ from floresu.resumes.operations import (
     swap_item_to_reference,
 )
 from floresu.resumes.schemas import LibraryRefItemInput, LocalItemInput
+from floresu.resumes.upcast import CURRENT_SCHEMA_VERSION
 
 
 def _ref(item_id: str, bullet_id: int) -> dict[str, object]:
@@ -72,7 +73,7 @@ def _section(
 
 def _document(sections: list[dict[str, object]]) -> ResumeDocument:
     return ResumeDocument.model_validate(
-        {"schema_version": 1, "template_id": "default", "sections": sections}
+        {"schema_version": CURRENT_SCHEMA_VERSION, "template_id": "default", "sections": sections}
     )
 
 
@@ -89,7 +90,7 @@ def _resume(
         kind=kind,
         status=status,
         title=title,
-        schema_version=1,
+        schema_version=CURRENT_SCHEMA_VERSION,
         revision=revision,
         document={},
     )
@@ -336,3 +337,10 @@ def test_resume_not_found_carries_the_id() -> None:
 )
 def test_summary_lines_name_the_resume(summary: Callable[[Resume], str], expected: str) -> None:
     assert summary(_resume()) == expected
+
+
+def test_created_summary_names_the_kind() -> None:
+    # created_summary is the only line that renders resume.kind.value.
+    assert (
+        created_summary(_resume(kind=ResumeKind.APPLICATION)) == "Created application resume “CV”"
+    )
