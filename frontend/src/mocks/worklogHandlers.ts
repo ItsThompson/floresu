@@ -2,6 +2,15 @@ import { delay, http, HttpResponse } from "msw";
 
 import type { components } from "@/api";
 
+import {
+  buildBullet,
+  buildEntry,
+  buildEntryRecord,
+  buildSearchResult,
+  buildSource,
+  buildTag,
+} from "./worklogFixtures";
+
 /**
  * Dev-harness MSW handlers for the worklog screen (`npm run dev:mock`). Kept in
  * their own module so the shared `handlers.ts` only spreads them in. State is
@@ -16,33 +25,47 @@ type WorklogWrite = components["schemas"]["WorklogWrite"];
 type SourceSummary = components["schemas"]["SourceSummary"];
 type TagRead = components["schemas"]["TagRead"];
 type BulletpointRecord = components["schemas"]["BulletpointRecord"];
-type SearchResult = components["schemas"]["SearchResult"];
 
 const LATENCY_MS = 120;
 
 const sources: SourceSummary[] = [
-  { id: 10, kind: "role", display_label: "Acme — Senior Engineer", date_start: "2024-01-01", date_end: null, summary: null, sort_order: 0, archived_at: null },
-  { id: 11, kind: "project", display_label: "Floresu", date_start: "2025-06-01", date_end: null, summary: null, sort_order: 1, archived_at: null },
+  buildSource({ id: 10 }),
+  buildSource({ id: 11, kind: "project", display_label: "Floresu", date_start: "2025-06-01", sort_order: 1 }),
 ];
 
 const tags: TagRead[] = [
-  { id: 1, label: "backend" },
-  { id: 2, label: "payments" },
-  { id: 3, label: "leadership" },
+  buildTag({ id: 1, label: "backend" }),
+  buildTag({ id: 2, label: "payments" }),
+  buildTag({ id: 3, label: "leadership" }),
 ];
 
-const bullets: BulletpointRecord[] = [
-  { id: 100, text: "Cut checkout latency 40% by batching writes", source_ids: [10], worklog_ids: [1], used_in_count: 2, revision: 1, archived_at: null },
-];
+// The dev harness deliberately shows a shorter entry description and a higher
+// bullet reuse count than the canonical builder defaults. Both are explicit
+// overrides so the data keeps one shape with visible, intentional deviations.
+const bullets: BulletpointRecord[] = [buildBullet({ used_in_count: 2 })];
 
 let entries: WorklogSummary[] = [
-  { id: 1, title: "Shipped payments migration", entry_date: "2026-07-18", description: "Zero-downtime cutover.", tags: ["backend", "payments"], source_ids: [10], archived_at: null },
-  { id: 2, title: "Fixed cache invalidation bug", entry_date: "2026-07-04", description: null, tags: ["backend"], source_ids: [10], archived_at: null },
-  { id: 3, title: "Led cross-team API redesign", entry_date: "2026-06-20", description: null, tags: ["leadership"], source_ids: [10, 11], archived_at: null },
+  buildEntry({ id: 1, description: "Zero-downtime cutover." }),
+  buildEntry({
+    id: 2,
+    title: "Fixed cache invalidation bug",
+    entry_date: "2026-07-04",
+    description: null,
+    tags: ["backend"],
+  }),
+  buildEntry({
+    id: 3,
+    title: "Led cross-team API redesign",
+    entry_date: "2026-06-20",
+    description: null,
+    tags: ["leadership"],
+    source_ids: [10, 11],
+  }),
 ];
 let nextId = 4;
 
-const recordFor = (entry: WorklogSummary): WorklogRecord => ({ ...entry, bullet_ids: entry.id === 1 ? [100] : [] });
+const recordFor = (entry: WorklogSummary): WorklogRecord =>
+  buildEntryRecord({ ...entry, bullet_ids: entry.id === 1 ? [100] : [] });
 
 export const worklogHandlers = [
   http.get("*/worklog", async ({ request }) => {
@@ -89,19 +112,40 @@ export const worklogHandlers = [
   http.post("*/search", async ({ request }) => {
     const { query } = (await request.json()) as { query: string };
     await delay(LATENCY_MS);
-    const result: SearchResult = {
-      ranked: [
-        { type: "worklog", id: 1, score: 0.92 },
-        { type: "bullet", id: 100, score: 0.61 },
-        { type: "source", id: 10, score: 0.4 },
-      ],
-      graph: {
-        worklog: [{ id: 1, title: `Shipped payments migration (${query})`, date: "2026-07-18", score: 0.92, source_ids: [10] }],
-        bullets: [{ id: 100, text: "Cut checkout latency 40% by batching writes", score: 0.61, worklog_ids: [1], source_ids: [10] }],
-        sources: [{ id: 10, kind: "role", label: "Acme — Senior Engineer", match_score: 0.4, score: 0.4 }],
-      },
-      notices: [],
-    };
-    return HttpResponse.json(result);
+    const [entry] = entries;
+    const [bullet] = bullets;
+    const [source] = sources;
+    return HttpResponse.json(
+      buildSearchResult({
+        ranked: [
+          { type: "worklog", id: entry.id, score: 0.92 },
+          { type: "bullet", id: bullet.id, score: 0.61 },
+          { type: "source", id: source.id, score: 0.4 },
+        ],
+        graph: {
+          worklog: [
+            {
+              id: entry.id,
+              title: `${entry.title} (${query})`,
+              date: entry.entry_date,
+              score: 0.92,
+              source_ids: entry.source_ids,
+            },
+          ],
+          bullets: [
+            {
+              id: bullet.id,
+              text: bullet.text,
+              score: 0.61,
+              worklog_ids: bullet.worklog_ids,
+              source_ids: bullet.source_ids,
+            },
+          ],
+          sources: [
+            { id: source.id, kind: source.kind, label: source.display_label, match_score: 0.4, score: 0.4 },
+          ],
+        },
+      }),
+    );
   }),
 ];
