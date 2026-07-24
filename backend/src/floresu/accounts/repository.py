@@ -12,7 +12,10 @@ None" reads and the commit policy in one place.
 
 The resolved identity crosses the boundary as a string (the JWT ``sub`` / the
 ``X-User-ID`` wire form); this binding maps it to the bigint ``users.id``, so a
-non-numeric id resolves to "no such user" rather than raising.
+non-numeric id resolves to "no such user" rather than raising. Rejecting a stale or
+invalid identity with ``Unauthorized`` is a service concern, not a repository one:
+the service raises on the resulting ``None``, so the identity boundary stays in one
+place and the repository is free of auth semantics.
 """
 
 from __future__ import annotations
