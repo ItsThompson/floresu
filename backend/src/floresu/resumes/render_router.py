@@ -13,28 +13,20 @@ route is matched ahead of the resumes router's ``/resumes/{resume_id}`` route.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
-
 from fastapi import APIRouter, Depends, Response
 
 from floresu.core.actor import Actor
+from floresu.core.providers import ActorResolver, Identity, ServiceProvider
 from floresu.rendering.config import PDF_MEDIA_TYPE
 from floresu.rendering.schemas import TemplateInfo
 from floresu.resumes.render_schemas import ExportResult, PreviewRequest
 from floresu.resumes.render_service import ResumeRenderService
 
-# Injected so the router never hard-codes how identity, the actor, or the service
-# are resolved (they differ per app), mirroring the resumes router.
-Identity = Callable[..., Any]
-ActorResolver = Callable[..., Any]
-ResumeRenderServiceProvider = Callable[..., Any]
-
 RESUMES_PATH = "/resumes"
 
 
 def create_resume_render_router(
-    service_provider: ResumeRenderServiceProvider,
+    service_provider: ServiceProvider[ResumeRenderService],
     *,
     identity: Identity,
     actor: ActorResolver,

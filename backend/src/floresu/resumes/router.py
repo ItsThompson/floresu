@@ -15,12 +15,10 @@ rendered as RFC 9457 problem+json by the shared exception handler.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
-
 from fastapi import APIRouter, Depends, Header
 
 from floresu.core.actor import Actor
+from floresu.core.providers import ActorResolver, Identity, ServiceProvider
 from floresu.resumes.cow import EditChannel
 from floresu.resumes.models import ResumeKind
 from floresu.resumes.schemas import (
@@ -35,17 +33,11 @@ from floresu.resumes.schemas import (
 )
 from floresu.resumes.service import ResumeService
 
-# FastAPI dependencies, injected so the router never hard-codes how identity, the
-# actor, or the service are resolved (they differ per app).
-Identity = Callable[..., Any]  # resolves user_id (str): async on web, sync internal
-ActorResolver = Callable[..., Any]  # resolves the Actor (human vs named agent)
-ResumeServiceProvider = Callable[..., Any]
-
 RESUMES_PATH = "/resumes"
 
 
 def create_resumes_router(
-    service_provider: ResumeServiceProvider,
+    service_provider: ServiceProvider[ResumeService],
     *,
     identity: Identity,
     actor: ActorResolver,

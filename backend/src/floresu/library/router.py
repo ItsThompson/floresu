@@ -17,26 +17,18 @@ shared exception handler.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
-
 from fastapi import APIRouter, Depends, Header
 
 from floresu.core.actor import Actor
+from floresu.core.providers import ActorResolver, Identity, ServiceProvider
 from floresu.library.schemas import BulletpointRecord, BulletpointWrite
 from floresu.library.service import LibraryService
-
-# FastAPI dependencies, injected so the router never hard-codes how identity, the
-# actor, or the service are resolved (they differ per app).
-Identity = Callable[..., Any]  # resolves user_id (str): async on web, sync internal
-ActorResolver = Callable[..., Any]  # resolves the Actor (human vs named agent)
-LibraryServiceProvider = Callable[..., Any]
 
 BULLETS_PATH = "/bullets"
 
 
 def create_bullets_router(
-    service_provider: LibraryServiceProvider,
+    service_provider: ServiceProvider[LibraryService],
     *,
     identity: Identity,
     actor: ActorResolver,

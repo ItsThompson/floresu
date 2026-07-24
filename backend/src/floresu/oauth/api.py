@@ -14,14 +14,14 @@ registry (``core.route_registry``) so the coverage test can enforce access level
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Body, Depends, Form, Query, Request, Response
 from starlette.responses import JSONResponse, RedirectResponse
 
 from floresu.core.errors import Unauthorized
 from floresu.core.identity import require_user
+from floresu.core.providers import ServiceProvider
 from floresu.oauth.config import (
     AUTHORIZE_CONTEXT_PATH,
     AUTHORIZE_DECISION_PATH,
@@ -51,8 +51,6 @@ if TYPE_CHECKING:
     from floresu.oauth.keys import SigningKeySet
     from floresu.oauth.token_exchange import TokenService
 
-# FastAPI dependencies that yield the request-scoped services.
-ServiceProvider = Callable[..., Any]
 # Response headers for token/metadata responses that must not be cached.
 _NO_STORE = {"Cache-Control": "no-store", "Pragma": "no-cache"}
 
@@ -69,8 +67,8 @@ def create_oauth_router(
     *,
     config: OAuthConfig,
     keyset: SigningKeySet,
-    authorization_provider: ServiceProvider,
-    token_provider: ServiceProvider,
+    authorization_provider: ServiceProvider[AuthorizationService],
+    token_provider: ServiceProvider[TokenService],
 ) -> APIRouter:
     """Build the OAuth AS router from pinned config, the key set, and providers."""
     router = APIRouter(tags=["oauth"])
@@ -95,7 +93,9 @@ def _mount_discovery(router: APIRouter, *, config: OAuthConfig, keyset: SigningK
         return JSONResponse(jwks, headers=_NO_STORE)
 
 
-def _mount_registration(router: APIRouter, authorization_provider: ServiceProvider) -> None:
+def _mount_registration(
+    router: APIRouter, authorization_provider: ServiceProvider[AuthorizationService]
+) -> None:
     @router.post(REGISTER_PATH, status_code=201)
     async def register_client(
         body: ClientRegistrationRequest,
@@ -104,7 +104,9 @@ def _mount_registration(router: APIRouter, authorization_provider: ServiceProvid
         return await service.register_client(body)
 
 
-def _mount_authorize(router: APIRouter, authorization_provider: ServiceProvider) -> None:
+def _mount_authorize(
+    router: APIRouter, authorization_provider: ServiceProvider[AuthorizationService]
+) -> None:
     @router.get(AUTHORIZE_PATH)
     async def authorize(
         client_id: str = Query(default=""),
@@ -151,7 +153,7 @@ def _mount_authorize(router: APIRouter, authorization_provider: ServiceProvider)
         return DecisionResult(redirect_uri=redirect_uri)
 
 
-def _mount_token(router: APIRouter, token_provider: ServiceProvider) -> None:
+def _mount_token(router: APIRouter, token_provider: ServiceProvider[TokenService]) -> None:
     @router.post(TOKEN_PATH)
     async def token(
         grant_type: str = Form(default=""),
@@ -187,7 +189,7 @@ def _mount_token(router: APIRouter, token_provider: ServiceProvider) -> None:
         return Response(status_code=200, headers=_NO_STORE)
 
 
-def _mount_clients(router: APIRouter, token_provider: ServiceProvider) -> None:
+def _mount_clients(router: APIRouter, token_provider: ServiceProvider[TokenService]) -> None:
     @router.get(CLIENTS_PATH)
     async def list_clients(
         user_id: str = Depends(require_user),

@@ -15,9 +15,7 @@ Account deletion also clears the session cookies, since the account is gone.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from datetime import date
-from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Response
 from fastapi.responses import JSONResponse
@@ -25,22 +23,16 @@ from fastapi.responses import JSONResponse
 from floresu.accounts.config import AUTH_PATH, REFRESH_COOKIE_NAME, CookieConfig
 from floresu.core.actor import Actor
 from floresu.core.identity import SESSION_COOKIE_NAME
+from floresu.core.providers import ActorResolver, Identity, ServiceProvider
 from floresu.lifecycle.config import EXPORT_FILENAME_STEM
 from floresu.lifecycle.schemas import AccountDeletionReceipt, DeletionReceipt
 from floresu.lifecycle.service import LifecycleService
-
-# FastAPI dependencies, injected so the router never hard-codes how identity, the
-# actor, or the service are resolved. On the external app these are the cookie
-# identity and the human actor; this router mounts on no other app.
-Identity = Callable[..., Any]
-ActorResolver = Callable[..., Any]
-LifecycleServiceProvider = Callable[..., Any]
 
 _CONFIRM = Query(description="Must be true. This action is permanent and cannot be undone.")
 
 
 def create_lifecycle_router(
-    service_provider: LifecycleServiceProvider,
+    service_provider: ServiceProvider[LifecycleService],
     *,
     identity: Identity,
     actor: ActorResolver,

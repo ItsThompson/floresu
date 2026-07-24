@@ -16,8 +16,6 @@ identity. Mounted on the external app only.
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
-
 from fastapi import APIRouter, Depends
 from starlette.requests import Request
 from starlette.responses import StreamingResponse
@@ -25,16 +23,10 @@ from starlette.responses import StreamingResponse
 from floresu.audit.schemas import AuditEntry
 from floresu.audit.service import AuditService
 from floresu.core.identity import resolve_user_pk
+from floresu.core.providers import Identity, ServiceProvider
 from floresu.feed.store import RedisFeedStore
 from floresu.feed.stream import feed_frames
 from floresu.feed.wiring import get_feed_store
-
-# A FastAPI dependency resolving the request's ``user_id`` at the trust boundary
-# (``require_user`` on the external app), injected so the router never hard-codes
-# how identity is resolved.
-Identity = Callable[..., Awaitable[str]]
-# A FastAPI dependency that yields an AuditService for the request.
-AuditServiceProvider = Callable[..., object]
 
 # SSE response headers. ``no-cache`` and ``X-Accel-Buffering: no`` tell any proxy
 # or edge not to buffer the stream, which together with the heartbeat frames keeps
@@ -62,7 +54,7 @@ def _parse_last_event_id(request: Request) -> int | None:
 
 
 def create_feed_router(
-    *, identity: Identity, audit_service_provider: AuditServiceProvider
+    *, identity: Identity, audit_service_provider: ServiceProvider[AuditService]
 ) -> APIRouter:
     """Build the feed router, injecting identity and the audit service provider."""
     router = APIRouter(tags=["feed"])

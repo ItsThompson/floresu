@@ -14,26 +14,18 @@ family table where reorder is valid for sources and skills but not variants.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
-
 from fastapi import APIRouter, Depends
 
 from floresu.core.actor import Actor
+from floresu.core.providers import ActorResolver, Identity, ServiceProvider
 from floresu.profile.variants.schemas import IdentityVariantRead, IdentityVariantWrite
 from floresu.profile.variants.service import IdentityVariantService
-
-# FastAPI dependencies, injected so the router never hard-codes how identity, the
-# actor, or the service are resolved (they differ per app).
-Identity = Callable[..., Any]  # resolves user_id (str): async on web, sync internal
-ActorResolver = Callable[..., Any]  # resolves the Actor (human vs named agent)
-IdentityVariantServiceProvider = Callable[..., Any]
 
 VARIANTS_PATH = "/identity-variants"
 
 
 def create_variants_router(
-    service_provider: IdentityVariantServiceProvider,
+    service_provider: ServiceProvider[IdentityVariantService],
     *,
     identity: Identity,
     actor: ActorResolver,

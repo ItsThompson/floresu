@@ -13,12 +13,10 @@ the shared exception handler.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
-
 from fastapi import APIRouter, Depends
 
 from floresu.core.actor import Actor
+from floresu.core.providers import ActorResolver, Identity, ServiceProvider
 from floresu.profile.models import SourceKind
 from floresu.profile.schemas import (
     ReorderRequest,
@@ -28,17 +26,11 @@ from floresu.profile.schemas import (
 )
 from floresu.profile.service import SourceService
 
-# FastAPI dependencies, injected so the router never hard-codes how identity, the
-# actor, or the service are resolved (they differ per app).
-Identity = Callable[..., Any]  # resolves user_id (str): async on web, sync internal
-ActorResolver = Callable[..., Any]  # resolves the Actor (human vs named agent)
-SourceServiceProvider = Callable[..., Any]
-
 SOURCES_PATH = "/sources"
 
 
 def create_sources_router(
-    service_provider: SourceServiceProvider,
+    service_provider: ServiceProvider[SourceService],
     *,
     identity: Identity,
     actor: ActorResolver,

@@ -13,26 +13,18 @@ with the resumes router's ``/resumes/{resume_id}`` read; mounting order is irrel
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
-
 from fastapi import APIRouter, Depends
 
 from floresu.core.actor import Actor
+from floresu.core.providers import ActorResolver, Identity, ServiceProvider
 from floresu.resumes.finalize import ResumeFinalizeService
 from floresu.resumes.schemas import FinalizeResult
-
-# Injected so the router never hard-codes how identity, the actor, or the service
-# are resolved (they differ per app), mirroring the resumes router.
-Identity = Callable[..., Any]
-ActorResolver = Callable[..., Any]
-ResumeFinalizeServiceProvider = Callable[..., Any]
 
 RESUMES_PATH = "/resumes"
 
 
 def create_resume_finalize_router(
-    service_provider: ResumeFinalizeServiceProvider,
+    service_provider: ServiceProvider[ResumeFinalizeService],
     *,
     identity: Identity,
     actor: ActorResolver,

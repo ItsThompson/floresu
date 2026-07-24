@@ -15,12 +15,10 @@ problem+json by the shared exception handler.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
-
 from fastapi import APIRouter, Depends
 
 from floresu.core.actor import Actor
+from floresu.core.providers import ActorResolver, Identity, ServiceProvider
 from floresu.worklog.schemas import (
     TagMutation,
     TagRead,
@@ -30,17 +28,11 @@ from floresu.worklog.schemas import (
 )
 from floresu.worklog.service import WorklogService
 
-# FastAPI dependencies, injected so the router never hard-codes how identity, the
-# actor, or the service are resolved (they differ per app).
-Identity = Callable[..., Any]  # resolves user_id (str): async on web, sync internal
-ActorResolver = Callable[..., Any]  # resolves the Actor (human vs named agent)
-WorklogServiceProvider = Callable[..., Any]
-
 WORKLOG_PATH = "/worklog"
 
 
 def create_worklog_router(
-    service_provider: WorklogServiceProvider,
+    service_provider: ServiceProvider[WorklogService],
     *,
     identity: Identity,
     actor: ActorResolver,

@@ -14,22 +14,16 @@ app only.
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
-
 from fastapi import APIRouter, Depends
 
 from floresu.accounts.schemas import AuthenticatedUser
 from floresu.accounts.service import AccountService
-
-# A FastAPI dependency that resolves the request's ``user_id`` at the trust
-# boundary (``require_user`` on the external app), injected so the router never
-# hard-codes how identity is resolved.
-Identity = Callable[..., Awaitable[str]]
-# A FastAPI dependency that yields an AccountService for the request.
-AccountServiceProvider = Callable[..., object]
+from floresu.core.providers import Identity, ServiceProvider
 
 
-def create_me_router(service_provider: AccountServiceProvider, *, identity: Identity) -> APIRouter:
+def create_me_router(
+    service_provider: ServiceProvider[AccountService], *, identity: Identity
+) -> APIRouter:
     """Build the /me router, injecting the service provider and identity."""
     router = APIRouter(tags=["me"])
 

@@ -16,24 +16,19 @@ exposes no DELETE routes, so the worker's vector removal rides a POST.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
-
 from fastapi import APIRouter, Depends, Response
 
 from floresu.core.errors import NotFound
+from floresu.core.providers import Identity, ServiceProvider
 from floresu.embedding.config import EmbedItemKind
 from floresu.embedding.schemas import CorpusItem, StoreResult, VectorWrite
 from floresu.embedding.service import EmbeddingService
-
-Identity = Callable[..., Any]  # resolves the trusted-header user_id (str)
-EmbeddingServiceProvider = Callable[..., Any]
 
 EMBED_PATH = "/embed/items"
 
 
 def create_embedding_router(
-    service_provider: EmbeddingServiceProvider, *, identity: Identity
+    service_provider: ServiceProvider[EmbeddingService], *, identity: Identity
 ) -> APIRouter:
     """Build the internal /embed/items router, injecting the service and identity."""
     router = APIRouter(prefix=EMBED_PATH, tags=["embedding"])

@@ -27,6 +27,7 @@ from floresu.core.settings import AppSettings
 from floresu.profile.variants.config import REPLACEMENT_REQUIRED_RULE
 from floresu.profile.variants.router import VARIANTS_PATH, create_variants_router
 from floresu.profile.variants.service import IdentityVariantService
+from floresu.profile.variants.wiring import build_variant_service_provider
 from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 from tests.variants_fakes import (
     InMemoryIdentityVariantRepository,
@@ -187,7 +188,9 @@ def test_the_router_exposes_no_reorder_route(make_settings: MakeSettings) -> Non
     # Identity variants are unordered: the profile family table marks reorder valid
     # for sources and skills but not identity_variant, so the router must not mount
     # a reorder path.
-    router = create_variants_router(lambda: None, identity=require_user, actor=resolve_web_actor)
+    router = create_variants_router(
+        build_variant_service_provider(), identity=require_user, actor=resolve_web_actor
+    )
     reorder_path = f"{VARIANTS_PATH}/reorder"
     assert all(getattr(route, "path", None) != reorder_path for route in router.routes)
 

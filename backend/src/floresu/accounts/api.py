@@ -12,7 +12,6 @@ in-memory-backed service. These routes are mounted on the external app only.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, Request, Response
@@ -22,16 +21,14 @@ from floresu.accounts.schemas import AuthenticatedUser, LoginRequest, RegisterRe
 from floresu.accounts.service import AccountService
 from floresu.core.errors import Unauthorized
 from floresu.core.identity import SESSION_COOKIE_NAME
+from floresu.core.providers import ServiceProvider
 
 if TYPE_CHECKING:
     from floresu.accounts.tokens import TokenPair
 
-# A FastAPI dependency that yields an AccountService for the request.
-AccountServiceProvider = Callable[..., object]
-
 
 def create_accounts_router(
-    service_provider: AccountServiceProvider, *, cookie_config: CookieConfig
+    service_provider: ServiceProvider[AccountService], *, cookie_config: CookieConfig
 ) -> APIRouter:
     """Build the /auth router, injecting the service provider and cookie policy."""
     router = APIRouter(prefix=AUTH_PATH, tags=["auth"])

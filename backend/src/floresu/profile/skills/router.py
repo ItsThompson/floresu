@@ -14,26 +14,18 @@ id parameter.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
-
 from fastapi import APIRouter, Depends
 
 from floresu.core.actor import Actor
+from floresu.core.providers import ActorResolver, Identity, ServiceProvider
 from floresu.profile.skills.schemas import SkillRead, SkillReorderRequest, SkillWrite
 from floresu.profile.skills.service import SkillService
-
-# FastAPI dependencies, injected so the router never hard-codes how identity, the
-# actor, or the service are resolved (they differ per app).
-Identity = Callable[..., Any]  # resolves user_id (str): async on web, sync internal
-ActorResolver = Callable[..., Any]  # resolves the Actor (human vs named agent)
-SkillServiceProvider = Callable[..., Any]
 
 SKILLS_PATH = "/skills"
 
 
 def create_skills_router(
-    service_provider: SkillServiceProvider,
+    service_provider: ServiceProvider[SkillService],
     *,
     identity: Identity,
     actor: ActorResolver,

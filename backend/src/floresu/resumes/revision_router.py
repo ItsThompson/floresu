@@ -13,24 +13,17 @@ the render router is for cohesion only.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
-
 from fastapi import APIRouter, Depends
 
+from floresu.core.providers import Identity, ServiceProvider
 from floresu.resumes.revision_schemas import PublishedVersionList, VersionPdfUrl
 from floresu.resumes.revision_service import ResumeRevisionService
-
-# Injected so the router never hard-codes how identity or the service are resolved
-# (they differ per app), mirroring the resume render router.
-Identity = Callable[..., Any]
-ResumeRevisionServiceProvider = Callable[..., Any]
 
 RESUMES_PATH = "/resumes"
 
 
 def create_resume_revision_router(
-    service_provider: ResumeRevisionServiceProvider,
+    service_provider: ServiceProvider[ResumeRevisionService],
     *,
     identity: Identity,
 ) -> APIRouter:

@@ -12,22 +12,17 @@ mapped by the MCP ``search_experience`` tool to this internal route (section 07)
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
-
 from fastapi import APIRouter, Depends
 
+from floresu.core.providers import Identity, ServiceProvider
 from floresu.search.schemas import SearchQuery, SearchResult
 from floresu.search.service import SearchService
-
-Identity = Callable[..., Any]  # resolves user_id (str): async on web, sync internal
-SearchServiceProvider = Callable[..., Any]
 
 SEARCH_PATH = "/search"
 
 
 def create_search_router(
-    service_provider: SearchServiceProvider, *, identity: Identity
+    service_provider: ServiceProvider[SearchService], *, identity: Identity
 ) -> APIRouter:
     """Build the /search router, injecting the service and the per-app identity."""
     router = APIRouter(prefix=SEARCH_PATH, tags=["search"])

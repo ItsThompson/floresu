@@ -40,8 +40,9 @@ if TYPE_CHECKING:
 
 # Resolves the caller's ``user_id`` at the trust boundary. Async on the web app
 # (``require_user``), sync on the internal app (``require_internal_user``); the
-# union return absorbs both boundaries.
-Identity = Callable[[Request], "str | Awaitable[str]"]
+# union return absorbs both boundaries. The argument list stays open because a
+# FastAPI dependency may take the request or take nothing.
+Identity = Callable[..., "str | Awaitable[str]"]
 
 # Resolves the write provenance :class:`Actor`. ``resolve_web_actor`` takes no
 # arguments and ``resolve_internal_actor`` takes the request, so the argument
