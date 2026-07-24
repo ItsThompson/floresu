@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, Protocol
 
 from sqlalchemy import delete, func, select
 
-from floresu.core.db import fetch_optional
+from floresu.core.db import fetch_optional, owned_ids
 from floresu.resumes.models import (
     JobApplication,
     Resume,
@@ -94,14 +94,13 @@ class SqlAlchemyResumeRepository:
     async def owned_job_application_ids(
         self, user_id: int, job_application_ids: Sequence[int]
     ) -> set[int]:
-        if not job_application_ids:
-            return set()
-        result = await self._session.execute(
-            select(JobApplication.id).where(
-                JobApplication.user_id == user_id, JobApplication.id.in_(job_application_ids)
-            )
+        return await owned_ids(
+            self._session,
+            user_pk_column=JobApplication.user_id,
+            id_column=JobApplication.id,
+            user_pk=user_id,
+            candidate_ids=job_application_ids,
         )
-        return set(result.scalars().all())
 
     async def job_application_link_exists(self, job_application_id: int) -> bool:
         existing = await fetch_optional(

@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, Protocol
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 
-from floresu.core.db import fetch_optional, is_unique_violation
+from floresu.core.db import fetch_optional, group_pairs_into_dict, is_unique_violation, owned_ids
 from floresu.library.models import Bulletpoint, BulletWorklog
 from floresu.profile.models import Source
 from floresu.worklog.models import Tag, WorklogEntry, WorklogSource, WorklogTag
@@ -92,12 +92,13 @@ class SqlAlchemyWorklogRepository:
         return result.scalars().all()
 
     async def owned_source_ids(self, user_id: int, source_ids: Sequence[int]) -> set[int]:
-        if not source_ids:
-            return set()
-        result = await self._session.execute(
-            select(Source.id).where(Source.user_id == user_id, Source.id.in_(source_ids))
+        return await owned_ids(
+            self._session,
+            user_pk_column=Source.user_id,
+            id_column=Source.id,
+            user_pk=user_id,
+            candidate_ids=source_ids,
         )
-        return set(result.scalars().all())
 
     async def get_or_create_tag(self, user_id: int, label: str) -> Tag:
         existing = await self._find_tag(user_id, label)
@@ -157,10 +158,7 @@ class SqlAlchemyWorklogRepository:
             .where(WorklogTag.worklog_id.in_(worklog_ids))
             .order_by(Tag.label)
         )
-        labels: dict[int, list[str]] = {}
-        for worklog_id, label in result.all():
-            labels.setdefault(worklog_id, []).append(label)
-        return labels
+        return group_pairs_into_dict(result.tuples().all())
 
     async def source_ids_by_worklog(self, worklog_ids: Sequence[int]) -> dict[int, list[int]]:
         if not worklog_ids:
@@ -170,10 +168,7 @@ class SqlAlchemyWorklogRepository:
             .where(WorklogSource.worklog_id.in_(worklog_ids))
             .order_by(WorklogSource.source_id)
         )
-        sources: dict[int, list[int]] = {}
-        for worklog_id, source_id in result.all():
-            sources.setdefault(worklog_id, []).append(source_id)
-        return sources
+        return group_pairs_into_dict(result.tuples().all())
 
     async def bullet_ids_by_worklog(self, worklog_ids: Sequence[int]) -> dict[int, list[int]]:
         # The canonical bullets whose ``bullet_worklog`` edges point at each entry.
@@ -191,7 +186,4 @@ class SqlAlchemyWorklogRepository:
             )
             .order_by(BulletWorklog.bullet_id)
         )
-        bullets: dict[int, list[int]] = {}
-        for worklog_id, bullet_id in result.all():
-            bullets.setdefault(worklog_id, []).append(bullet_id)
-        return bullets
+        return group_pairs_into_dict(result.tuples().all())

@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from sqlalchemy import delete, select, update
 
-from floresu.core.db import fetch_optional
+from floresu.core.db import fetch_optional, group_pairs_into_dict, owned_ids
 from floresu.library.models import Bulletpoint, BulletSource, BulletWorklog
 from floresu.profile.models import Source
 from floresu.worklog.models import WorklogEntry
@@ -109,22 +109,22 @@ class SqlAlchemyLibraryRepository:
         return cast("CursorResult[Any]", result).rowcount == 1
 
     async def owned_source_ids(self, user_id: int, source_ids: Sequence[int]) -> set[int]:
-        if not source_ids:
-            return set()
-        result = await self._session.execute(
-            select(Source.id).where(Source.user_id == user_id, Source.id.in_(source_ids))
+        return await owned_ids(
+            self._session,
+            user_pk_column=Source.user_id,
+            id_column=Source.id,
+            user_pk=user_id,
+            candidate_ids=source_ids,
         )
-        return set(result.scalars().all())
 
     async def owned_worklog_ids(self, user_id: int, worklog_ids: Sequence[int]) -> set[int]:
-        if not worklog_ids:
-            return set()
-        result = await self._session.execute(
-            select(WorklogEntry.id).where(
-                WorklogEntry.user_id == user_id, WorklogEntry.id.in_(worklog_ids)
-            )
+        return await owned_ids(
+            self._session,
+            user_pk_column=WorklogEntry.user_id,
+            id_column=WorklogEntry.id,
+            user_pk=user_id,
+            candidate_ids=worklog_ids,
         )
-        return set(result.scalars().all())
 
     async def set_sources(self, bullet_id: int, source_ids: Sequence[int]) -> None:
         await self._session.execute(delete(BulletSource).where(BulletSource.bullet_id == bullet_id))
@@ -148,10 +148,7 @@ class SqlAlchemyLibraryRepository:
             .where(BulletSource.bullet_id.in_(bullet_ids))
             .order_by(BulletSource.source_id)
         )
-        sources: dict[int, list[int]] = {}
-        for bullet_id, source_id in result.all():
-            sources.setdefault(bullet_id, []).append(source_id)
-        return sources
+        return group_pairs_into_dict(result.tuples().all())
 
     async def worklog_ids_by_bullet(self, bullet_ids: Sequence[int]) -> dict[int, list[int]]:
         if not bullet_ids:
@@ -161,7 +158,4 @@ class SqlAlchemyLibraryRepository:
             .where(BulletWorklog.bullet_id.in_(bullet_ids))
             .order_by(BulletWorklog.worklog_id)
         )
-        worklogs: dict[int, list[int]] = {}
-        for bullet_id, worklog_id in result.all():
-            worklogs.setdefault(bullet_id, []).append(worklog_id)
-        return worklogs
+        return group_pairs_into_dict(result.tuples().all())
