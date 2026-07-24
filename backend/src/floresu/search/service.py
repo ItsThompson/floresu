@@ -94,8 +94,8 @@ class SearchService:
         """
         try:
             vectors = await self._provider.embed([terms])
-        except Exception as exc:  # provider outage / network / unconfigured key
-            _log.warning("search_semantic_degraded", error=str(exc))
+        except Exception:  # provider outage / network / unconfigured key
+            _log.warning("search_semantic_degraded", exc_info=True)
             return [], [SEMANTIC_UNAVAILABLE]
         semantic = await self._repo.semantic(user_id, vectors[0], filters, eligible, pool)
         return semantic, []

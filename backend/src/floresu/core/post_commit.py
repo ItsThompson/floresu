@@ -50,5 +50,5 @@ async def run_post_commit(session: AsyncSession) -> None:
     for task in tasks:
         try:
             await task()
-        except Exception as exc:  # a post-commit side channel is best-effort
-            _log.warning("post_commit_task_failed", error=str(exc))
+        except Exception:  # a post-commit side channel is best-effort
+            _log.warning("post_commit_task_failed", exc_info=True)
