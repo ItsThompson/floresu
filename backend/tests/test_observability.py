@@ -11,9 +11,10 @@ import pytest
 import structlog
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import IntegrityError
 
 from floresu.core.app_factory import create_app
-from floresu.core.db import _query_name, instrument_pool
+from floresu.core.db import _QUERY_START_KEY, _query_name, instrument_pool
 from floresu.core.errors import ErrorCode, FloresuError, NotFound
 from floresu.core.observability import FLORESU_REGISTRY, track_failures
 from floresu.core.settings import AppSettings
@@ -324,8 +325,18 @@ def test_active_connections_returns_to_baseline_after_checkin() -> None:
     ],
 )
 def test_query_name_collapses_to_a_bounded_verb(statement: str, expected: str) -> None:
-    assert _query_name(statement, {}) == expected
+    assert _query_name(statement) == expected
 
 
-def test_query_name_honors_an_explicit_execution_option() -> None:
-    assert _query_name("SELECT 1", {"query_name": "readiness_probe"}) == "readiness_probe"
+def test_raising_statement_pops_its_start_time() -> None:
+    """A statement that raises self-cleans via ``handle_error``: because
+    ``after_cursor_execute`` never fires on error, the pushed start-time would leak
+    into ``conn.info`` for the connection's whole life without the listener. A
+    unique violation is the motivating case (a normal, non-invalidating error)."""
+    engine = _make_instrumented_sqlite()
+    with engine.connect() as conn:
+        conn.execute(text("CREATE TABLE t (id INTEGER PRIMARY KEY)"))
+        conn.execute(text("INSERT INTO t (id) VALUES (1)"))
+        with pytest.raises(IntegrityError):
+            conn.execute(text("INSERT INTO t (id) VALUES (1)"))
+        assert conn.info.get(_QUERY_START_KEY) == []

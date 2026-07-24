@@ -98,16 +98,13 @@ _QUERY_START_KEY = "floresu_query_start"
 _SQL_VERBS = frozenset({"select", "insert", "update", "delete"})
 
 
-def _query_name(statement: str, execution_options: dict[str, Any]) -> str:
+def _query_name(statement: str) -> str:
     """Resolve a low-cardinality ``query_name`` label for a statement.
 
-    A repository may tag a statement via ``execution_options(query_name=...)``;
-    absent that, the label collapses to the SQL verb (``select``/``insert``/
-    ``update``/``delete``) or ``other``, so the label set stays bounded.
+    The label collapses to the leading SQL verb (``select``/``insert``/``update``/
+    ``delete``) or ``other``, so ``db_query_duration_seconds`` stays bounded to at
+    most five series backend-wide.
     """
-    named = execution_options.get("query_name")
-    if isinstance(named, str) and named:
-        return named
     head = statement.lstrip().split(None, 1)
     verb = head[0].lower() if head else ""
     return verb if verb in _SQL_VERBS else "other"
@@ -118,8 +115,11 @@ def instrument_pool(engine: AsyncEngine) -> None:
 
     Emits ``db_query_duration_seconds{query_name}`` around every statement and
     tracks ``active_connections`` as connections are checked out of and back into
-    the pool. Attached to the async engine's underlying sync engine, which is where
-    the pool and cursor events fire.
+    the pool. A statement that raises pops its pushed start-time via ``handle_error``
+    (``after_cursor_execute`` never fires on error), so a non-invalidating failure
+    such as a unique violation does not leak start-times into ``conn.info``. Attached
+    to the async engine's underlying sync engine, which is where the pool and cursor
+    events fire.
     """
     sync_engine = engine.sync_engine
 
@@ -147,8 +147,14 @@ def instrument_pool(engine: AsyncEngine) -> None:
         if not starts:
             return
         elapsed = time.perf_counter() - starts.pop()
-        options = dict(getattr(context, "execution_options", {}) or {})
-        DB_QUERY_DURATION.labels(query_name=_query_name(statement, options)).observe(elapsed)
+        DB_QUERY_DURATION.labels(query_name=_query_name(statement)).observe(elapsed)
+
+    @event.listens_for(sync_engine, "handle_error")
+    def _on_error(context: Any) -> None:
+        conn = getattr(context, "connection", None)
+        starts = getattr(conn, "info", {}).get(_QUERY_START_KEY) if conn is not None else None
+        if starts:
+            starts.pop()
 
     @event.listens_for(sync_engine, "checkout")
     def _checkout(dbapi_connection: Any, connection_record: Any, connection_proxy: Any) -> None:
