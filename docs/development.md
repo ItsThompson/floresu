@@ -105,7 +105,7 @@ Run `just resume-goldens` only after bumping the current schema version and regi
 
 ## Environment variables
 
-`.env.example` is the canonical annotated list of the dev/local variables. The production, non-secret half is committed in `.env.prod`. The variables group by consumer (from `core/settings.py`):
+`.env.example` is the canonical annotated list of the dev/local variables. The production, non-secret half is committed in `.env.prod`. The backend and internal apps read their variables through `core/settings.py`; the MCP server and the worker read theirs through their own settings modules (`mcp/src/floresu_mcp/settings.py`, `worker/src/floresu_worker/settings.py`). The variables group by consumer:
 
 | Group | Keys | Purpose |
 |-------|------|---------|

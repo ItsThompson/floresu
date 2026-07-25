@@ -178,7 +178,7 @@ Media type `application/problem+json`. Members: `type`, `title`, `status`, `code
 
 ### Error codes
 
-`code` is the `ErrorCode` StrEnum (`core/errors.py`). It is the whole product vocabulary; domains do not add codes.
+`code` is the `ErrorCode` StrEnum (`core/errors.py`). It is the base HTTP vocabulary every service raises, and the whole product vocabulary today: no domain currently adds a code (the module docstring leaves that open for a future domain-specific code, but none exists).
 
 | Code | Status | Meaning |
 |------|--------|---------|
