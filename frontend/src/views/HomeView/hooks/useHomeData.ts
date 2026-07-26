@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useSessionClient } from "@/api";
 
 import { WORKLOG_PREVIEW_COUNT } from "../constants";
-import { recentWorklog } from "../recentWorklog";
+import { selectRecentWorklog } from "../recentWorklog";
 import type { HomeData, HomeSection, ResumeSummary, WorklogSummary } from "../types";
 
 /**
@@ -34,7 +34,7 @@ export function useHomeData(): HomeData {
       .then(({ data, error }) => {
         if (cancelled) return;
         if (error || !data) setWorklog({ items: [], status: "error" });
-        else setWorklog({ items: recentWorklog(data, WORKLOG_PREVIEW_COUNT), status: "ready" });
+        else setWorklog({ items: selectRecentWorklog(data, WORKLOG_PREVIEW_COUNT), status: "ready" });
       })
       .catch(() => {
         if (!cancelled) setWorklog({ items: [], status: "error" });
