@@ -34,7 +34,7 @@ export function AddSectionControl({ onAddSection }: AddSectionControlProps) {
   if (draft === null) {
     return (
       <Button variant="outline" size="sm" onClick={() => setDraft({ kind: DEFAULT_SECTION_KIND, title: "" })}>
-        <Plus aria-hidden /> add section
+        <Plus aria-hidden /> New section
       </Button>
     );
   }
@@ -45,7 +45,10 @@ export function AddSectionControl({ onAddSection }: AddSectionControlProps) {
         <select
           aria-label="Section kind"
           value={draft.kind}
-          onChange={(event) => setDraft({ ...draft, kind: event.target.value as SectionKind })}
+          onChange={(event) => {
+            const selected = SECTION_KIND_OPTIONS.find((option) => option.kind === event.target.value);
+            if (selected) setDraft({ ...draft, kind: selected.kind });
+          }}
           className="border-input bg-background h-8 rounded-md border px-2 text-sm"
         >
           {SECTION_KIND_OPTIONS.map((option) => (

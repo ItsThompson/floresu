@@ -284,7 +284,7 @@ describe("ResumeEditorView", () => {
 
     expect(await screen.findByText("Work Experience")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /pull from library/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "add section" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "New section" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Resume title")).toBeDisabled();
   });
 
@@ -299,10 +299,10 @@ describe("ResumeEditorView", () => {
     const user = userEvent.setup();
 
     // A blank resume offers the add-section control, not the old dead-end copy.
-    expect(await screen.findByRole("button", { name: "add section" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "New section" })).toBeInTheDocument();
     expect(screen.queryByText(/no sections yet/i)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "add section" }));
+    await user.click(screen.getByRole("button", { name: "New section" }));
     await user.selectOptions(screen.getByLabelText("Section kind"), "projects");
     await user.type(screen.getByLabelText("Section title"), "Side Projects");
     await user.click(screen.getByRole("button", { name: "Add section" }));
@@ -329,7 +329,7 @@ describe("ResumeEditorView", () => {
     const user = userEvent.setup();
 
     // Add the first section (a blank title falls back to the kind's default label).
-    await user.click(await screen.findByRole("button", { name: "add section" }));
+    await user.click(await screen.findByRole("button", { name: "New section" }));
     await user.click(screen.getByRole("button", { name: "Add section" }));
     expect(await screen.findByText("Work Experience")).toBeInTheDocument();
 

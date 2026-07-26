@@ -88,10 +88,10 @@ test("build a resume from blank on the web: add section, pull a bullet, add inli
   await page.goto(`/resumes/${resumeId}`);
 
   // A blank resume shows the add-section control, not a dead-end message.
-  await expect(page.getByRole("button", { name: "add section", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "New section", exact: true })).toBeVisible();
 
   // Add the first section through the web control.
-  await page.getByRole("button", { name: "add section", exact: true }).click();
+  await page.getByRole("button", { name: "New section", exact: true }).click();
   await page.getByLabel("Section kind").selectOption("work");
   await page.getByLabel("Section title").fill("Experience");
   await page.getByRole("button", { name: "Add section", exact: true }).click();
