@@ -11,9 +11,10 @@ interface UseOnboarding {
 /**
  * The onboarding state machine: the current step index plus the completion
  * lifecycle. Order and count come entirely from `STEPS`, so the steps hold no
- * counter of their own. `completeOnboarding` and `onComplete` are injected (the
- * boundary to the auth session and the router), which keeps this hook a pure,
- * independently testable unit.
+ * counter of their own. `completeOnboarding`, `onComplete`, and
+ * `onCompleteManual` are injected (the boundary to the auth session and the two
+ * router destinations), which keeps this hook a pure, independently testable
+ * unit.
  */
 export function useOnboarding({ completeOnboarding, onComplete, onCompleteManual }: UseOnboardingParams): UseOnboarding {
   const [stepIndex, setStepIndex] = useState(0);
