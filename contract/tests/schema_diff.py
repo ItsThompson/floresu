@@ -25,6 +25,7 @@ import enum
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime
+from types import UnionType
 from typing import Any, Literal, Union, get_args, get_origin
 
 from pydantic import BaseModel
@@ -108,7 +109,9 @@ def parse(ann: Any) -> Node:
     ann = _unwrap_annotated(ann)
     origin = get_origin(ann)
 
-    if origin is Union:
+    # `X | Y` (PEP 604) and `typing.Union[X, Y]` are distinct origins on
+    # Python < 3.14 (`types.UnionType` vs `typing.Union`); accept both.
+    if origin is Union or origin is UnionType:
         args = get_args(ann)
         non_none = [a for a in args if a is not _NONE_TYPE]
         optional = len(non_none) != len(args)
