@@ -1,6 +1,6 @@
 """External REST adapter for the live activity feed.
 
-Two session-authed routes on the external app:
+Three session-authed routes on the external app:
 
 - ``GET /feed`` is the SSE stream. It resolves the caller's ``user_id`` from the
   session cookie, reads the ``Last-Event-ID`` the browser's ``EventSource`` sends
@@ -9,8 +9,10 @@ Two session-authed routes on the external app:
 - ``GET /feed/history`` is the initial page load: the recent audit rows,
   newest-first, that the client renders before opening the stream and dedups the
   live events against.
+- ``GET /feed/history/{entity_type}/{entity_id}`` is one item's audit trail,
+  newest-first, for the per-item history view.
 
-Both take no client-supplied id: the account is always the session-resolved
+All take no client-supplied id: the account is always the session-resolved
 identity. Mounted on the external app only.
 """
 
@@ -75,5 +77,14 @@ def create_feed_router(
         service: AuditService = Depends(audit_service_provider),
     ) -> list[AuditEntry]:
         return await service.activity_feed(user_id)
+
+    @router.get("/feed/history/{entity_type}/{entity_id}")
+    async def item_history(
+        entity_type: str,
+        entity_id: int,
+        user_id: str = Depends(identity),
+        service: AuditService = Depends(audit_service_provider),
+    ) -> list[AuditEntry]:
+        return await service.item_history(user_id, entity_type, entity_id)
 
     return router

@@ -162,10 +162,11 @@ EXTERNAL_ROUTE_ACCESS: RouteRegistry = {
     RouteKey("DELETE", "/resumes/{resume_id}"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("GET", "/account/export"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("DELETE", "/account"): AccessLevel.EXTERNAL_COOKIE,
-    # Live activity feed (external app only): the SSE stream and the initial-load
-    # read both require the human session cookie.
+    # Live activity feed (external app only): the SSE stream, the initial-load read,
+    # and the per-item history read all require the human session cookie.
     RouteKey("GET", "/feed"): AccessLevel.EXTERNAL_COOKIE,
     RouteKey("GET", "/feed/history"): AccessLevel.EXTERNAL_COOKIE,
+    RouteKey("GET", "/feed/history/{entity_type}/{entity_id}"): AccessLevel.EXTERNAL_COOKIE,
     # Hybrid search: the query/retrieval API backing the Library search view. The
     # web boundary resolves the human session cookie; the same route mounts on the
     # internal app for the agent's search_experience tool (below).
