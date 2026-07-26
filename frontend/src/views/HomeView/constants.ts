@@ -1,27 +1,6 @@
 import type { FeedEvent } from "./types";
 
 /**
- * Past-tense labels for the closed content-write action set (the backend's
- * `core/events` Action). An unknown action falls back to its raw verb.
- */
-const ACTION_LABELS: Record<string, string> = {
-  create: "created",
-  update: "updated",
-  archive: "archived",
-  restore: "restored",
-  delete: "deleted",
-  finalize: "finalized",
-  promote: "promoted",
-  reorder: "reordered",
-  render: "rendered",
-  tag: "tagged",
-};
-
-export function actionLabel(action: string): string {
-  return ACTION_LABELS[action] ?? action;
-}
-
-/**
  * Route builders per entity type, each mapping to a path that exists in
  * `routes.tsx`. Builders for a detail route take the entity id; those that open a
  * list ignore it. Mirrors the `libraryBulletHref`/`sourceDetailHref` builders so

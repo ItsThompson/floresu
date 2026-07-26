@@ -1,8 +1,7 @@
 import { Bot } from "lucide-react";
 
+import type { components } from "@/api";
 import { colorForName } from "@/lib/colorForName";
-
-import type { FeedEvent } from "../types";
 
 // The human actor is always the design language's coral, never the hashed
 // palette: "you" reads the same everywhere. Agents take a hashed color from
@@ -10,14 +9,15 @@ import type { FeedEvent } from "../types";
 const HUMAN_CORAL = "hsl(6 78% 63%)";
 
 interface ActorAvatarProps {
-  actorType: FeedEvent["actor_type"];
+  actorType: components["schemas"]["AuditEntry"]["actor_type"];
   actorLabel: string | null;
 }
 
 /**
  * The actor's identity chip: a colored circular avatar with an initial. Human and
  * agent are distinguished by BOTH color and shape (agents carry a bot glyph badge,
- * the human does not), never color alone, per the accessibility rule.
+ * the human does not), never color alone, per the accessibility rule. Shared by
+ * every audit-read surface: the activity feed and per-item history.
  */
 export function ActorAvatar({ actorType, actorLabel }: ActorAvatarProps) {
   const isAgent = actorType === "agent";

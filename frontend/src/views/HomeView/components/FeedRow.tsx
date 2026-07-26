@@ -1,10 +1,11 @@
 import { Link } from "react-router";
 
+import { ActorAvatar } from "@/components/ActorAvatar";
+import { actionLabel } from "@/lib/actionLabel";
 import { cn } from "@/lib/utils";
 
-import { actionLabel, entityHref, entityLabel } from "../constants";
+import { entityHref, entityLabel } from "../constants";
 import type { FeedEvent } from "../types";
-import { ActorAvatar } from "./ActorAvatar";
 
 interface FeedRowProps {
   event: FeedEvent;
