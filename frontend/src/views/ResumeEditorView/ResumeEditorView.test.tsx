@@ -430,7 +430,7 @@ describe("ResumeEditorView", () => {
     renderApp(["/resumes/1"]);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("button", { name: /new/i }));
+    await user.click(await screen.findByRole("button", { name: /^new$/i }));
     await user.type(screen.getByLabelText("New bullet text"), "A fresh inline bullet");
     await user.click(screen.getByRole("button", { name: "Add" }));
 
