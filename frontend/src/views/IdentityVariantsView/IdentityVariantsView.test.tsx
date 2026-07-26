@@ -168,4 +168,53 @@ describe("IdentityVariantsView", () => {
     // The replacement selector offers the other (non-archived) variant.
     expect(within(dialog).getByRole("option", { name: "Primary" })).toBeInTheDocument();
   });
+
+  it("posts the chosen replacement and closes the prompt on confirm", async () => {
+    mockVariantsList([primary, alt]);
+    let archiveBody: { replacement_variant_id?: number } | null = null;
+    server.use(
+      http.post("*/identity-variants/:id/archive", async ({ request, params }) => {
+        const raw = await request.text();
+        const body = raw ? (JSON.parse(raw) as { replacement_variant_id?: number }) : {};
+        if (body.replacement_variant_id == null) {
+          return HttpResponse.json(
+            {
+              detail: "This variant is referenced by a living resume.",
+              code: "VALIDATION",
+              violations: [
+                {
+                  rule: "identity_variant_replacement_required",
+                  ids: ["7"],
+                  message: "referenced by resume 7",
+                },
+              ],
+            },
+            { status: 422 },
+          );
+        }
+        archiveBody = body;
+        return HttpResponse.json({
+          ...alt,
+          id: Number(params.id),
+          archived_at: "2026-01-01T00:00:00Z",
+        });
+      }),
+    );
+
+    renderWithProviders(<IdentityVariantsView />);
+    const user = userEvent.setup();
+    await screen.findByText("Recruiting");
+
+    await user.click(screen.getByRole("button", { name: "Archive Recruiting" }));
+    const dialog = await screen.findByRole("dialog", { name: "Pick a replacement variant" });
+    // The lone candidate (Primary, id 1) is preselected; confirm posts it.
+    await user.click(within(dialog).getByRole("button", { name: "Archive and re-point" }));
+
+    await waitFor(() => expect(archiveBody).toMatchObject({ replacement_variant_id: 1 }));
+    // The prompt closes and the archived variant leaves the list.
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Pick a replacement variant" })).toBeNull(),
+    );
+    expect(screen.queryByText("Recruiting")).toBeNull();
+  });
 });

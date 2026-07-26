@@ -7,7 +7,7 @@ import { extractProblem } from "@/lib/problemDetail";
 export type IdentityVariantRead = components["schemas"]["IdentityVariantRead"];
 export type IdentityVariantWrite = components["schemas"]["IdentityVariantWrite"];
 
-/** The signal a referenced variant raises on archive; the resume-side re-point is Ticket 28. */
+/** The rule a referenced-variant archive raises, so the hook can drive the replacement prompt. */
 export const REPLACEMENT_REQUIRED_RULE = "identity_variant_replacement_required";
 
 export type VariantsStatus = "loading" | "ready" | "error";
@@ -31,6 +31,7 @@ export interface VariantsActions {
   update: (id: number, write: IdentityVariantWrite) => Promise<boolean>;
   setDefault: (id: number) => void;
   archive: (id: number) => void;
+  archiveWithReplacement: (replacementId: number) => void;
   dismissError: () => void;
   dismissReplacementPrompt: () => void;
 }
@@ -40,8 +41,9 @@ export interface VariantsActions {
  * archive-block rules are enforced by the backend; this hook surfaces their
  * outcomes. Archiving a variant a living resume references returns a structured
  * replacement-required violation, which becomes the replacement prompt the view
- * renders. Create/update resolve to a boolean so the form can close only on a
- * committed write.
+ * renders; confirming it posts the chosen replacement so the backend re-points the
+ * referencing resumes and archives the original atomically. Create/update resolve
+ * to a boolean so the form can close only on a committed write.
  */
 export function useIdentityVariants(): { state: VariantsState; actions: VariantsActions } {
   const client = useSessionClient();
@@ -152,9 +154,43 @@ export function useIdentityVariants(): { state: VariantsState; actions: Variants
   const dismissError = useCallback(() => setActionError(null), []);
   const dismissReplacementPrompt = useCallback(() => setReplacementPrompt(null), []);
 
+  const archiveWithReplacement = useCallback(
+    (replacementId: number) => {
+      if (!replacementPrompt) return;
+      const id = replacementPrompt.variantId;
+      setActionError(null);
+      void client
+        .POST("/identity-variants/{variant_id}/archive", {
+          params: { path: { variant_id: id } },
+          body: { replacement_variant_id: replacementId },
+        })
+        .then(({ error }) => {
+          setReplacementPrompt(null);
+          if (error) {
+            setActionError(extractProblem(error).message);
+            return;
+          }
+          setVariants((current) => current.filter((variant) => variant.id !== id));
+        })
+        .catch(() => {
+          setReplacementPrompt(null);
+          setActionError("Could not archive that variant.");
+        });
+    },
+    [client, replacementPrompt],
+  );
+
   return {
     state: { status, variants, actionError, replacementPrompt },
-    actions: { create, update, setDefault, archive, dismissError, dismissReplacementPrompt },
+    actions: {
+      create,
+      update,
+      setDefault,
+      archive,
+      archiveWithReplacement,
+      dismissError,
+      dismissReplacementPrompt,
+    },
   };
 }
 

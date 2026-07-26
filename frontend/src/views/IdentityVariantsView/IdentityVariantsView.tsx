@@ -96,7 +96,7 @@ export function IdentityVariantsView() {
           prompt={state.replacementPrompt}
           candidates={state.variants.filter((v) => v.id !== state.replacementPrompt?.variantId)}
           onCancel={actions.dismissReplacementPrompt}
-          onConfirm={() => actions.dismissReplacementPrompt()}
+          onConfirm={actions.archiveWithReplacement}
         />
       )}
     </section>

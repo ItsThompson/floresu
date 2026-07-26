@@ -9,15 +9,15 @@ interface ReplacementPromptDialogProps {
   /** Active variants other than the one being archived, offered as replacements. */
   candidates: IdentityVariantRead[];
   onCancel: () => void;
-  /** Records the chosen replacement; the resume re-point is wired in the resume editor. */
+  /** Posts the chosen replacement; the backend re-points the referencing resumes and archives. */
   onConfirm: (replacementId: number) => void;
 }
 
 /**
  * Shown when archiving a variant that a living resume references. It surfaces how
  * many resumes reference it and lets the user pick which variant those resumes
- * should use instead. Applying the re-point across the referencing resumes is the
- * resume editor's job; this dialog surfaces the prompt and the chosen replacement.
+ * should use instead. Confirming posts the choice; the backend re-points every
+ * referencing resume to it and archives the original in one atomic operation.
  */
 export function ReplacementPromptDialog({
   prompt,
@@ -73,7 +73,7 @@ export function ReplacementPromptDialog({
             disabled={replacementId === null}
             onClick={() => replacementId !== null && onConfirm(replacementId)}
           >
-            Continue
+            Archive and re-point
           </Button>
         </div>
       </div>
