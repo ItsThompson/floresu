@@ -56,3 +56,4 @@ def test_internal_app_does_not_serve_the_feed_routes() -> None:
     paths = {key.path for key in mounted_product_routes(internal_app)}
     assert "/feed" not in paths
     assert "/feed/history" not in paths
+    assert "/feed/history/{entity_type}/{entity_id}" not in paths

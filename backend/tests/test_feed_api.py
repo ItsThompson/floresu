@@ -16,9 +16,16 @@ from starlette.testclient import TestClient
 
 from floresu.audit.service import AuditService
 from floresu.core.errors import build_exception_handlers
+from floresu.core.events import Action
 from floresu.feed.api import create_feed_router
 from floresu.feed.wiring import FEED_STORE_ATTR
-from tests.audit_fakes import InMemoryAuditRepository, build_audit_entry, build_write_event
+from tests.audit_fakes import (
+    InMemoryAuditRepository,
+    agent_actor,
+    build_audit_entry,
+    build_write_event,
+    human_actor,
+)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Sequence
@@ -135,6 +142,97 @@ def test_feed_history_malformed_identity_returns_401_not_200_empty() -> None:
 
     # A malformed identity is rejected at the read boundary, matching /feed (SSE)
     # rather than the former 200-empty answer.
+    assert response.status_code == 401
+    assert response.headers["content-type"] == "application/problem+json"
+    assert response.json()["detail"] == "Session is invalid or expired."
+
+
+def test_item_history_returns_one_items_rows_newest_first() -> None:
+    repo = InMemoryAuditRepository()
+    service = AuditService(repo)
+    store = _FakeStore(replay=[], live=[])
+    client = TestClient(_build_app(store, service))
+
+    import asyncio
+
+    async def seed() -> None:
+        # A human create then an agent update on the target item, plus an unrelated
+        # item that must never leak into the target's history.
+        await service.append(
+            build_write_event(user_id=1, entity_type="worklog", entity_id=10, actor=human_actor())
+        )
+        await service.append(
+            build_write_event(
+                user_id=1,
+                entity_type="worklog",
+                entity_id=10,
+                action=Action.UPDATE,
+                actor=agent_actor("claude"),
+            )
+        )
+        await service.append(build_write_event(user_id=1, entity_type="worklog", entity_id=11))
+
+    asyncio.run(seed())
+
+    response = client.get("/feed/history/worklog/10")
+
+    assert response.status_code == 200
+    rows = response.json()
+    # Only the target item's rows, newest-first, reflecting both actors.
+    assert [row["entity_id"] for row in rows] == [10, 10]
+    assert rows[0]["actor_type"] == "agent"
+    assert rows[0]["actor_label"] == "claude"
+    assert rows[0]["action"] == "update"
+    assert rows[1]["actor_type"] == "human"
+    assert rows[1]["action"] == "create"
+    assert rows[0]["id"] > rows[1]["id"]
+
+
+def test_item_history_is_scoped_to_the_signed_in_account() -> None:
+    repo = InMemoryAuditRepository()
+    service = AuditService(repo)
+    store = _FakeStore(replay=[], live=[])
+    # The request resolves to account 1; account 2 wrote to the same (type, id).
+    client = TestClient(_build_app(store, service, user_id="1"))
+
+    import asyncio
+
+    async def seed() -> None:
+        await service.append(build_write_event(user_id=1, entity_type="worklog", entity_id=10))
+        await service.append(build_write_event(user_id=2, entity_type="worklog", entity_id=10))
+
+    asyncio.run(seed())
+
+    response = client.get("/feed/history/worklog/10")
+
+    assert response.status_code == 200
+    rows = response.json()
+    # Only account 1's row is returned; the other account's write never leaks.
+    assert len(rows) == 1
+    assert rows[0]["action"] == "create"
+
+
+def test_item_history_with_no_rows_returns_empty_not_error() -> None:
+    repo = InMemoryAuditRepository()
+    service = AuditService(repo)
+    store = _FakeStore(replay=[], live=[])
+    client = TestClient(_build_app(store, service))
+
+    response = client.get("/feed/history/worklog/999")
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_item_history_malformed_identity_returns_401() -> None:
+    repo = InMemoryAuditRepository()
+    service = AuditService(repo)
+    store = _FakeStore(replay=[], live=[])
+    client = TestClient(_build_app(store, service, user_id="not-a-pk"))
+
+    response = client.get("/feed/history/worklog/10")
+
+    # A bad session is rejected exactly like every other session-authed read.
     assert response.status_code == 401
     assert response.headers["content-type"] == "application/problem+json"
     assert response.json()["detail"] == "Session is invalid or expired."
