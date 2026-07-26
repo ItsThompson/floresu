@@ -86,7 +86,7 @@ describe("OnboardingView wizard", () => {
     expect(await screen.findByRole("heading", { name: "Welcome to Floresu" })).toBeInTheDocument();
   });
 
-  it("completes and lands on Home when the manual path is chosen", async () => {
+  it("completes onboarding and opens the worklog entry form when the manual path is chosen", async () => {
     startNotOnboarded();
     renderApp(["/onboarding"]);
     const user = userEvent.setup();
@@ -94,7 +94,30 @@ describe("OnboardingView wizard", () => {
     await user.click(await screen.findByRole("button", { name: "Get started" }));
     await user.click(await screen.findByRole("button", { name: /Start manually/ }));
 
-    expect(await screen.findByRole("heading", { name: "Home" })).toBeInTheDocument();
+    // Lands on the worklog with the new-entry form already open. Reaching an
+    // in-app route proves the flag flipped: otherwise the onboarding guard would
+    // bounce it back to the wizard.
+    expect(await screen.findByRole("form", { name: "Add entry" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Worklog" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "How do you want to start?" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the user in the wizard with an inline error when the manual completion fails", async () => {
+    startNotOnboarded();
+    server.use(http.post("*/me/onboarding", () => new HttpResponse(null, { status: 500 })));
+    renderApp(["/onboarding"]);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Get started" }));
+    await user.click(await screen.findByRole("button", { name: /Start manually/ }));
+
+    // The failure contract (US-ONB-03): the inline error shows and no navigation
+    // happens, so the choice step stays put and the entry form never opens.
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "How do you want to start?" })).toBeInTheDocument();
+    expect(screen.queryByRole("form", { name: "Add entry" })).not.toBeInTheDocument();
   });
 
   it("completes and lands on Home when skipped, leaving the wizard behind", async () => {

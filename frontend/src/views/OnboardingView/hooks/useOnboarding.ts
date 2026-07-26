@@ -15,7 +15,7 @@ interface UseOnboarding {
  * boundary to the auth session and the router), which keeps this hook a pure,
  * independently testable unit.
  */
-export function useOnboarding({ completeOnboarding, onComplete }: UseOnboardingParams): UseOnboarding {
+export function useOnboarding({ completeOnboarding, onComplete, onCompleteManual }: UseOnboardingParams): UseOnboarding {
   const [stepIndex, setStepIndex] = useState(0);
   const [phase, setPhase] = useState<OnboardingPhase>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -28,19 +28,30 @@ export function useOnboarding({ completeOnboarding, onComplete }: UseOnboardingP
     setStepIndex((current) => Math.max(current - 1, 0));
   }, []);
 
-  const complete = useCallback(() => {
-    setPhase("submitting");
-    setError(null);
-    void completeOnboarding().then((result) => {
-      if (result.ok) {
-        onComplete();
-        return;
-      }
-      // A failed completion keeps the user in the wizard with an inline error.
-      setPhase("error");
-      setError(result.message);
-    });
-  }, [completeOnboarding, onComplete]);
+  // The shared completion side effect: persist onboarding, then run the given
+  // success navigation. A failed completion keeps the user in the wizard with an
+  // inline error, whichever path triggered it.
+  const runCompletion = useCallback(
+    (onSuccess: () => void) => {
+      setPhase("submitting");
+      setError(null);
+      void completeOnboarding().then((result) => {
+        if (result.ok) {
+          onSuccess();
+          return;
+        }
+        setPhase("error");
+        setError(result.message);
+      });
+    },
+    [completeOnboarding],
+  );
+
+  const complete = useCallback(() => runCompletion(onComplete), [runCompletion, onComplete]);
+  const completeManual = useCallback(
+    () => runCompletion(onCompleteManual),
+    [runCompletion, onCompleteManual],
+  );
 
   const state = useMemo<OnboardingState>(
     () => ({
@@ -56,8 +67,8 @@ export function useOnboarding({ completeOnboarding, onComplete }: UseOnboardingP
   );
 
   const actions = useMemo<OnboardingActions>(
-    () => ({ goNext, goBack, complete }),
-    [goNext, goBack, complete],
+    () => ({ goNext, goBack, complete, completeManual }),
+    [goNext, goBack, complete, completeManual],
   );
 
   return { state, actions };

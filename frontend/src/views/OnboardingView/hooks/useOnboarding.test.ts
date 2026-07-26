@@ -5,18 +5,20 @@ import { describe, expect, it, vi } from "vitest";
 import { useOnboarding } from "./useOnboarding";
 
 /**
- * `completeOnboarding` and `onComplete` are the hook's real external boundaries
- * (the auth session and the router), so they are the appropriate things to
- * substitute. Everything else runs for real.
+ * `completeOnboarding`, `onComplete`, and `onCompleteManual` are the hook's real
+ * external boundaries (the auth session and the two router destinations), so they
+ * are the appropriate things to substitute. Everything else runs for real.
  */
 function renderOnboarding(overrides?: {
   completeOnboarding?: () => Promise<{ ok: true } | { ok: false; message: string }>;
   onComplete?: () => void;
+  onCompleteManual?: () => void;
 }) {
   const completeOnboarding = overrides?.completeOnboarding ?? vi.fn().mockResolvedValue({ ok: true });
   const onComplete = overrides?.onComplete ?? vi.fn();
-  const view = renderHook(() => useOnboarding({ completeOnboarding, onComplete }));
-  return { ...view, completeOnboarding, onComplete };
+  const onCompleteManual = overrides?.onCompleteManual ?? vi.fn();
+  const view = renderHook(() => useOnboarding({ completeOnboarding, onComplete, onCompleteManual }));
+  return { ...view, completeOnboarding, onComplete, onCompleteManual };
 }
 
 describe("useOnboarding", () => {
@@ -75,6 +77,36 @@ describe("useOnboarding", () => {
     });
 
     expect(onComplete).not.toHaveBeenCalled();
+    expect(result.current.state.phase).toBe("error");
+    expect(result.current.state.error).toBe("Could not save. Try again.");
+  });
+
+  it("routes the manual path to onCompleteManual on success, not onComplete", async () => {
+    const completeOnboarding = vi.fn().mockResolvedValue({ ok: true });
+    const onComplete = vi.fn();
+    const onCompleteManual = vi.fn();
+    const { result } = renderOnboarding({ completeOnboarding, onComplete, onCompleteManual });
+
+    await act(async () => {
+      result.current.actions.completeManual();
+    });
+
+    expect(completeOnboarding).toHaveBeenCalledTimes(1);
+    expect(onCompleteManual).toHaveBeenCalledTimes(1);
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(result.current.state.error).toBeNull();
+  });
+
+  it("keeps the manual path in the wizard with an inline error when persistence fails", async () => {
+    const completeOnboarding = vi.fn().mockResolvedValue({ ok: false, message: "Could not save. Try again." });
+    const onCompleteManual = vi.fn();
+    const { result } = renderOnboarding({ completeOnboarding, onCompleteManual });
+
+    await act(async () => {
+      result.current.actions.completeManual();
+    });
+
+    expect(onCompleteManual).not.toHaveBeenCalled();
     expect(result.current.state.phase).toBe("error");
     expect(result.current.state.error).toBe("Could not save. Try again.");
   });

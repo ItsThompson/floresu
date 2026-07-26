@@ -27,15 +27,19 @@ export interface OnboardingActions {
   goNext: () => void;
   /** Return to the previous step (never before the first). */
   goBack: () => void;
-  /** Finish onboarding (skip, finish the last step, or choose the manual path). */
+  /** Finish onboarding via skip or the final step, then navigate Home. */
   complete: () => void;
+  /** Finish onboarding via the manual path, then open the first entry form. */
+  completeManual: () => void;
 }
 
 export interface UseOnboardingParams {
   /** Persists onboarding completion; resolves to an `AuthResult` (never throws). */
   completeOnboarding: () => Promise<AuthResult>;
-  /** Called after a successful completion (navigates the user into the app). */
+  /** Called after a successful completion via skip or the final step (navigates Home). */
   onComplete: () => void;
+  /** Called after a successful completion via the manual path (opens the entry form). */
+  onCompleteManual: () => void;
 }
 
 /** Configuration sourced once at the view root and threaded to the steps as props. */
