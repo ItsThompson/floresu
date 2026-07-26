@@ -1,4 +1,16 @@
-import type { ResumeItem, ResumeRecord, ResumeSection, ResumeUpdate } from "./types";
+import type { ResumeItem, ResumeRecord, ResumeSection, ResumeUpdate, SectionKind } from "./types";
+
+/** Mint a fresh section id, unique within the document (section ids are client-minted in this contract). */
+function mintSectionId(): string {
+  return `sec-${crypto.randomUUID()}`;
+}
+
+/** Append an empty section with a fresh id and return the full-document write body. */
+export function withNewSection(record: ResumeRecord, kind: SectionKind, title: string): ResumeUpdate {
+  const section: ResumeSection = { id: mintSectionId(), kind, title, item_order: [], items: {} };
+  const sections = [...(record.document.sections ?? []), section];
+  return toResumeUpdate(record, { sections });
+}
 
 /** Build the full-document write body from a record, with optional field overrides. */
 export function toResumeUpdate(record: ResumeRecord, overrides?: Partial<ResumeUpdate>): ResumeUpdate {

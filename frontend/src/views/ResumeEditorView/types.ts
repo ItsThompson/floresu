@@ -3,6 +3,7 @@ import type { LoadState, WriteState } from "@/lib/asyncState";
 
 export type ResumeRecord = components["schemas"]["ResumeRecord"];
 export type ResumeSection = components["schemas"]["ResumeSection"];
+export type SectionKind = components["schemas"]["SectionKind"];
 export type LibraryRefItem = components["schemas"]["LibraryRefItem"];
 export type LocalItem = components["schemas"]["LocalItem"];
 export type ResumeItem = LibraryRefItem | LocalItem;
@@ -52,6 +53,8 @@ export interface ResumeEditorActions {
   /** Apply the pending shared-bullet edit with the chosen scope. */
   resolveScope: (scope: ResumeEditScope) => void;
   cancelScope: () => void;
+  /** Append an empty section (client-minted id) to a blank or existing resume. */
+  addSection: (kind: SectionKind, title: string) => void;
   addLibraryItem: (sectionId: string, bulletId: number) => void;
   addInlineItem: (sectionId: string, text: string) => void;
   removeItem: (itemId: string) => void;

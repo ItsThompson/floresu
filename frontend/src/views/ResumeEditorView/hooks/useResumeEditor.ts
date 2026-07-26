@@ -4,7 +4,7 @@ import { useSessionClient } from "@/api";
 import type { LoadState, WriteState } from "@/lib/asyncState";
 import { extractProblem } from "@/lib/problemDetail";
 
-import { toResumeUpdate, withLocalItemText } from "../documentOps";
+import { toResumeUpdate, withLocalItemText, withNewSection } from "../documentOps";
 import type {
   BulletpointRecord,
   IdentityVariant,
@@ -13,6 +13,7 @@ import type {
   ResumeItem,
   ResumeRecord,
   ScopePromptContext,
+  SectionKind,
   TemplateInfo,
 } from "../types";
 
@@ -185,6 +186,16 @@ export function useResumeEditor(resumeId: number): ResumeEditor {
       if (scopePrompt) void submitBulletEdit(scopePrompt.bulletId, scopePrompt.newText, scope);
     },
     cancelScope: () => setScopePrompt(null),
+    addSection: (kind: SectionKind, title: string) => {
+      const current = recordRef.current;
+      if (!current) return;
+      void runWrite(() =>
+        client.PUT("/resumes/{resume_id}", {
+          params: { path: { resume_id: current.id }, header: ifMatch() },
+          body: withNewSection(current, kind, title),
+        }),
+      );
+    },
     addLibraryItem: (sectionId, bulletId) => {
       const current = recordRef.current;
       if (!current) return;

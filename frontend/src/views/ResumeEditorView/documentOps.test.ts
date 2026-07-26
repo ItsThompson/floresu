@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { buildLibraryRefItem, buildLocalItem, buildResumeRecord, buildSection } from "@/mocks/resumeFixtures";
 
-import { moveInOrder, orderedItems, toResumeUpdate, withLocalItemText } from "./documentOps";
+import { moveInOrder, orderedItems, toResumeUpdate, withLocalItemText, withNewSection } from "./documentOps";
 
 describe("orderedItems", () => {
   it("resolves items in the explicit item_order, skipping missing ids", () => {
@@ -64,5 +64,55 @@ describe("toResumeUpdate", () => {
     const record = buildResumeRecord({ title: "Original" });
     expect(toResumeUpdate(record)).toMatchObject({ title: "Original", template_id: "classic" });
     expect(toResumeUpdate(record, { template_id: "modern" }).template_id).toBe("modern");
+  });
+});
+
+describe("withNewSection", () => {
+  it("appends an empty section with a fresh id, preserving existing sections and order", () => {
+    const existing = buildSection({ id: "sec-work", kind: "work", title: "Work Experience" });
+    const record = buildResumeRecord({
+      document: {
+        schema_version: 1,
+        template_id: "classic",
+        header: {},
+        sections: [existing],
+      },
+    });
+
+    const update = withNewSection(record, "education", "Education");
+
+    expect(update.sections).toHaveLength(2);
+    expect(update.sections?.[0]).toEqual(existing);
+    const added = update.sections?.[1];
+    expect(added).toMatchObject({ kind: "education", title: "Education", item_order: [], items: {} });
+    expect(added?.id).toBeTruthy();
+    expect(added?.id).not.toBe(existing.id);
+  });
+
+  it("appends the first section to a blank resume and returns a full write body", () => {
+    const record = buildResumeRecord({
+      title: "Blank",
+      document: { schema_version: 1, template_id: "classic", header: {}, sections: [] },
+    });
+
+    const update = withNewSection(record, "work", "Work Experience");
+
+    expect(update).toMatchObject({ title: "Blank", template_id: "classic" });
+    expect(update.sections).toHaveLength(1);
+    expect(update.sections?.[0]).toMatchObject({
+      kind: "work",
+      title: "Work Experience",
+      item_order: [],
+      items: {},
+    });
+  });
+
+  it("mints a distinct id on each append", () => {
+    const record = buildResumeRecord({
+      document: { schema_version: 1, template_id: "classic", header: {}, sections: [] },
+    });
+    const first = withNewSection(record, "work", "Work").sections?.[0].id;
+    const second = withNewSection(record, "work", "Work").sections?.[0].id;
+    expect(first).not.toBe(second);
   });
 });
