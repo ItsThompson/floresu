@@ -10,16 +10,24 @@ import { EXTERNAL_API_URL, FRONTEND_URL, PORTS } from "./harness/env";
  * up` before this config runs (see the `test` script), so the backend never
  * boots ahead of its database. Playwright owns the three app processes below and
  * tears the infrastructure down afterwards via `globalTeardown`.
+ *
+ * Parallelism is gated on `process.env.CI`. CI runs `fullyParallel` with several
+ * workers per shard against one isolated stack; the isolation audit confirmed
+ * every spec is account-scoped, so parallel contexts never share account state.
+ * The local inner loop stays serial (`fullyParallel: false`, `workers: 1`) for
+ * readable, deterministic output.
  */
+const isCI = !!process.env.CI;
+
 export default defineConfig({
   testDir: "./tests",
-  fullyParallel: false,
-  workers: 1,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
+  fullyParallel: isCI,
+  workers: isCI ? 4 : 1,
+  forbidOnly: isCI,
+  retries: isCI ? 1 : 0,
   timeout: 60_000,
   expect: { timeout: 15_000 },
-  reporter: process.env.CI ? [["blob"]] : [["list"]],
+  reporter: isCI ? [["blob"]] : [["list"]],
   globalTeardown: "./harness/globalTeardown.ts",
 
   use: {
