@@ -31,7 +31,7 @@ describe("FeedRow", () => {
     expect(screen.getByText("You")).toBeInTheDocument();
     expect(screen.getByText("created")).toBeInTheDocument();
     const link = screen.getByRole("link", { name: "worklog #12" });
-    expect(link).toHaveAttribute("href", "/worklog/12");
+    expect(link).toHaveAttribute("href", "/worklog");
     // The timestamp is rendered as locale text; the machine-readable ISO lives on
     // the <time> element's dateTime attribute.
     expect(container.querySelector("time")).toHaveAttribute("dateTime", "2026-07-20T12:00:00Z");
@@ -50,7 +50,10 @@ describe("FeedRow", () => {
 
     expect(screen.getByText("claude")).toBeInTheDocument();
     expect(screen.getByText("updated")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "bullet #7" })).toHaveAttribute("href", "/bullet/7");
+    expect(screen.getByRole("link", { name: "bullet #7" })).toHaveAttribute(
+      "href",
+      "/library?bullet=7",
+    );
   });
 
   it("uses the summary as the object label when present", () => {

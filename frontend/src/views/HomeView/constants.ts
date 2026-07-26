@@ -21,9 +21,29 @@ export function actionLabel(action: string): string {
   return ACTION_LABELS[action] ?? action;
 }
 
-/** The affected object's link: a path built from its entity type and id. */
+/**
+ * Route builders per entity type, each mapping to a path that exists in
+ * `routes.tsx`. Builders for a detail route take the entity id; those that open a
+ * list ignore it. Mirrors the `libraryBulletHref`/`sourceDetailHref` builders so
+ * a feed link opens the same target as the rest of the app.
+ */
+const ENTITY_HREF_BUILDERS: Record<string, (entityId: number) => string> = {
+  resume: (entityId) => `/resumes/${entityId}`,
+  bullet: (entityId) => `/library?bullet=${entityId}`,
+  source: (entityId) => `/profile/sources/${entityId}`,
+  worklog: () => "/worklog",
+  job_application: () => "/applications",
+  identity_variant: () => "/profile/identities",
+  skill: () => "/profile/skills",
+};
+
+/** Where an unknown entity_type degrades to: the app root, never a broken link. */
+export const ENTITY_HREF_FALLBACK = "/";
+
+/** The affected object's link: a route that exists for the event's entity type. */
 export function entityHref(event: FeedEvent): string {
-  return `/${event.entity_type}/${event.entity_id}`;
+  const build = ENTITY_HREF_BUILDERS[event.entity_type];
+  return build ? build(event.entity_id) : ENTITY_HREF_FALLBACK;
 }
 
 /** The affected object's visible label: its summary, or the type and id. */
