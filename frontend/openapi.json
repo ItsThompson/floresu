@@ -592,6 +592,50 @@
         }
       }
     },
+    "/feed": {
+      "get": {
+        "tags": [
+          "feed"
+        ],
+        "summary": "Stream Feed",
+        "operationId": "stream_feed_feed_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/feed/history": {
+      "get": {
+        "tags": [
+          "feed"
+        ],
+        "summary": "Feed History",
+        "operationId": "feed_history_feed_history_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AuditEntry"
+                  },
+                  "type": "array",
+                  "title": "Response Feed History Feed History Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/sources": {
       "post": {
         "tags": [
@@ -2227,6 +2271,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ArchiveVariantRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2286,50 +2347,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/feed": {
-      "get": {
-        "tags": [
-          "feed"
-        ],
-        "summary": "Stream Feed",
-        "operationId": "stream_feed_feed_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/feed/history": {
-      "get": {
-        "tags": [
-          "feed"
-        ],
-        "summary": "Feed History",
-        "operationId": "feed_history_feed_history_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/AuditEntry"
-                  },
-                  "type": "array",
-                  "title": "Response Feed History Feed History Get"
                 }
               }
             }
@@ -3477,6 +3494,25 @@
         ],
         "title": "AddItemRequest",
         "description": "Append one item to a section; the server mints the item id."
+      },
+      "ArchiveVariantRequest": {
+        "properties": {
+          "replacement_variant_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replacement Variant Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ArchiveVariantRequest",
+        "description": "The optional archive body: the variant chosen to replace the one being archived.\n\nOmitted or ``null`` archives directly when no living resume references the\nvariant, or raises the replacement-required signal when one does. A present id\nre-points the referencing resumes to it and then archives, atomically."
       },
       "AuditEntry": {
         "properties": {
