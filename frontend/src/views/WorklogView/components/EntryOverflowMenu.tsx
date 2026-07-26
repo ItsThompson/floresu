@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 
+import { ItemHistoryDialog } from "@/components/ItemHistoryDialog";
 import { Button } from "@/components/ui/button";
 
 import { libraryBulletHref } from "../constants";
@@ -20,6 +21,7 @@ interface EntryOverflowMenuProps {
  */
 export function EntryOverflowMenu({ entryId, entryTitle, onEdit, onArchive }: EntryOverflowMenuProps) {
   const [open, setOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const derived = useDerivedBullets(open ? entryId : null);
 
   return (
@@ -59,6 +61,17 @@ export function EntryOverflowMenu({ entryId, entryTitle, onEdit, onArchive }: En
             >
               Archive
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="justify-start"
+              onClick={() => {
+                setOpen(false);
+                setHistoryOpen(true);
+              }}
+            >
+              History
+            </Button>
           </div>
 
           <div className="border-t pt-2">
@@ -89,6 +102,14 @@ export function EntryOverflowMenu({ entryId, entryTitle, onEdit, onArchive }: En
           </div>
         </div>
       )}
+
+      <ItemHistoryDialog
+        isOpen={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        entityType="worklog"
+        entityId={entryId}
+        title={`History: ${entryTitle}`}
+      />
     </div>
   );
 }

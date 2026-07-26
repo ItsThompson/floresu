@@ -315,6 +315,35 @@ describe("WorklogView", () => {
     expect(screen.queryByText("Unrelated bullet")).not.toBeInTheDocument();
   });
 
+  it("opens an entry's audit history from the overflow menu", async () => {
+    installWorklogApi({ entries: [buildEntry({ id: 1, title: "Shipped payments" })], sources: [ACME] });
+    const { server } = await import("@/mocks/server");
+    const { http, HttpResponse } = await import("msw");
+    const { buildFeedEvent } = await import("@/mocks/data");
+    server.use(
+      http.get("*/feed/history/:entityType/:entityId", () =>
+        HttpResponse.json([
+          buildFeedEvent({ id: 2, actor_type: "agent", actor_label: "claude", action: "update" }),
+          buildFeedEvent({ id: 1, actor_type: "human", action: "create" }),
+        ]),
+      ),
+    );
+
+    renderWorklog();
+    const user = userEvent.setup();
+    await screen.findByText("Shipped payments");
+
+    await user.click(screen.getByRole("button", { name: "Actions for Shipped payments" }));
+    await user.click(screen.getByRole("button", { name: "History" }));
+
+    // The dialog opens for this entry and shows its trail, distinguishing actors.
+    const dialog = await screen.findByRole("dialog", { name: "History: Shipped payments" });
+    expect(within(dialog).getByText("claude")).toBeInTheDocument();
+    expect(within(dialog).getByText(/updated/)).toBeInTheDocument();
+    expect(within(dialog).getByText("You")).toBeInTheDocument();
+    expect(within(dialog).getByTestId("agent-glyph")).toBeInTheDocument();
+  });
+
   it("gives a tag the same color everywhere and distinct colors per label", async () => {
     installWorklogApi({
       entries: [
