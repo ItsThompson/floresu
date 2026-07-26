@@ -8,6 +8,7 @@ real ``WHERE kind = ?`` fails the unit lane.
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Protocol
 
 import pytest
@@ -30,6 +31,10 @@ class ResumeArranger(Arranger, Protocol):
 
     async def seed_resume(self, user_pk: int, *, kind: ResumeKind) -> int: ...
 
+    async def seed_resume_referencing(
+        self, user_pk: int, variant_id: int, *, archived: bool = False
+    ) -> int: ...
+
 
 ResumeCase = RepoCase[ResumeRepository, ResumeArranger]
 
@@ -37,6 +42,19 @@ ResumeCase = RepoCase[ResumeRepository, ResumeArranger]
 def _new_resume(user_pk: int, kind: ResumeKind) -> Resume:
     return Resume(
         user_id=user_pk, kind=kind, title="Backend Engineer", schema_version=1, document={}
+    )
+
+
+def _referencing_resume(user_pk: int, variant_id: int, *, archived: bool) -> Resume:
+    # A living resume whose header projects the variant: the shape ids_referencing_variant
+    # matches on. archived_at set marks it out of the living set the query returns.
+    return Resume(
+        user_id=user_pk,
+        kind=ResumeKind.LIVING,
+        title="Referencing",
+        schema_version=1,
+        document={"header": {"identity_variant_id": variant_id}},
+        archived_at=datetime(2026, 1, 1, tzinfo=UTC) if archived else None,
     )
 
 
@@ -57,6 +75,13 @@ class InMemoryResumeArranger:
         await self._repo.add(resume)
         return resume.id
 
+    async def seed_resume_referencing(
+        self, user_pk: int, variant_id: int, *, archived: bool = False
+    ) -> int:
+        resume = _referencing_resume(user_pk, variant_id, archived=archived)
+        await self._repo.add(resume)
+        return resume.id
+
 
 class SqlAlchemyResumeArranger:
     """Seeds real ``resumes`` rows for an account."""
@@ -74,6 +99,15 @@ class SqlAlchemyResumeArranger:
     async def seed_resume(self, user_pk: int, *, kind: ResumeKind) -> int:
         async with self._sessionmaker() as session, transaction(session):
             resume = _new_resume(user_pk, kind)
+            session.add(resume)
+            await session.flush()
+            return resume.id
+
+    async def seed_resume_referencing(
+        self, user_pk: int, variant_id: int, *, archived: bool = False
+    ) -> int:
+        async with self._sessionmaker() as session, transaction(session):
+            resume = _referencing_resume(user_pk, variant_id, archived=archived)
             session.add(resume)
             await session.flush()
             return resume.id
@@ -139,3 +173,26 @@ async def test_list_resumes_is_scoped_to_the_owner(resume_case: ResumeCase) -> N
     )
 
     assert other_list == []
+
+
+async def test_ids_referencing_variant_finds_only_living_referencing_resumes(
+    resume_case: ResumeCase,
+) -> None:
+    user_pk = await resume_case.arrange.own_user()
+    referencing = await resume_case.arrange.seed_resume_referencing(user_pk, 5)
+    await resume_case.arrange.seed_resume_referencing(user_pk, 7)  # a different variant
+    await resume_case.arrange.seed_resume_referencing(user_pk, 5, archived=True)  # not living
+    await resume_case.arrange.seed_resume(user_pk, kind=ResumeKind.LIVING)  # references none
+
+    result = await resume_case.repo.ids_referencing_variant(user_pk, 5)
+
+    # Only the living resume whose header references variant 5, on both backends.
+    assert list(result) == [referencing]
+
+
+async def test_ids_referencing_variant_is_scoped_to_the_owner(resume_case: ResumeCase) -> None:
+    owner = await resume_case.arrange.own_user()
+    other = await resume_case.arrange.own_user()
+    await resume_case.arrange.seed_resume_referencing(other, 5)
+
+    assert list(await resume_case.repo.ids_referencing_variant(owner, 5)) == []
