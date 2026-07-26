@@ -57,3 +57,9 @@ export function entityLabel(event: FeedEvent): string {
  * older rows are recoverable via a reload. Comfortably above the history page size.
  */
 export const MAX_RENDERED_EVENTS = 100;
+
+/**
+ * How many worklog entries the Home recent-worklog preview shows. A fixed preview
+ * cap, not the full timeline; the worklog view owns the complete history.
+ */
+export const WORKLOG_PREVIEW_COUNT = 5;
