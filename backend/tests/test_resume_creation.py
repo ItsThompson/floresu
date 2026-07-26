@@ -110,15 +110,13 @@ async def test_seed_document_for_a_blank_source_yields_an_empty_document() -> No
 
 
 async def test_seed_document_for_a_blank_source_uses_a_registered_template_id() -> None:
-    # The blank default must be a real registry id (not a placeholder the renderer
-    # falls back on) and must match what GET /resumes/templates lists, so the editor
-    # selector value is a valid option with no re-select.
+    # The blank default must match what GET /resumes/templates lists, so the editor
+    # selector value is a valid option with no re-select. list_templates() is the same
+    # registry call the endpoint returns. No-fallback behavior is covered by the test
+    # below.
     repo = InMemoryResumeRepository()
     document, _title, _source_id = await seed_document(repo, 1, build_create_request())
     assert document.template_id in [info.id for info in list_templates()]
-    # resolve_template returns the requested id unchanged only when it is registered;
-    # an unknown id falls back to the P0 default, so equality proves no fallback.
-    assert resolve_template(document.template_id).id == document.template_id
 
 
 async def test_a_fresh_blank_resume_resolves_without_a_template_fallback_notice(
