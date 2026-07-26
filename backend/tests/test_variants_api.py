@@ -30,6 +30,7 @@ from floresu.profile.variants.service import IdentityVariantService
 from floresu.profile.variants.wiring import build_variant_service_provider
 from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 from tests.variants_fakes import (
+    FakeResumeVariantRepointer,
     InMemoryIdentityVariantRepository,
     build_variant_write,
 )
@@ -49,14 +50,15 @@ _INTERNAL_HEADERS = {
 
 def _client(
     make_settings: MakeSettings, *, internal: bool
-) -> tuple[TestClient, InMemoryIdentityVariantRepository, list[WriteEvent]]:
+) -> tuple[TestClient, FakeResumeVariantRepointer, list[WriteEvent]]:
     repo = InMemoryIdentityVariantRepository()
+    repointer = FakeResumeVariantRepointer()
     publisher = CapturingWriteEventPublisher()
     captured = publisher.captured
 
     def provider(request: Request) -> IdentityVariantService:
         return IdentityVariantService(
-            cast("AsyncSession", FakeSession()), repo, request.app.state.events
+            cast("AsyncSession", FakeSession()), repo, request.app.state.events, repointer
         )
 
     if internal:
@@ -78,7 +80,7 @@ def _client(
     client = TestClient(app)
     if not internal:
         client.cookies.set(SESSION_COOKIE_NAME, "session-token")
-    return client, repo, captured
+    return client, repointer, captured
 
 
 def test_create_first_variant_is_default_and_serializes_contact(
@@ -144,12 +146,12 @@ def test_default_archive_is_blocked_then_allowed_after_promotion(
 
 
 def test_archiving_a_referenced_variant_surfaces_the_signal(make_settings: MakeSettings) -> None:
-    client, repo, _ = _client(make_settings, internal=False)
+    client, repointer, _ = _client(make_settings, internal=False)
     client.post("/identity-variants", json=build_variant_write(label="Personal").model_dump())
     second = client.post(
         "/identity-variants", json=build_variant_write(label="Academic").model_dump()
     ).json()
-    repo.set_references(1, second["id"], [7])
+    repointer.set_references(1, second["id"], [7])
 
     response = client.post(f"/identity-variants/{second['id']}/archive")
     assert response.status_code == 422

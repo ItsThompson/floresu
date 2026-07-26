@@ -8,9 +8,11 @@ account's variant is invisible (the service turns a miss into a 404, never a
 cross-account leak).
 
 :meth:`current_default` resolves the user's single active default so the service can
-flip it in the same transaction, and :meth:`resume_ids_referencing` is the seam that
-surfaces the replacement-required signal when archiving a referenced variant; it
-returns nothing until resumes exist to reference a variant.
+flip it in the same transaction. Detecting and re-pointing the living resumes that
+reference a variant is a resumes concept, so it is not here: the service reaches it
+through the :class:`~floresu.profile.variants.repointing.ResumeVariantRepointer`
+port (bound to the resume service at the composition root), which keeps this domain
+free of any resumes import.
 
 Transaction ownership stays with the service: :meth:`add` flushes to mint the id,
 but the ``transaction`` boundary the service wraps its write in is what commits.
@@ -43,8 +45,6 @@ class IdentityVariantRepository(Protocol):
     ) -> Sequence[IdentityVariant]: ...
 
     async def current_default(self, user_id: int) -> IdentityVariant | None: ...
-
-    async def resume_ids_referencing(self, user_id: int, variant_id: int) -> Sequence[int]: ...
 
 
 class SqlAlchemyIdentityVariantRepository:
@@ -88,11 +88,3 @@ class SqlAlchemyIdentityVariantRepository:
                 IdentityVariant.archived_at.is_(None),
             ),
         )
-
-    async def resume_ids_referencing(self, user_id: int, variant_id: int) -> Sequence[int]:
-        # A living resume projects one variant by referencing its id in the resume
-        # document header. The resume tables do not exist yet, so no variant is
-        # referenced; this returns the real referencing resume ids once resumes
-        # land, and the archive flow surfaces the replacement-required signal when
-        # it is non-empty.
-        return ()

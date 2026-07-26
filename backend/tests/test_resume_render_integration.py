@@ -41,6 +41,7 @@ from floresu.resumes.repository import SqlAlchemyResumeRepository
 from floresu.resumes.resolver import SqlAlchemyBulletTextResolver
 from floresu.resumes.schemas import BlankSource, ResumeCreateRequest, ResumeUpdate
 from floresu.resumes.service import ResumeService
+from floresu.resumes.wiring import build_resume_service
 from tests.storage_fakes import FakeObjectStore
 
 if TYPE_CHECKING:
@@ -73,8 +74,12 @@ async def _create_default_variant(
     sessionmaker: async_sessionmaker[AsyncSession], user_id: int
 ) -> int:
     async with sessionmaker() as session:
+        publisher = build_write_event_publisher()
         service = IdentityVariantService(
-            session, SqlAlchemyIdentityVariantRepository(session), build_write_event_publisher()
+            session,
+            SqlAlchemyIdentityVariantRepository(session),
+            publisher,
+            build_resume_service(session, publisher),
         )
         record = await service.create(
             str(user_id),

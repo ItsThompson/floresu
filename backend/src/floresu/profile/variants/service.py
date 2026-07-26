@@ -10,10 +10,11 @@ carried into every event.
 The exactly-one-default invariant is enforced here: creating the first variant
 sets it as default automatically, and marking a different variant default flips the
 previous default off in the same transaction. The default cannot be archived until
-another variant is made default. Archiving a variant a living resume references is
-blocked and surfaces a structured replacement-required signal (the referencing
-resume ids), which the resume-side prompt resolves. Variants are unordered, so
-there is no reorder operation.
+another variant is made default. Archiving a variant a living resume references
+re-points those resumes to a chosen replacement and then archives the original in
+one transaction (through the ``ResumeVariantRepointer`` port); without a replacement
+it surfaces a structured replacement-required signal (the referencing resume ids)
+that drives the prompt. Variants are unordered, so there is no reorder operation.
 """
 
 from __future__ import annotations
@@ -48,6 +49,7 @@ if TYPE_CHECKING:
 
     from floresu.core.actor import Actor
     from floresu.core.events import WriteEventPublisher
+    from floresu.profile.variants.repointing import ResumeVariantRepointer
     from floresu.profile.variants.repository import IdentityVariantRepository
     from floresu.profile.variants.schemas import IdentityVariantWrite
 
@@ -63,12 +65,14 @@ class IdentityVariantService:
         session: AsyncSession,
         repo: IdentityVariantRepository,
         publisher: WriteEventPublisher,
+        repointer: ResumeVariantRepointer,
         *,
         clock: Clock = utcnow,
     ) -> None:
         self._session = session
         self._repo = repo
         self._publisher = publisher
+        self._repointer = repointer
         self._clock = clock
 
     async def create(
@@ -160,8 +164,22 @@ class IdentityVariantService:
             )
         return to_read(variant)
 
-    async def archive(self, user_id: str, variant_id: int, actor: Actor) -> IdentityVariantRead:
-        """Soft-archive; blocked while default or referenced by a living resume."""
+    async def archive(
+        self,
+        user_id: str,
+        variant_id: int,
+        actor: Actor,
+        replacement_variant_id: int | None = None,
+    ) -> IdentityVariantRead:
+        """Soft-archive; blocked while default, re-pointing referencing resumes first.
+
+        A variant no living resume references archives directly. One a living resume
+        references needs a replacement: without one, the structured
+        replacement-required signal drives the prompt and nothing is archived; with
+        one, every referencing resume is re-pointed to the (validated) replacement
+        and the variant is archived inside one transaction, so a failure at any step
+        leaves no resume pointing at an archived variant.
+        """
         pk = resolve_user_pk(user_id)
         variant = await self._require(pk, variant_id)
         if variant.archived_at is not None:
@@ -171,10 +189,16 @@ class IdentityVariantService:
             raise Conflict(
                 "The default variant cannot be archived; make another variant the default first."
             )
-        referencing = await self._repo.resume_ids_referencing(pk, variant_id)
-        if referencing:
+        referencing = await self._repointer.resumes_referencing_variant(user_id, variant_id)
+        if referencing and replacement_variant_id is None:
             raise _replacement_required(variant, referencing)
         async with transaction(self._session):
+            if referencing:
+                assert replacement_variant_id is not None  # guaranteed by the guard above
+                replacement = await self._require_active_replacement(
+                    pk, replacement_variant_id, archiving=variant_id
+                )
+                await self._repointer.repoint_variant(user_id, actor, variant_id, replacement.id)
             variant.archived_at = self._clock()
             await self._publish(pk, actor, variant.id, Action.ARCHIVE, _archived_summary(variant))
         return to_read(variant)
@@ -203,6 +227,23 @@ class IdentityVariantService:
         if variant is None:
             raise _not_found(variant_id)
         return variant
+
+    async def _require_active_replacement(
+        self, user_pk: int, replacement_id: int, *, archiving: int
+    ) -> IdentityVariant:
+        """The replacement must be the caller's own, active, and not the variant being archived.
+
+        Any breach is a recoverable validation error raised before a mutate, so an
+        invalid replacement (archived, foreign, or self) writes nothing.
+        """
+        if replacement_id == archiving:
+            raise Validation("A variant cannot replace itself; choose a different variant.")
+        replacement = await self._repo.get(user_pk, replacement_id)
+        if replacement is None:
+            raise Validation("The chosen replacement variant does not exist.")
+        if replacement.archived_at is not None:
+            raise Validation("The chosen replacement variant is archived; choose an active one.")
+        return replacement
 
     async def _publish(
         self,

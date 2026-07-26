@@ -52,6 +52,19 @@ class IdentityVariantWrite(BaseModel):
     is_default: bool = False
 
 
+class ArchiveVariantRequest(BaseModel):
+    """The optional archive body: the variant chosen to replace the one being archived.
+
+    Omitted or ``null`` archives directly when no living resume references the
+    variant, or raises the replacement-required signal when one does. A present id
+    re-points the referencing resumes to it and then archives, atomically.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    replacement_variant_id: int | None = None
+
+
 class IdentityVariantRead(BaseModel):
     """A variant with its default flag and archive state."""
 

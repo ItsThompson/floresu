@@ -75,6 +75,7 @@ from floresu.resumes.operations import (
     resume_not_found,
     revalidate_document,
     swap_item_to_reference,
+    variant_repointed_summary,
 )
 from floresu.resumes.schemas import (
     AddItemRequest,
@@ -93,6 +94,8 @@ from floresu.resumes.schemas import (
 from floresu.resumes.upcast import CURRENT_SCHEMA_VERSION, load_document
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from floresu.core.actor import Actor
@@ -340,6 +343,48 @@ class ResumeService:
                 metadata={"bullet_id": bullet_id, "item_id": item_id},
             )
         return to_record(resume, document)
+
+    async def resumes_referencing_variant(self, user_id: str, variant_id: int) -> Sequence[int]:
+        """The living resumes whose header references a variant (the archive re-point set).
+
+        The identity-variants domain reads this through the ``ResumeVariantRepointer``
+        port to decide whether archiving a variant needs a replacement, without
+        importing a resumes model.
+        """
+        pk = resolve_user_pk(user_id)
+        return await self._repo.ids_referencing_variant(pk, variant_id)
+
+    async def repoint_variant(
+        self, user_id: str, actor: Actor, from_variant_id: int, to_variant_id: int
+    ) -> Sequence[int]:
+        """Re-point every referencing living resume's header from one variant to another.
+
+        Runs inside the caller's ``transaction`` (the identity-variants archive owns
+        it), so the re-points and the archive commit or roll back as one. Each
+        re-pointed resume runs the same save contract every edit runs (bump the
+        revision, snapshot the fully resolved document, reindex, publish an audit
+        ``UPDATE``), so a re-point is indistinguishable from any other resume save
+        in the history and the feed. Returns the ids actually changed.
+        """
+        pk = resolve_user_pk(user_id)
+        changed: list[int] = []
+        for resume_id in await self._repo.ids_referencing_variant(pk, from_variant_id):
+            resume = await self._repo.get(pk, resume_id)
+            if resume is None:
+                continue
+            document = load_document(resume.document)
+            document.header.identity_variant_id = to_variant_id
+            document = revalidate_document(document)
+            await self._apply_save(
+                pk,
+                resume,
+                document,
+                actor,
+                Action.UPDATE,
+                summary=variant_repointed_summary(resume),
+            )
+            changed.append(resume_id)
+        return changed
 
     async def _edit_everywhere(
         self, pk: int, actor: Actor, request: ScopeEditRequest, used_in: int

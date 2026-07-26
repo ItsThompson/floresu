@@ -7,6 +7,9 @@ production binds :class:`SqlAlchemyResumeRepository` over a request-scoped
 row is invisible (the service turns a miss into a 404, never a cross-account
 leak). Job-application ownership is checked through :meth:`owned_job_application_ids`
 so an application resume can never link a foreign job application.
+:meth:`ids_referencing_variant` is the read the identity-variant archive flow keys
+on: the ids of a user's living resumes whose header references a given variant, so
+the variants domain can re-point them without importing a resumes model.
 
 Transaction ownership stays with the service: :meth:`add` flushes to mint the
 resume id the revision and bullet-ref rows need, :meth:`set_bullet_refs` replaces
@@ -56,6 +59,8 @@ class ResumeRepository(Protocol):
     async def set_bullet_refs(self, resume_id: int, bullet_ids: Sequence[int]) -> None: ...
 
     async def add_revision(self, revision: ResumeRevision) -> None: ...
+
+    async def ids_referencing_variant(self, user_id: int, variant_id: int) -> Sequence[int]: ...
 
     async def used_in_count(self, bullet_id: int) -> int: ...
 
@@ -120,6 +125,21 @@ class SqlAlchemyResumeRepository:
     async def add_revision(self, revision: ResumeRevision) -> None:
         self._session.add(revision)
         await self._session.flush()
+
+    async def ids_referencing_variant(self, user_id: int, variant_id: int) -> Sequence[int]:
+        # A live resume projects an identity by referencing a variant id in its
+        # document header. Finalized resumes inline a frozen snapshot instead (no
+        # header variant id), so they never match; archived resumes are excluded
+        # because a re-point only concerns living work. Scoped to the owner so a
+        # variant archive never reaches another account's resume.
+        result = await self._session.execute(
+            select(Resume.id).where(
+                Resume.user_id == user_id,
+                Resume.archived_at.is_(None),
+                Resume.document[("header", "identity_variant_id")].astext == str(variant_id),
+            )
+        )
+        return list(result.scalars().all())
 
     async def used_in_count(self, bullet_id: int) -> int:
         result = await self._session.execute(

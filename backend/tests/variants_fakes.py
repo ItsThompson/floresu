@@ -2,12 +2,12 @@
 
 The service is tested sociably: the real :class:`IdentityVariantService` runs over
 this in-memory repository (substituted at the only true external boundary,
-Postgres), the real :class:`WriteEventPublisher` seam wired with a capturing
-consumer, and the shared :class:`FakeSession` recording the ``transaction``
-boundary. The repo mirrors the server-minted id and enforces ``UNIQUE (user_id,
-label)`` by raising a unique-violation ``IntegrityError``. The living-resume
-reference seam is seeded directly, standing in for the resume tables that do not
-exist yet, so the replacement-required signal can be exercised.
+Postgres), a fake :class:`ResumeVariantRepointer` standing in for the resume side,
+the real :class:`WriteEventPublisher` seam wired with a capturing consumer, and the
+shared :class:`FakeSession` recording the ``transaction`` boundary. The repo mirrors
+the server-minted id and enforces ``UNIQUE (user_id, label)`` by raising a
+unique-violation ``IntegrityError``. The re-pointer's referencing seam is seeded
+directly, standing in for the resumes the archive flow re-points.
 """
 
 from __future__ import annotations
@@ -22,7 +22,10 @@ from floresu.profile.variants.schemas import IdentityVariantWrite
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from floresu.core.actor import Actor
+
 __all__ = [
+    "FakeResumeVariantRepointer",
     "InMemoryIdentityVariantRepository",
     "build_variant_write",
 ]
@@ -42,11 +45,6 @@ class InMemoryIdentityVariantRepository:
     def __init__(self) -> None:
         self._variants: dict[int, IdentityVariant] = {}
         self._next_id = 1
-        self._references: dict[tuple[int, int], list[int]] = {}
-
-    def set_references(self, user_id: int, variant_id: int, resume_ids: list[int]) -> None:
-        """Seed the living-resume ids that reference a variant (the archive signal)."""
-        self._references[(user_id, variant_id)] = resume_ids
 
     async def add(self, variant: IdentityVariant) -> None:
         if any(
@@ -80,8 +78,34 @@ class InMemoryIdentityVariantRepository:
                 return variant
         return None
 
-    async def resume_ids_referencing(self, user_id: int, variant_id: int) -> Sequence[int]:
-        return self._references.get((user_id, variant_id), [])
+
+class FakeResumeVariantRepointer:
+    """A dict-backed :class:`ResumeVariantRepointer` seeded with referencing resume ids.
+
+    Stands in for the resume service the composition root binds. Records each
+    re-point call so the archive orchestration can be asserted, and can be told to
+    fail to exercise the all-or-nothing rollback.
+    """
+
+    def __init__(self) -> None:
+        self._references: dict[tuple[int, int], list[int]] = {}
+        self.repoint_calls: list[tuple[str, int, int]] = []
+        self.fail = False
+
+    def set_references(self, user_id: int, variant_id: int, resume_ids: list[int]) -> None:
+        """Seed the living-resume ids that reference a variant (the re-point set)."""
+        self._references[(user_id, variant_id)] = resume_ids
+
+    async def resumes_referencing_variant(self, user_id: str, variant_id: int) -> Sequence[int]:
+        return self._references.get((int(user_id), variant_id), [])
+
+    async def repoint_variant(
+        self, user_id: str, actor: Actor, from_variant_id: int, to_variant_id: int
+    ) -> Sequence[int]:
+        if self.fail:
+            raise RuntimeError("repoint failed")
+        self.repoint_calls.append((user_id, from_variant_id, to_variant_id))
+        return self._references.get((int(user_id), from_variant_id), [])
 
 
 def build_variant_write(**overrides: Any) -> IdentityVariantWrite:

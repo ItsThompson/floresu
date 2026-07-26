@@ -18,6 +18,7 @@ from floresu.profile.variants.config import REPLACEMENT_REQUIRED_RULE
 from floresu.profile.variants.service import IdentityVariantService
 from tests.support.fakes import CapturingWriteEventPublisher, FakeSession
 from tests.variants_fakes import (
+    FakeResumeVariantRepointer,
     InMemoryIdentityVariantRepository,
     build_variant_write,
 )
@@ -30,19 +31,24 @@ _AGENT = Actor(type=ActorType.AGENT, label="claude")
 def _service(
     *, clock: Clock | None = None
 ) -> tuple[
-    IdentityVariantService, InMemoryIdentityVariantRepository, FakeSession, list[WriteEvent]
+    IdentityVariantService,
+    InMemoryIdentityVariantRepository,
+    FakeResumeVariantRepointer,
+    FakeSession,
+    list[WriteEvent],
 ]:
     repo = InMemoryIdentityVariantRepository()
+    repointer = FakeResumeVariantRepointer()
     session = FakeSession()
     publisher = CapturingWriteEventPublisher()
     captured = publisher.captured
     kwargs = {"clock": clock} if clock is not None else {}
-    service = IdentityVariantService(session, repo, publisher, **kwargs)  # type: ignore[arg-type]
-    return service, repo, session, captured
+    service = IdentityVariantService(session, repo, publisher, repointer, **kwargs)  # type: ignore[arg-type]
+    return service, repo, repointer, session, captured
 
 
 async def test_first_variant_is_forced_default_and_captures_fields() -> None:
-    service, _, session, captured = _service()
+    service, _, _, session, captured = _service()
     # Created without is_default; the first variant is still made default.
     variant = await service.create(_USER, _HUMAN, build_variant_write(is_default=False))
 
@@ -66,7 +72,7 @@ async def test_first_variant_is_forced_default_and_captures_fields() -> None:
 
 
 async def test_contact_fields_are_each_optional() -> None:
-    service, _, _, _ = _service()
+    service, _, _, _, _ = _service()
     variant = await service.create(_USER, _HUMAN, build_variant_write(contact={}, links=[]))
     assert variant.contact.email is None
     assert variant.contact.phone is None
@@ -75,7 +81,7 @@ async def test_contact_fields_are_each_optional() -> None:
 
 
 async def test_second_variant_is_not_default_unless_requested() -> None:
-    service, _, _, captured = _service()
+    service, _, _, _, captured = _service()
     first = await service.create(_USER, _HUMAN, build_variant_write(label="Personal"))
     captured.clear()
     second = await service.create(_USER, _HUMAN, build_variant_write(label="Academic"))
@@ -86,7 +92,7 @@ async def test_second_variant_is_not_default_unless_requested() -> None:
 
 
 async def test_creating_a_second_default_flips_the_previous_one() -> None:
-    service, _, _, _ = _service()
+    service, _, _, _, _ = _service()
     first = await service.create(_USER, _HUMAN, build_variant_write(label="Personal"))
     second = await service.create(
         _USER, _HUMAN, build_variant_write(label="Academic", is_default=True)
@@ -98,7 +104,7 @@ async def test_creating_a_second_default_flips_the_previous_one() -> None:
 
 
 async def test_marking_a_different_variant_default_flips_the_old_one() -> None:
-    service, _, _, captured = _service()
+    service, _, _, _, captured = _service()
     first = await service.create(_USER, _HUMAN, build_variant_write(label="Personal"))
     second = await service.create(_USER, _HUMAN, build_variant_write(label="Academic"))
     captured.clear()
@@ -118,7 +124,7 @@ async def test_marking_a_different_variant_default_flips_the_old_one() -> None:
 
 
 async def test_editing_a_non_default_variant_without_promoting_keeps_it_non_default() -> None:
-    service, _, _, _ = _service()
+    service, _, _, _, _ = _service()
     await service.create(_USER, _HUMAN, build_variant_write(label="Personal"))
     second = await service.create(_USER, _HUMAN, build_variant_write(label="Academic"))
 
@@ -134,7 +140,7 @@ async def test_editing_a_non_default_variant_without_promoting_keeps_it_non_defa
 
 
 async def test_the_default_cannot_be_unset_directly() -> None:
-    service, _, _, _ = _service()
+    service, _, _, _, _ = _service()
     first = await service.create(_USER, _HUMAN, build_variant_write(label="Personal"))
     # Trying to set the sole default's is_default to False is rejected.
     with pytest.raises(Conflict):
@@ -144,7 +150,7 @@ async def test_the_default_cannot_be_unset_directly() -> None:
 
 
 async def test_updating_a_non_default_field_keeps_the_default_stable() -> None:
-    service, _, _, _ = _service()
+    service, _, _, _, _ = _service()
     first = await service.create(_USER, _HUMAN, build_variant_write(label="Personal"))
     second = await service.create(_USER, _HUMAN, build_variant_write(label="Academic"))
 
@@ -161,7 +167,7 @@ async def test_updating_a_non_default_field_keeps_the_default_stable() -> None:
 
 
 async def test_default_variant_cannot_be_archived_until_another_is_default() -> None:
-    service, _, _, _ = _service()
+    service, _, _, _, _ = _service()
     first = await service.create(_USER, _HUMAN, build_variant_write(label="Personal"))
     second = await service.create(_USER, _HUMAN, build_variant_write(label="Academic"))
 
@@ -179,7 +185,7 @@ async def test_default_variant_cannot_be_archived_until_another_is_default() -> 
 
 async def test_non_default_variant_archives_normally() -> None:
     clock = _FixedClock(datetime(2026, 1, 1, tzinfo=UTC))
-    service, _, _, captured = _service(clock=clock)
+    service, _, _, _, captured = _service(clock=clock)
     await service.create(_USER, _HUMAN, build_variant_write(label="Personal"))
     second = await service.create(_USER, _HUMAN, build_variant_write(label="Academic"))
     captured.clear()
@@ -191,11 +197,11 @@ async def test_non_default_variant_archives_normally() -> None:
 
 
 async def test_archiving_a_referenced_variant_surfaces_a_replacement_signal() -> None:
-    service, repo, _, captured = _service()
+    service, _, repointer, _, captured = _service()
     await service.create(_USER, _HUMAN, build_variant_write(label="Personal"))
     second = await service.create(_USER, _HUMAN, build_variant_write(label="Academic"))
-    # Seed a living resume referencing the (non-default) second variant.
-    repo.set_references(1, second.id, [42, 43])
+    # Seed living resumes referencing the (non-default) second variant.
+    repointer.set_references(1, second.id, [42, 43])
     captured.clear()
 
     with pytest.raises(Validation) as excinfo:
@@ -210,15 +216,102 @@ async def test_archiving_a_referenced_variant_surfaces_a_replacement_signal() ->
     assert (await service.get(_USER, second.id)).archived_at is None
 
 
+async def test_archiving_with_a_replacement_repoints_then_archives_atomically() -> None:
+    service, _, repointer, session, captured = _service()
+    await service.create(_USER, _HUMAN, build_variant_write(label="Personal"))
+    doomed = await service.create(_USER, _HUMAN, build_variant_write(label="Academic"))
+    replacement = await service.create(_USER, _HUMAN, build_variant_write(label="Recruiting"))
+    repointer.set_references(1, doomed.id, [6])
+    captured.clear()
+    commits_before = session.commits
+
+    archived = await service.archive(
+        _USER, doomed.id, _HUMAN, replacement_variant_id=replacement.id
+    )
+
+    # The referencing resumes were re-pointed to the replacement, then the variant
+    # archived, and it all committed once.
+    assert repointer.repoint_calls == [(_USER, doomed.id, replacement.id)]
+    assert archived.archived_at is not None
+    assert [event.action for event in captured] == [Action.ARCHIVE]
+    assert session.commits == commits_before + 1
+    assert session.rollbacks == 0
+
+
+async def test_a_failed_repoint_rolls_back_the_whole_archive() -> None:
+    service, _, repointer, session, captured = _service()
+    await service.create(_USER, _HUMAN, build_variant_write(label="Personal"))
+    doomed = await service.create(_USER, _HUMAN, build_variant_write(label="Academic"))
+    replacement = await service.create(_USER, _HUMAN, build_variant_write(label="Recruiting"))
+    repointer.set_references(1, doomed.id, [6])
+    repointer.fail = True
+    captured.clear()
+    commits_before = session.commits
+
+    with pytest.raises(RuntimeError):
+        await service.archive(_USER, doomed.id, _HUMAN, replacement_variant_id=replacement.id)
+
+    # All-or-nothing: neither the archive nor its event applied, and the txn rolled back.
+    assert captured == []
+    assert session.commits == commits_before
+    assert session.rollbacks == 1
+    assert (await service.get(_USER, doomed.id)).archived_at is None
+
+
+async def test_an_archived_replacement_is_a_recoverable_validation_error() -> None:
+    service, _, repointer, _, captured = _service()
+    await service.create(_USER, _HUMAN, build_variant_write(label="Personal"))
+    doomed = await service.create(_USER, _HUMAN, build_variant_write(label="Academic"))
+    spare = await service.create(_USER, _HUMAN, build_variant_write(label="Recruiting"))
+    await service.archive(_USER, spare.id, _HUMAN)  # archive the intended replacement first
+    repointer.set_references(1, doomed.id, [6])
+    captured.clear()
+
+    with pytest.raises(Validation):
+        await service.archive(_USER, doomed.id, _HUMAN, replacement_variant_id=spare.id)
+
+    # Nothing was re-pointed or archived.
+    assert repointer.repoint_calls == []
+    assert (await service.get(_USER, doomed.id)).archived_at is None
+
+
+async def test_a_foreign_or_self_replacement_is_a_recoverable_validation_error() -> None:
+    service, _, repointer, _, _ = _service()
+    await service.create(_USER, _HUMAN, build_variant_write(label="Personal"))
+    doomed = await service.create(_USER, _HUMAN, build_variant_write(label="Academic"))
+    repointer.set_references(1, doomed.id, [6])
+
+    # A variant cannot replace itself.
+    with pytest.raises(Validation):
+        await service.archive(_USER, doomed.id, _HUMAN, replacement_variant_id=doomed.id)
+    # A replacement that is not the caller's own is rejected the same way.
+    with pytest.raises(Validation):
+        await service.archive(_USER, doomed.id, _HUMAN, replacement_variant_id=9999)
+    assert repointer.repoint_calls == []
+
+
+async def test_archiving_an_unreferenced_variant_needs_no_replacement() -> None:
+    service, _, repointer, _, captured = _service()
+    await service.create(_USER, _HUMAN, build_variant_write(label="Personal"))
+    second = await service.create(_USER, _HUMAN, build_variant_write(label="Academic"))
+    captured.clear()
+
+    archived = await service.archive(_USER, second.id, _HUMAN)
+
+    assert archived.archived_at is not None
+    assert repointer.repoint_calls == []
+    assert [event.action for event in captured] == [Action.ARCHIVE]
+
+
 async def test_a_duplicate_label_is_a_conflict() -> None:
-    service, _, _, _ = _service()
+    service, _, _, _, _ = _service()
     await service.create(_USER, _HUMAN, build_variant_write(label="Personal"))
     with pytest.raises(Conflict):
         await service.create(_USER, _HUMAN, build_variant_write(label="Personal"))
 
 
 async def test_restore_returns_a_variant_and_it_is_not_default() -> None:
-    service, _, _, _ = _service()
+    service, _, _, _, _ = _service()
     await service.create(_USER, _HUMAN, build_variant_write(label="Personal"))
     second = await service.create(_USER, _HUMAN, build_variant_write(label="Academic"))
     await service.archive(_USER, second.id, _HUMAN)
@@ -229,7 +322,7 @@ async def test_restore_returns_a_variant_and_it_is_not_default() -> None:
 
 
 async def test_double_archive_is_a_conflict() -> None:
-    service, _, _, _ = _service()
+    service, _, _, _, _ = _service()
     await service.create(_USER, _HUMAN, build_variant_write(label="Personal"))
     second = await service.create(_USER, _HUMAN, build_variant_write(label="Academic"))
     await service.archive(_USER, second.id, _HUMAN)
@@ -238,21 +331,21 @@ async def test_double_archive_is_a_conflict() -> None:
 
 
 async def test_restore_of_an_active_variant_is_a_conflict() -> None:
-    service, _, _, _ = _service()
+    service, _, _, _, _ = _service()
     first = await service.create(_USER, _HUMAN, build_variant_write(label="Personal"))
     with pytest.raises(Conflict):
         await service.restore(_USER, first.id, _HUMAN)
 
 
 async def test_agent_writes_carry_the_named_agent_actor() -> None:
-    service, _, _, captured = _service()
+    service, _, _, _, captured = _service()
     await service.create(_USER, _AGENT, build_variant_write())
     assert captured[0].actor == _AGENT
     assert captured[0].actor.label == "claude"
 
 
 async def test_mutations_of_a_missing_variant_are_not_found() -> None:
-    service, _, _, _ = _service()
+    service, _, _, _, _ = _service()
     with pytest.raises(NotFound):
         await service.get(_USER, 999)
     with pytest.raises(NotFound):
@@ -264,14 +357,14 @@ async def test_mutations_of_a_missing_variant_are_not_found() -> None:
 
 
 async def test_another_users_variant_is_not_found_no_existence_leak() -> None:
-    service, _, _, _ = _service()
+    service, _, _, _, _ = _service()
     mine = await service.create(_USER, _HUMAN, build_variant_write())
     with pytest.raises(NotFound):
         await service.get("2", mine.id)
 
 
 async def test_a_malformed_identity_is_rejected() -> None:
-    service, _, _, _ = _service()
+    service, _, _, _, _ = _service()
     with pytest.raises(Unauthorized):
         await service.create("not-a-number", _HUMAN, build_variant_write())
 

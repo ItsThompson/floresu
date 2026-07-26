@@ -184,6 +184,10 @@ def promoted_summary(resume: Resume) -> str:
     return f"Promoted an item from resume “{resume.title}” into the library"
 
 
+def variant_repointed_summary(resume: Resume) -> str:
+    return f"Re-pointed resume “{resume.title}” to a replacement identity variant"
+
+
 def finalized_summary(resume: Resume) -> str:
     return f"Finalized resume “{resume.title}”"
 

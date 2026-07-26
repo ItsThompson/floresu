@@ -18,7 +18,11 @@ from fastapi import APIRouter, Depends
 
 from floresu.core.actor import Actor
 from floresu.core.providers import ActorResolver, Identity, ServiceProvider
-from floresu.profile.variants.schemas import IdentityVariantRead, IdentityVariantWrite
+from floresu.profile.variants.schemas import (
+    ArchiveVariantRequest,
+    IdentityVariantRead,
+    IdentityVariantWrite,
+)
 from floresu.profile.variants.service import IdentityVariantService
 
 VARIANTS_PATH = "/identity-variants"
@@ -71,11 +75,13 @@ def create_variants_router(
     @router.post("/{variant_id}/archive")
     async def archive_variant(
         variant_id: int,
+        body: ArchiveVariantRequest | None = None,
         user_id: str = Depends(identity),
         actor_: Actor = Depends(actor),
         service: IdentityVariantService = Depends(service_provider),
     ) -> IdentityVariantRead:
-        return await service.archive(user_id, variant_id, actor_)
+        replacement_id = body.replacement_variant_id if body is not None else None
+        return await service.archive(user_id, variant_id, actor_, replacement_id)
 
     @router.post("/{variant_id}/restore")
     async def restore_variant(

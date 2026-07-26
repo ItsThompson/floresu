@@ -106,6 +106,16 @@ class InMemoryResumeRepository:
     async def add_revision(self, revision: ResumeRevision) -> None:
         self._revisions[(revision.resume_id, revision.revision_no)] = revision
 
+    async def ids_referencing_variant(self, user_id: int, variant_id: int) -> Sequence[int]:
+        ids: list[int] = []
+        for resume in self._resumes.values():
+            if resume.user_id != user_id or resume.archived_at is not None:
+                continue
+            header = (resume.document or {}).get("header") or {}
+            if header.get("identity_variant_id") == variant_id:
+                ids.append(resume.id)
+        return sorted(ids)
+
     async def used_in_count(self, bullet_id: int) -> int:
         return sum(bullet_id in refs for refs in self._bullet_refs.values())
 

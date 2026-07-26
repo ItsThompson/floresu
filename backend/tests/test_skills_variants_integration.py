@@ -32,6 +32,7 @@ from floresu.profile.skills.service import SkillService
 from floresu.profile.variants.models import IdentityVariant
 from floresu.profile.variants.repository import SqlAlchemyIdentityVariantRepository
 from floresu.profile.variants.service import IdentityVariantService
+from floresu.resumes.wiring import build_resume_service
 from floresu.worklog.repository import SqlAlchemyWorklogRepository
 from floresu.worklog.service import WorklogService
 from tests.skills_fakes import build_skill_write
@@ -69,8 +70,12 @@ def _skills(session: AsyncSession) -> SkillService:
 
 
 def _variants(session: AsyncSession) -> IdentityVariantService:
+    publisher = build_write_event_publisher()
     return IdentityVariantService(
-        session, SqlAlchemyIdentityVariantRepository(session), build_write_event_publisher()
+        session,
+        SqlAlchemyIdentityVariantRepository(session),
+        publisher,
+        build_resume_service(session, publisher),
     )
 
 
