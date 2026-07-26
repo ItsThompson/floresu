@@ -46,3 +46,21 @@ export async function agentCreateWorklog(
   expect(response.ok(), await bodyText(response)).toBeTruthy();
   return (await response.json()) as { id: number };
 }
+
+/** Update an existing worklog entry as the agent, over the internal boundary. */
+export async function agentUpdateWorklog(
+  agent: APIRequestContext,
+  worklogId: number,
+  entry: { title: string; entryDate: string; description?: string },
+): Promise<void> {
+  const response = await agent.put(`/worklog/${worklogId}`, {
+    data: {
+      title: entry.title,
+      entry_date: entry.entryDate,
+      description: entry.description ?? null,
+      tags: [],
+      source_ids: [],
+    },
+  });
+  expect(response.ok(), await bodyText(response)).toBeTruthy();
+}
