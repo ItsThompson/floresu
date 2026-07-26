@@ -220,16 +220,24 @@ jobs:
             prom/alertmanager:v0.27.0 check-config /am.yml
 
   # ---------------------------------------------------------------------------
-  # e2e: the Playwright full-stack suite. Brings up the E2E infrastructure
-  # (Postgres, Redis, MinIO) from e2e/docker-compose.e2e.yml, then Playwright
-  # starts the app processes (both ASGI apps, the frontend production build, and
-  # the fake embedding provider) and drives the three anchor flows plus auth,
-  # feed, search, settings, and the agent boundary through a real browser. No run
-  # calls OpenAI or real R2 (embedding is a local fake; the object store is MinIO).
+  # e2e: the Playwright full-stack suite, split across parallel shards. Each
+  # shard runs on its own runner VM with its own stack: it brings up the E2E
+  # infrastructure (Postgres, Redis, MinIO) from e2e/docker-compose.e2e.yml, then
+  # Playwright starts the app processes (both ASGI apps, the frontend production
+  # build, and the fake embedding provider) and drives its slice of the suite
+  # (auth, feed, search, settings, the agent boundary, and the anchor flows)
+  # through a real browser. No run calls OpenAI or real R2 (embedding is a local
+  # fake; the object store is MinIO). Fixed host ports never collide because
+  # shards run on separate VMs. Each shard emits a blob report; the e2e-report
+  # job below merges them into one HTML report.
   # ---------------------------------------------------------------------------
   e2e:
     name: e2e (playwright full-stack)
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
 
@@ -269,14 +277,65 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       # Brings up the compose infrastructure, migrates, creates the bucket, then
-      # runs the suite (Playwright starts the app servers). CI is set by GitHub
-      # Actions, so servers are launched fresh (no reuse) and the run retries once.
-      - name: Run the full-stack suite
+      # runs this shard's specs (Playwright starts the app servers). CI is set by
+      # GitHub Actions, so servers are launched fresh (no reuse) and the run
+      # retries once. `--shard` partitions which whole spec files this runner
+      # executes; `npm test` forwards it to `playwright test`.
+      - name: Run the shard
         working-directory: e2e
-        run: npm test
+        run: npm test -- --shard=${{ matrix.shard }}/4
 
-      - name: Upload the Playwright report on failure
-        if: failure()
+      # Upload even on failure so a red shard still contributes its results to the
+      # merged report.
+      - name: Upload the shard blob report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-${{ matrix.shard }}
+          path: e2e/blob-report/
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # e2e-report: merge the per-shard blob reports into a single HTML report.
+  # `if: always()` so the report is produced even when a shard fails, and it
+  # merges whatever blobs landed (a shard that failed before emitting a blob is
+  # simply absent). Only needs Node + the e2e deps for the `merge-reports` CLI;
+  # no browser install and no infrastructure.
+  # ---------------------------------------------------------------------------
+  e2e-report:
+    name: e2e report (merge)
+    needs: [e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: Install e2e deps
+        working-directory: e2e
+        run: npm ci
+
+      # merge-multiple flattens every blob-* artifact into one directory; each
+      # shard's blob file is named per-shard, so they do not collide.
+      - name: Download all shard blob reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: blob-*
+          path: all-blobs
+          merge-multiple: true
+
+      - name: Merge blob reports into one HTML report
+        working-directory: e2e
+        run: npx playwright merge-reports --reporter=html ../all-blobs
+
+      - name: Upload the merged HTML report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
