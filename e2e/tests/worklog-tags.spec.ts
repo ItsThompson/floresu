@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext } from "@playwright/test";
+import { expect, test, type APIRequestContext, type Locator } from "@playwright/test";
 
 import { bodyText, createWorklog, registerAndOnboard } from "../harness/support";
 
@@ -11,6 +11,13 @@ async function addTag(request: APIRequestContext, worklogId: number, label: stri
     data: { label, action: "add" },
   });
   expect(response.ok(), await bodyText(response)).toBeTruthy();
+}
+
+/** GET a route and parse it, asserting ok with the body as the failure message. */
+async function getJson<T>(request: APIRequestContext, path: string): Promise<T> {
+  const response = await request.get(path);
+  expect(response.ok(), await bodyText(response)).toBeTruthy();
+  return (await response.json()) as T;
 }
 
 /**
@@ -53,7 +60,7 @@ test("remove a shared worklog tag from one entry; it persists globally and its c
 
   // Compare the rendered color, not a palette hex: the same tag must be identical
   // wherever it appears, and a different tag must differ.
-  const readColor = (locator: ReturnType<typeof rowA.getByText>) =>
+  const readColor = (locator: Locator) =>
     locator.evaluate((element) => getComputedStyle(element).color);
   const sharedColorA = await readColor(sharedInA);
   const sharedColorB = await readColor(sharedInB);
@@ -75,10 +82,7 @@ test("remove a shared worklog tag from one entry; it persists globally and its c
   await expect(rowB.getByText(`#${SHARED_TAG}`, { exact: true })).toBeVisible();
 
   // The API confirms the edge was dropped only for entry A.
-  const summaries = (await (await page.request.get("/worklog")).json()) as {
-    id: number;
-    tags: string[];
-  }[];
+  const summaries = await getJson<{ id: number; tags: string[] }[]>(page.request, "/worklog");
   const readA = summaries.find((summary) => summary.id === entryA.id);
   const readB = summaries.find((summary) => summary.id === entryB.id);
   expect(readA?.tags).not.toContain(SHARED_TAG);
@@ -86,8 +90,6 @@ test("remove a shared worklog tag from one entry; it persists globally and its c
   expect(readB?.tags).toContain(SHARED_TAG);
 
   // The tag survives globally because entry B still uses it.
-  const globalTags = (await (await page.request.get("/worklog/tags")).json()) as {
-    label: string;
-  }[];
+  const globalTags = await getJson<{ label: string }[]>(page.request, "/worklog/tags");
   expect(globalTags.map((tag) => tag.label)).toContain(SHARED_TAG);
 });
