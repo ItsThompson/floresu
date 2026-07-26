@@ -57,3 +57,56 @@ export async function startAuthorization(
   expect(authRequestId, `no auth_request_id in ${location}`).toBeTruthy();
   return authRequestId as string;
 }
+
+/**
+ * Complete the consent decision and exchange the code for tokens. Approves the
+ * parked request via `POST /oauth/authorize/decision`, pulls the loopback `code`,
+ * then exchanges it at `POST /oauth/token` with the PKCE verifier. Returns the
+ * refresh token so the revoke test can prove it stops working after revoke.
+ */
+export async function completeTokenGrant(
+  request: APIRequestContext,
+  params: { authRequestId: string; clientId: string; verifier: string },
+): Promise<{ accessToken: string; refreshToken: string }> {
+  const decision = await request.post("/oauth/authorize/decision", {
+    data: { auth_request_id: params.authRequestId, approve: true },
+  });
+  expect(decision.ok(), await bodyText(decision)).toBeTruthy();
+  const { redirect_uri: redirectUri } = (await decision.json()) as { redirect_uri: string };
+  const code = new URL(redirectUri).searchParams.get("code");
+  expect(code, `no code in ${redirectUri}`).toBeTruthy();
+
+  const token = await request.post("/oauth/token", {
+    form: {
+      grant_type: "authorization_code",
+      client_id: params.clientId,
+      code: code as string,
+      code_verifier: params.verifier,
+      redirect_uri: AGENT_REDIRECT_URI,
+    },
+  });
+  expect(token.ok(), await bodyText(token)).toBeTruthy();
+  const body = (await token.json()) as { access_token: string; refresh_token: string };
+  return { accessToken: body.access_token, refreshToken: body.refresh_token };
+}
+
+/**
+ * Attempt a refresh with a held refresh token via `POST /oauth/token`. Returns the
+ * raw status and parsed OAuth `error` (when present) without asserting ok, so the
+ * caller can observe the `invalid_grant` failure after the grant is revoked.
+ */
+export async function refreshWithToken(
+  request: APIRequestContext,
+  params: { clientId: string; refreshToken: string },
+): Promise<{ status: number; error?: string }> {
+  const response = await request.post("/oauth/token", {
+    form: {
+      grant_type: "refresh_token",
+      client_id: params.clientId,
+      refresh_token: params.refreshToken,
+    },
+  });
+  const status = response.status();
+  const body = (await response.json()) as { error?: string };
+  return body.error ? { status, error: body.error } : { status };
+}
