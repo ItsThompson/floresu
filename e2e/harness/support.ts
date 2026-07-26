@@ -112,9 +112,9 @@ export async function createLivingResume(
 
 /**
  * Seed an empty section onto a resume via the full-document PUT (the shape the
- * agent would write over MCP). The web editor can pull bullets into a section but
- * has no add-section control, so tests that exercise the human assemble flow seed
- * the section first, then place bullets through the item endpoint (or the UI).
+ * agent would write over MCP). Tests that are not exercising the web add-section
+ * control seed the section directly here, then place bullets through the item
+ * endpoint (or the UI). The web editor's own add-section flow is covered separately.
  */
 export async function seedResumeSection(
   request: APIRequestContext,

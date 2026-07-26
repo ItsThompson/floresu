@@ -1,5 +1,6 @@
 import { useDragList } from "../hooks/useDragList";
 import type { BulletpointRecord, IdentityVariant, ResumeEditorActions, ResumeRecord } from "../types";
+import { AddSectionControl } from "./AddSectionControl";
 import { HeaderSection } from "./HeaderSection";
 import { SectionCard } from "./SectionCard";
 
@@ -56,12 +57,7 @@ export function SectionForm({
         />
       ))}
 
-      {sections.length === 0 && (
-        <p className="text-muted-foreground text-sm">
-          This resume has no sections yet. Your agent can add them over MCP, or pull bullets from your
-          library.
-        </p>
-      )}
+      {!isReadOnly && <AddSectionControl onAddSection={actions.addSection} />}
     </div>
   );
 }

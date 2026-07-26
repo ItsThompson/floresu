@@ -55,6 +55,17 @@ function seedResume(overrides?: Parameters<typeof buildResumeRecord>[0]) {
   });
 }
 
+/** A living resume with zero sections: the blank starting point a web user builds from. */
+function seedBlankResume(overrides?: Parameters<typeof buildResumeRecord>[0]) {
+  return buildResumeRecord({
+    id: 1,
+    kind: "living",
+    title: "Fresh Start",
+    document: { schema_version: 1, template_id: "classic", header: {}, sections: [] },
+    ...overrides,
+  });
+}
+
 describe("ResumeEditorView", () => {
   it("loads the resume and resolves library and local item text", async () => {
     authenticate();
@@ -273,7 +284,73 @@ describe("ResumeEditorView", () => {
 
     expect(await screen.findByText("Work Experience")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /pull from library/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "add section" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("Resume title")).toBeDisabled();
+  });
+
+  it("adds the first section to a blank resume, replacing the dead-end message", async () => {
+    authenticate();
+    const { handlers, resumes } = createResumeApiMock({
+      resumes: [seedBlankResume()],
+      bullets: [],
+    });
+    server.use(...handlers);
+    renderApp(["/resumes/1"]);
+    const user = userEvent.setup();
+
+    // A blank resume offers the add-section control, not the old dead-end copy.
+    expect(await screen.findByRole("button", { name: "add section" })).toBeInTheDocument();
+    expect(screen.queryByText(/no sections yet/i)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "add section" }));
+    await user.selectOptions(screen.getByLabelText("Section kind"), "projects");
+    await user.type(screen.getByLabelText("Section title"), "Side Projects");
+    await user.click(screen.getByRole("button", { name: "Add section" }));
+
+    // The section renders without a reload and persists as an empty section.
+    expect(await screen.findByText("Side Projects")).toBeInTheDocument();
+    await waitFor(() => expect(resumes.get(1)?.document.sections).toHaveLength(1));
+    expect(resumes.get(1)?.document.sections?.[0]).toMatchObject({
+      kind: "projects",
+      title: "Side Projects",
+      item_order: [],
+      items: {},
+    });
+  });
+
+  it("completes the blank-to-filled chain on the web: section, library bullet, inline item", async () => {
+    authenticate();
+    const { handlers, resumes, bullets } = createResumeApiMock({
+      resumes: [seedBlankResume()],
+      bullets: [buildBulletpoint({ id: 200, text: "Led the platform migration.", used_in_count: 0 })],
+    });
+    server.use(...handlers);
+    renderApp(["/resumes/1"]);
+    const user = userEvent.setup();
+
+    // Add the first section (a blank title falls back to the kind's default label).
+    await user.click(await screen.findByRole("button", { name: "add section" }));
+    await user.click(screen.getByRole("button", { name: "Add section" }));
+    expect(await screen.findByText("Work Experience")).toBeInTheDocument();
+
+    // Its add-item controls are now reachable: pull a library bullet (count rises).
+    await user.click(await screen.findByRole("button", { name: /pull from library/i }));
+    await user.click(await screen.findByRole("button", { name: /Led the platform migration/ }));
+    await waitFor(() =>
+      expect(screen.getByDisplayValue("Led the platform migration.")).toBeInTheDocument(),
+    );
+    await waitFor(() => expect(bullets.get(200)?.used_in_count).toBe(1));
+
+    // Add a net-new inline item into the same section.
+    await user.click(screen.getByRole("button", { name: "new" }));
+    await user.type(screen.getByLabelText("New bullet text"), "Shipped the blank-start flow");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await waitFor(() =>
+      expect(screen.getByDisplayValue("Shipped the blank-start flow")).toBeInTheDocument(),
+    );
+
+    const items = resumes.get(1)?.document.sections?.[0].items ?? {};
+    expect(Object.values(items)).toHaveLength(2);
   });
 
   it("finalizes an application draft through the confirm gate, freezing it read-only", async () => {

@@ -73,6 +73,50 @@ test("copy-on-write scope: fork this resume, edit everywhere, and promote", asyn
   expect(bullets.map((bullet) => bullet.text)).toContain("Alpha bullet forked here only");
 });
 
+/**
+ * Build a resume from a blank starting point entirely on the web: add the first
+ * section with the add-section control (no MCP, no API seed), then reach the
+ * section's own add-item controls to pull a library bullet and add an inline one.
+ */
+test("build a resume from blank on the web: add section, pull a bullet, add inline", async ({
+  page,
+}) => {
+  await registerAndOnboard(page);
+  const bullet = await createBullet(page.request, "Cut checkout latency by 40%");
+  const resumeId = await createLivingResume(page.request, "From Blank");
+
+  await page.goto(`/resumes/${resumeId}`);
+
+  // A blank resume shows the add-section control, not a dead-end message.
+  await expect(page.getByRole("button", { name: "add section", exact: true })).toBeVisible();
+
+  // Add the first section through the web control.
+  await page.getByRole("button", { name: "add section", exact: true }).click();
+  await page.getByLabel("Section kind").selectOption("work");
+  await page.getByLabel("Section title").fill("Experience");
+  await page.getByRole("button", { name: "Add section", exact: true }).click();
+
+  // The new section renders without a reload; its add-item controls are reachable.
+  await expect(page.getByText("Experience")).toBeVisible();
+  await pullFromLibrary(page, "Cut checkout latency by 40%");
+
+  const rows = page.getByRole("textbox", { name: "Bullet text" });
+  await expect(rows).toHaveCount(1);
+
+  // Pulling the library bullet raises its used-in count (exercised from the browser).
+  const bullets = (await (await page.request.get("/bullets")).json()) as {
+    id: number;
+    used_in_count: number;
+  }[];
+  expect(bullets.find((entry) => entry.id === bullet.id)?.used_in_count).toBe(1);
+
+  // Add a net-new inline item into the same section.
+  await page.getByRole("button", { name: "new", exact: true }).click();
+  await page.getByLabel("New bullet text").fill("Shipped the blank-start flow");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(rows).toHaveCount(2);
+});
+
 /** Open a section's library picker and add the bullet whose text matches. */
 async function pullFromLibrary(page: import("@playwright/test").Page, bulletText: string) {
   await page.getByRole("button", { name: /pull from library/ }).click();
