@@ -9,11 +9,14 @@ let counter = 0;
 
 /**
  * A unique, syntactically-valid email. The backend rejects reserved TLDs
- * (`.test`, `.example`), so use a normal-looking domain.
+ * (`.test`, `.example`), so use a normal-looking domain. `process.pid`
+ * disambiguates parallel workers: each Playwright worker is its own process with
+ * its own `counter`, so without the pid two workers could mint the same address
+ * in the same millisecond.
  */
 export function uniqueEmail(prefix = "user"): string {
   counter += 1;
-  return `${prefix}-${Date.now()}-${counter}@floresu-e2e.com`;
+  return `${prefix}-${Date.now()}-${process.pid}-${counter}@floresu-e2e.com`;
 }
 
 export interface Me {
