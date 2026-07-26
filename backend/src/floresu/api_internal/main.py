@@ -21,6 +21,7 @@ from floresu.core.app_factory import create_app
 from floresu.core.db import create_database, create_db_lifespan, db_readiness_check
 from floresu.core.errors import build_exception_handlers
 from floresu.core.identity import require_internal_user
+from floresu.core.redis import create_redis_client
 from floresu.core.settings import INTERNAL_PORT, INTERNAL_SERVICE, build_app_settings
 from floresu.embedding.enqueue import build_sync_embed_fastpath_consumer
 from floresu.embedding.router import create_embedding_router
@@ -30,6 +31,8 @@ from floresu.embedding.wiring import (
     create_openai_http_client,
     embedding_resolver,
 )
+from floresu.feed.store import RedisFeedStore
+from floresu.feed.wiring import build_sse_feed_consumer
 from floresu.resumes.cow import EditChannel
 
 if TYPE_CHECKING:
@@ -47,6 +50,15 @@ def create_internal_app() -> FastAPI:
     """
     settings = build_app_settings(service=INTERNAL_SERVICE, port=INTERNAL_PORT)
     db = create_database(settings.database_url)
+
+    # One async Redis client, owned here so agent writes stream into the open feed
+    # exactly as human writes do: the SSE feed consumer below publishes each
+    # committed write to the owner's Redis channel + replay buffer, which the
+    # external app's GET /feed streams from. Mirrors the external app; closed on
+    # shutdown by the lifespan below. This app only publishes: it does not serve
+    # GET /feed, so FEED_STORE_ATTR is deliberately not set on app.state.
+    redis_client = create_redis_client(settings.redis_url)
+    feed_store = RedisFeedStore(redis_client)
 
     # The one embedding provider (the only external AI dependency), injected into both
     # the worker-facing embed routes and the synchronous fast-path. Its httpx client is
@@ -75,12 +87,13 @@ def create_internal_app() -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        """Dispose the DB pool on shutdown and close the embedding provider client."""
+        """Dispose the DB pool and close the embedding-provider and Redis clients on shutdown."""
         async with create_db_lifespan(db.engine)(app):
             try:
                 yield
             finally:
                 await openai_client.aclose()
+                await redis_client.aclose()
 
     app = create_app(
         settings,
@@ -90,15 +103,19 @@ def create_internal_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.state.db = db
-    # The write-event seam. The audit consumer is the transactional consumer; the
-    # synchronous embed fast-path is the post-commit side channel, so an agent's
-    # write-then-search in one turn sees the semantic vector without waiting on the
-    # worker. A rolled-back write embeds nothing; a failed embed never fails the write.
+    # The write-event seam. The audit consumer is the transactional consumer; two
+    # post-commit side channels fan out a committed agent write. The SSE feed
+    # publish streams it into the open Home feed identically to a human write (the
+    # same consumer the external app registers). The synchronous embed fast-path
+    # then embeds it inline, so an agent's write-then-search in one turn sees the
+    # semantic vector without waiting on the worker. A rolled-back write does
+    # neither (post-commit only); a failed side channel never fails the write.
     app.state.events = build_write_event_publisher(
         post_commit=[
+            build_sse_feed_consumer(feed_store),
             build_sync_embed_fastpath_consumer(
                 db.sessionmaker, embedding_resolver(), embedding_provider
-            )
+            ),
         ]
     )
     return app
