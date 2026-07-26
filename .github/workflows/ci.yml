@@ -198,7 +198,8 @@ jobs:
           export FLORESU_OAUTH_PRIVATE_KEY=dummy FLORESU_CLOUDFLARED_CREDENTIALS=dummy
           export FLORESU_ALERTMANAGER_CONFIG=dummy FLORESU_CLOUDFLARED_INGRESS=dummy
           export POSTGRES_PASSWORD=dummy SESSION_JWT_SECRET=dummy INTERNAL_API_TOKEN=dummy
-          export GF_SECURITY_ADMIN_PASSWORD=dummy
+          export GF_SECURITY_ADMIN_PASSWORD=dummy REDIS_PASSWORD=dummy
+          export R2_ACCESS_KEY_ID=dummy R2_SECRET_ACCESS_KEY=dummy
           docker compose \
             -f docker-compose.yml -f docker-compose.tunnel.yml -f docker-compose.deploy.yml \
             --profile tunnels config -q
