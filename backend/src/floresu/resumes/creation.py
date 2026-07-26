@@ -15,7 +15,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from floresu.core.errors import Conflict, Validation
-from floresu.resumes.config import DEFAULT_TEMPLATE_ID, DEFAULT_TITLE
+from floresu.rendering.config import DEFAULT_TEMPLATE_ID
+from floresu.resumes.config import DEFAULT_TITLE
 from floresu.resumes.document import ResumeDocument
 from floresu.resumes.models import ResumeKind
 from floresu.resumes.schemas import BlankSource, FromResumeSource, ResumeCreateRequest
