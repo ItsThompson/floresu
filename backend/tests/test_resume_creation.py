@@ -12,9 +12,12 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+import structlog
 
 from floresu.core.errors import Conflict, Validation
-from floresu.resumes.config import DEFAULT_TEMPLATE_ID, DEFAULT_TITLE
+from floresu.rendering.config import DEFAULT_TEMPLATE_ID
+from floresu.rendering.registry import list_templates, resolve_template
+from floresu.resumes.config import DEFAULT_TITLE
 from floresu.resumes.creation import (
     JOB_APPLICATION_TAKEN_MESSAGE,
     require_free_job_application,
@@ -104,6 +107,30 @@ async def test_seed_document_for_a_blank_source_yields_an_empty_document() -> No
     assert document.template_id == DEFAULT_TEMPLATE_ID
     assert title == DEFAULT_TITLE
     assert source_id is None
+
+
+async def test_seed_document_for_a_blank_source_uses_a_registered_template_id() -> None:
+    # The blank default must be a real registry id (not a placeholder the renderer
+    # falls back on) and must match what GET /resumes/templates lists, so the editor
+    # selector value is a valid option with no re-select.
+    repo = InMemoryResumeRepository()
+    document, _title, _source_id = await seed_document(repo, 1, build_create_request())
+    assert document.template_id in [info.id for info in list_templates()]
+    # resolve_template returns the requested id unchanged only when it is registered;
+    # an unknown id falls back to the P0 default, so equality proves no fallback.
+    assert resolve_template(document.template_id).id == document.template_id
+
+
+async def test_a_fresh_blank_resume_resolves_without_a_template_fallback_notice(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo = InMemoryResumeRepository()
+    document, _title, _source_id = await seed_document(repo, 1, build_create_request())
+    cap = structlog.testing.CapturingLogger()
+    monkeypatch.setattr("floresu.rendering.registry._log", cap)
+    resolve_template(document.template_id)
+    fallbacks = [call for call in cap.calls if call.args == ("template_fallback",)]
+    assert fallbacks == []
 
 
 async def test_seed_document_for_a_blank_source_honors_title_and_template_overrides() -> None:
