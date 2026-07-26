@@ -125,8 +125,10 @@ async def test_the_internal_app_publishes_nothing_for_a_rolled_back_agent_write(
                     await publisher.publish(session, _agent_write(user_id, entity_id=6))
                     raise RuntimeError("boom")
 
-            # The post-commit SSE publish is deferred and discarded on rollback, so
-            # nothing reached the channel or the replay buffer.
+            # The post-commit SSE publish is deferred and discarded on rollback: it
+            # never runs. The empty replay buffer proves it: publish adds to the
+            # buffer and publishes to the channel in one atomic pipeline, so no
+            # buffer entry means no channel frame either.
             gap = await observer.replay_since(user_id, last_event_id=0)
             assert gap == []
     finally:
