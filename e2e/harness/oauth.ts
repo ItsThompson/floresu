@@ -107,6 +107,7 @@ export async function refreshWithToken(
     },
   });
   const status = response.status();
+  if (response.ok()) return { status };
   const body = (await response.json()) as { error?: string };
   return body.error ? { status, error: body.error } : { status };
 }
