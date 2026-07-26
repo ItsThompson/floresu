@@ -1,4 +1,7 @@
+import { useSearchParams } from "react-router";
+
 import { Button } from "@/components/ui/button";
+import { NEW_ENTRY_PARAM } from "@/lib/worklogPaths";
 
 import {
   EMPTY_BODY,
@@ -20,7 +23,9 @@ import { useWorklogSearch } from "./hooks/useWorklogSearch";
  * backend.
  */
 export function WorklogView() {
-  const { state, actions } = useWorklog();
+  const [searchParams] = useSearchParams();
+  const openCreateOnMount = searchParams.get(NEW_ENTRY_PARAM) !== null;
+  const { state, actions } = useWorklog({ openCreateOnMount });
   const search = useWorklogSearch();
 
   const isEmpty = state.status === "ready" && state.totalCount === 0;

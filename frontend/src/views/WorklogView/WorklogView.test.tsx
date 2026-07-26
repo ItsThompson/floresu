@@ -372,6 +372,29 @@ describe("WorklogView", () => {
     expect(calls.created).toHaveLength(0);
   });
 
+  it("opens the entry form on arrival when the new-entry flag is set", async () => {
+    installWorklogApi({ entries: [], sources: [ACME] });
+
+    renderWithProviders(
+      <SWRConfig value={{ provider: () => new Map() }}>
+        <WorklogView />
+      </SWRConfig>,
+      ["/worklog?new=1"],
+    );
+
+    // The form is open without any click, because the route carried the signal.
+    expect(await screen.findByRole("form", { name: "Add entry" })).toBeInTheDocument();
+  });
+
+  it("leaves the entry form closed on arrival without the flag", async () => {
+    installWorklogApi({ entries: [buildEntry({ id: 1, title: "Shipped payments" })], sources: [ACME] });
+
+    renderWorklog();
+    await screen.findByText("Shipped payments");
+
+    expect(screen.queryByRole("form", { name: "Add entry" })).not.toBeInTheDocument();
+  });
+
   it("surfaces an error when search fails", async () => {
     installWorklogApi({ entries: [buildEntry({ id: 1, title: "Shipped payments" })], sources: [ACME], failSearch: true });
 

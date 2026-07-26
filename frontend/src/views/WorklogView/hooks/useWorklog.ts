@@ -64,6 +64,11 @@ export interface UseWorklog {
   actions: WorklogViewActions;
 }
 
+export interface UseWorklogParams {
+  /** Open a fresh create form on first render (the manual cold-start signal). */
+  openCreateOnMount?: boolean;
+}
+
 /**
  * Drives the global worklog timeline: reads the entries, sources, and tag list;
  * holds the combined filters and the create/edit form; and performs the audited
@@ -72,7 +77,7 @@ export interface UseWorklog {
  * intent and reflects results. All three reads and every write go through the
  * generated client, so no endpoint shape is hand-written here.
  */
-export function useWorklog(): UseWorklog {
+export function useWorklog({ openCreateOnMount = false }: UseWorklogParams = {}): UseWorklog {
   const client = useSessionClient();
 
   const timeline = useSWR<WorklogSummary[]>(
@@ -106,7 +111,9 @@ export function useWorklog(): UseWorklog {
   );
 
   const [filters, setFilters] = useState<WorklogFilterValues>(NO_FILTERS);
-  const [form, setForm] = useState<FormMode>({ kind: "closed" });
+  const [form, setForm] = useState<FormMode>(
+    openCreateOnMount ? { kind: "create" } : { kind: "closed" },
+  );
   const [write, setWrite] = useState<WriteState>({ status: "idle" });
   const [archiveError, setArchiveError] = useState<string | null>(null);
 
