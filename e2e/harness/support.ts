@@ -43,28 +43,219 @@ export async function getMe(request: APIRequestContext): Promise<Me> {
   return (await response.json()) as Me;
 }
 
-/** Create a role source through the API; returns its id and display label. */
-export async function createRole(
+/** The four source kinds, matching the backend SourceKind discriminator. */
+export type SourceKind = "role" | "project" | "certification" | "education";
+
+/** Common columns every source write carries (maps to _SourceWriteBase). */
+export interface SourceCommon {
+  displayLabel: string; // maps to display_label (min length 1)
+  dateStart?: string | null; // ISO date; maps to date_start
+  dateEnd?: string | null; // ISO date, or omitted for "Present"; maps to date_end
+  summary?: string | null;
+}
+
+/** Kind-specific fields, discriminated by kind (maps to the RoleWrite/... union). */
+export type SourceFields =
+  | { kind: "role"; company: string; jobTitle: string; titleAliases?: string[]; location?: string | null }
+  | { kind: "project"; links?: string[] }
+  | { kind: "certification"; issuer: string; credentialId?: string | null }
+  | { kind: "education"; institution: string; degree?: string | null; field?: string | null };
+
+/** The kind-specific snake_case columns posted alongside the common ones. */
+type SourceKindBody =
+  | { company: string; job_title: string; title_aliases: string[]; location: string | null }
+  | { links: string[] }
+  | { issuer: string; credential_id: string | null }
+  | { institution: string; degree: string | null; field: string | null };
+
+/** Build the per-kind wire columns; the write model forbids fields of other kinds. */
+function sourceKindBody(fields: SourceFields): SourceKindBody {
+  switch (fields.kind) {
+    case "role":
+      return {
+        company: fields.company,
+        job_title: fields.jobTitle,
+        title_aliases: fields.titleAliases ?? [],
+        location: fields.location ?? null,
+      };
+    case "project":
+      return { links: fields.links ?? [] };
+    case "certification":
+      return { issuer: fields.issuer, credential_id: fields.credentialId ?? null };
+    case "education":
+      return {
+        institution: fields.institution,
+        degree: fields.degree ?? null,
+        field: fields.field ?? null,
+      };
+  }
+}
+
+/**
+ * Create any source kind through POST /sources and return its id and label. Builds
+ * the discriminated-union body the boundary validates against `kind`, so a role
+ * posts company/job_title and a certification posts issuer/credential_id.
+ */
+export async function createSource(
   request: APIRequestContext,
-  company: string,
-  jobTitle: string,
+  fields: SourceFields & SourceCommon,
 ): Promise<{ id: number; label: string }> {
   const response = await request.post("/sources", {
     data: {
-      kind: "role",
-      display_label: `${company} — ${jobTitle}`,
-      company,
-      job_title: jobTitle,
-      title_aliases: [],
-      location: null,
-      date_start: null,
-      date_end: null,
-      summary: null,
+      kind: fields.kind,
+      display_label: fields.displayLabel,
+      date_start: fields.dateStart ?? null,
+      date_end: fields.dateEnd ?? null,
+      summary: fields.summary ?? null,
+      ...sourceKindBody(fields),
     },
   });
   expect(response.ok(), await bodyText(response)).toBeTruthy();
   const id = ((await response.json()) as { id: number }).id;
-  return { id, label: `${company} — ${jobTitle}` };
+  return { id, label: fields.displayLabel };
+}
+
+/** Create a role source through the API; returns its id and display label. */
+export function createRole(
+  request: APIRequestContext,
+  company: string,
+  jobTitle: string,
+): Promise<{ id: number; label: string }> {
+  return createSource(request, {
+    kind: "role",
+    displayLabel: `${company} — ${jobTitle}`,
+    company,
+    jobTitle,
+  });
+}
+
+/** Create a project source through the API; returns its id and display label. */
+export function createProject(
+  request: APIRequestContext,
+  displayLabel: string,
+  links?: string[],
+): Promise<{ id: number; label: string }> {
+  return createSource(request, { kind: "project", displayLabel, links });
+}
+
+/** Create a certification source through the API; returns its id and display label. */
+export function createCertification(
+  request: APIRequestContext,
+  displayLabel: string,
+  issuer: string,
+  credentialId?: string | null,
+): Promise<{ id: number; label: string }> {
+  return createSource(request, { kind: "certification", displayLabel, issuer, credentialId });
+}
+
+/** Create an education source through the API; returns its id and display label. */
+export function createEducation(
+  request: APIRequestContext,
+  displayLabel: string,
+  institution: string,
+  degree?: string | null,
+  field?: string | null,
+): Promise<{ id: number; label: string }> {
+  return createSource(request, { kind: "education", displayLabel, institution, degree, field });
+}
+
+/** A variant's contact fields; each is optional (maps to VariantContact). */
+export interface VariantContact {
+  email?: string | null;
+  phone?: string | null;
+  location?: string | null;
+}
+
+/** A labeled link (maps to VariantLink; both fields required, min length 1). */
+export interface VariantLink {
+  label: string;
+  url: string;
+}
+
+/** The identity-variant write fields (camelCase; mapped to the snake_case wire body). */
+export interface VariantFields {
+  label: string; // e.g. "Backend focus"
+  fullName: string; // display name on the header; maps to full_name
+  contact?: VariantContact; // nested; maps to contact { email, phone, location }
+  links?: VariantLink[]; // maps to links [{ label, url }]
+  isDefault?: boolean; // maps to is_default; omit to rely on server default
+}
+
+/** The IdentityVariantWrite wire body; is_default is omitted unless the caller forces it. */
+interface VariantWriteBody {
+  label: string;
+  full_name: string;
+  contact: VariantContact;
+  links: VariantLink[];
+  is_default?: boolean;
+}
+
+/** The IdentityVariantRead fields this harness reads back to re-post on a default flip. */
+interface VariantRecord {
+  id: number;
+  label: string;
+  full_name: string;
+  contact: VariantContact;
+  links: VariantLink[];
+  is_default: boolean;
+}
+
+/**
+ * Create an identity variant through POST /identity-variants. Maps `fullName` to
+ * `full_name`, nests `contact`, and posts `links` as `{ label, url }` objects. The
+ * server marks the first variant default (US-ID-01), so a caller may omit
+ * `isDefault`; the returned `isDefault` reflects the server's resolved state.
+ */
+export async function createVariant(
+  request: APIRequestContext,
+  fields: VariantFields,
+): Promise<{ id: number; isDefault: boolean }> {
+  const data: VariantWriteBody = {
+    label: fields.label,
+    full_name: fields.fullName,
+    contact: fields.contact ?? {},
+    links: fields.links ?? [],
+    ...(fields.isDefault === undefined ? {} : { is_default: fields.isDefault }),
+  };
+  const response = await request.post("/identity-variants", { data });
+  expect(response.ok(), await bodyText(response)).toBeTruthy();
+  const body = (await response.json()) as { id: number; is_default: boolean };
+  return { id: body.id, isDefault: body.is_default };
+}
+
+/**
+ * Mark an existing variant as the default via the full-representation PUT. The
+ * write model forbids partial bodies, so read the current variant and re-post it
+ * with `is_default` set.
+ */
+export async function setDefaultVariant(
+  request: APIRequestContext,
+  variantId: number,
+): Promise<void> {
+  const current = await request.get(`/identity-variants/${variantId}`);
+  expect(current.ok(), await bodyText(current)).toBeTruthy();
+  const variant = (await current.json()) as VariantRecord;
+  const response = await request.put(`/identity-variants/${variantId}`, {
+    data: {
+      label: variant.label,
+      full_name: variant.full_name,
+      contact: variant.contact,
+      links: variant.links,
+      is_default: true,
+    },
+  });
+  expect(response.ok(), await bodyText(response)).toBeTruthy();
+}
+
+/** Create a curated skill through POST /skills; returns its id and name. */
+export async function createSkill(
+  request: APIRequestContext,
+  name: string,
+): Promise<{ id: number; name: string }> {
+  const response = await request.post("/skills", { data: { name } });
+  expect(response.ok(), await bodyText(response)).toBeTruthy();
+  const body = (await response.json()) as { id: number; name: string };
+  return { id: body.id, name: body.name };
 }
 
 /** Create a worklog entry through the API; returns its id. */
@@ -282,6 +473,30 @@ export function pdfToText(pdf: Buffer): string {
 /** Assert a PDF byte buffer has selectable text containing `expected`. */
 export function assertPdfSelectableText(pdf: Buffer, expected: string): void {
   expect(pdfToText(pdf)).toContain(expected);
+}
+
+/**
+ * The exported archive shape (subset the tests assert against). `schema_version`
+ * and `exported_at` are always present; record collections (worklog_entries,
+ * sources, bulletpoints, skills, identity_variants, resumes, ...) key the rest.
+ */
+export interface ExportArchive {
+  schema_version: number;
+  exported_at: string;
+  [collection: string]: unknown;
+}
+
+/** Fetch the data-export archive via GET /account/export and parse it. */
+export async function exportData(request: APIRequestContext): Promise<ExportArchive> {
+  const response = await request.get("/account/export");
+  expect(response.ok(), await bodyText(response)).toBeTruthy();
+  return (await response.json()) as ExportArchive;
+}
+
+/** Permanently delete the current account via DELETE /account?confirm=true. */
+export async function deleteAccount(request: APIRequestContext): Promise<void> {
+  const response = await request.delete("/account", { params: { confirm: true } });
+  expect(response.ok(), await bodyText(response)).toBeTruthy();
 }
 
 /** Best-effort response body text for assertion messages. */
