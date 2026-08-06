@@ -25,6 +25,10 @@ interface ModalProps {
  * to the panel on open, and the fade respects `prefers-reduced-motion` via the
  * `motion-safe` variant. Shared by the resume views (scope prompt, delete
  * confirm, create, library picker, expanded preview).
+ *
+ * A modal genuinely floats, so it carries the one reserved elevation shadow. The
+ * scrim is the espresso ink rather than pure black, which would read cold
+ * against the warm ground.
  */
 export function Modal({ isOpen, onClose, title, children, size = "md" }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -44,7 +48,7 @@ export function Modal({ isOpen, onClose, title, children, size = "md" }: ModalPr
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 motion-safe:animate-in motion-safe:fade-in"
+      className="bg-espresso/40 fixed inset-0 z-50 flex items-center justify-center p-4 motion-safe:animate-in motion-safe:fade-in"
       onClick={onClose}
     >
       <div
@@ -54,7 +58,7 @@ export function Modal({ isOpen, onClose, title, children, size = "md" }: ModalPr
         aria-labelledby={titleId}
         tabIndex={-1}
         className={cn(
-          "bg-card text-card-foreground flex w-full flex-col gap-4 rounded-lg border p-6 shadow-lg outline-none",
+          "bg-card text-card-foreground shadow-floating flex w-full flex-col gap-4 rounded-lg border p-6 outline-none",
           SIZE_CLASS[size],
         )}
         onClick={(event) => event.stopPropagation()}

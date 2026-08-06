@@ -46,7 +46,7 @@ export function McpUrlField({ url }: McpUrlFieldProps) {
           value={url}
           className="border-input bg-muted h-9 flex-1 rounded-md border px-3 font-mono text-sm outline-none"
         />
-        <Button variant="outline" onClick={() => void handleCopy()}>
+        <Button variant="ghost" onClick={() => void handleCopy()}>
           <Copy aria-hidden />
           {copyStatus === "copied" ? "Copied" : "Copy"}
         </Button>

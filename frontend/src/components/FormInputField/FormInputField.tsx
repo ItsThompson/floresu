@@ -1,5 +1,9 @@
 import type { ComponentProps, Ref } from "react";
 
+import { cn } from "@/lib/utils";
+
+import { FIELD_LABEL_CLASS, FIELD_SHAPE_CLASS } from "./constants";
+
 interface FormInputFieldProps extends ComponentProps<"input"> {
   label: string;
   error?: string;
@@ -17,7 +21,7 @@ export function FormInputField({ label, error, id, name, ref, ...props }: FormIn
   const errorId = error ? `${inputId}-error` : undefined;
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={inputId} className="text-foreground text-sm font-medium">
+      <label htmlFor={inputId} className={FIELD_LABEL_CLASS}>
         {label}
       </label>
       <input
@@ -26,7 +30,7 @@ export function FormInputField({ label, error, id, name, ref, ...props }: FormIn
         name={name}
         aria-invalid={error ? true : undefined}
         aria-describedby={errorId}
-        className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:border-destructive h-9 rounded-md border px-3 text-sm outline-none focus-visible:ring-[3px]"
+        className={cn(FIELD_SHAPE_CLASS, "h-9 px-3")}
         {...props}
       />
       {error && (

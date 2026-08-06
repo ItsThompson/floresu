@@ -53,7 +53,7 @@ export function ItemHistoryDialog({
       )}
 
       {state.status === "ready" && state.entries.length > 0 && (
-        <ul className="flex max-h-[60vh] flex-col gap-2 overflow-auto">
+        <ul className="divide-border/60 flex max-h-[60vh] flex-col divide-y overflow-auto">
           {state.entries.map((entry) => (
             <ItemHistoryRow key={entry.id} entry={entry} />
           ))}
