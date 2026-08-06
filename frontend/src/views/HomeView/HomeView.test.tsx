@@ -11,8 +11,8 @@ import { HomeView } from "./HomeView";
 
 /**
  * The activity feed opens an SSE `EventSource`, absent under jsdom. A no-op fake
- * keeps the feed region mounted without a real stream; this ticket only adds the
- * worklog and resumes regions, so the feed's own behavior is covered elsewhere.
+ * keeps the feed region mounted without a real stream; the feed's own behavior is
+ * covered by `ActivityFeed.test.tsx`.
  */
 class FakeEventSource {
   addEventListener(): void {}
@@ -91,6 +91,8 @@ describe("HomeView", () => {
     expect(await within(resumesRegion()).findByText("No resumes yet.")).toBeInTheDocument();
     expect(worklogRegion()).toBeInTheDocument();
     expect(resumesRegion()).toBeInTheDocument();
+    // Three empty regions at once, and still exactly one serif display line.
+    expect(document.querySelectorAll('[class*="display-"]')).toHaveLength(1);
   });
 
   it("caps the recent worklog to the newest five, newest-first", async () => {
