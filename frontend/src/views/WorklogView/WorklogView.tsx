@@ -3,11 +3,7 @@ import { useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { NEW_ENTRY_PARAM } from "@/lib/worklogPaths";
 
-import {
-  EMPTY_BODY,
-  EMPTY_TITLE,
-  TIMELINE_ERROR_MESSAGE,
-} from "./constants";
+import { EMPTY_BODY, EMPTY_TITLE, TIMELINE_ERROR_MESSAGE } from "./constants";
 import { WorklogEntryForm } from "./components/WorklogEntryForm";
 import { WorklogFilters } from "./components/WorklogFilters";
 import { WorklogSearch } from "./components/WorklogSearch";
@@ -21,18 +17,23 @@ import { useWorklogSearch } from "./hooks/useWorklogSearch";
  * orchestrator: it composes the data/write hook and the search hook, then wires
  * their state and intent into the presentational parts. All rules live on the
  * backend.
+ *
+ * A dense reading surface, so it stays calm: ink, hairlines, and metadata carry
+ * the page and the entries carry the weight. The empty state holds the view's one
+ * serif display moment.
  */
 export function WorklogView() {
   const [searchParams] = useSearchParams();
   const openCreateOnMount = searchParams.get(NEW_ENTRY_PARAM) !== null;
   const { state, actions } = useWorklog({ openCreateOnMount });
-  const search = useWorklogSearch();
+  const search = useWorklogSearch({ filters: state.filters });
 
   const isEmpty = state.status === "ready" && state.totalCount === 0;
-  const hasNoMatches = state.status === "ready" && state.totalCount > 0 && state.groups.length === 0;
+  const hasNoMatches =
+    state.status === "ready" && state.totalCount > 0 && state.groups.length === 0;
 
   return (
-    <section className="mx-auto flex w-full max-w-[860px] flex-col gap-6 p-8">
+    <section className="reading-width flex w-full flex-col gap-6">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">Worklog</h1>
         <Button onClick={actions.openCreate}>+ Add entry</Button>
@@ -69,7 +70,9 @@ export function WorklogView() {
         </p>
       )}
 
-      {state.status === "loading" && <p className="text-muted-foreground text-sm">Loading your worklog…</p>}
+      {state.status === "loading" && (
+        <p className="text-muted-foreground text-sm">Loading your worklog…</p>
+      )}
 
       {state.status === "error" && (
         <p role="alert" className="text-destructive text-sm">
@@ -79,8 +82,8 @@ export function WorklogView() {
 
       {isEmpty && (
         <div className="flex flex-col items-start gap-3 py-8">
-          <h2 className="text-xl font-semibold">{EMPTY_TITLE}</h2>
-          <p className="text-muted-foreground max-w-prose">{EMPTY_BODY}</p>
+          <h2 className="display-m">{EMPTY_TITLE}</h2>
+          <p className="text-muted-foreground">{EMPTY_BODY}</p>
           <Button onClick={actions.openCreate}>Add your first entry</Button>
         </div>
       )}

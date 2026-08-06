@@ -1,23 +1,29 @@
+import { libraryBulletHref, sourceDetailHref } from "@/lib/entityPaths";
+
 import type { FeedEvent } from "./types";
 
 /**
  * Route builders per entity type, each mapping to a path that exists in
  * `routes.tsx`. Builders for a detail route take the entity id; those that open a
- * list ignore it. Mirrors the `libraryBulletHref`/`sourceDetailHref` builders so
- * a feed link opens the same target as the rest of the app.
+ * list ignore it. Reuses the shared entity deep-links so a feed link opens the
+ * same target as the rest of the app.
  */
 const ENTITY_HREF_BUILDERS: Record<string, (entityId: number) => string> = {
   resume: (entityId) => `/resumes/${entityId}`,
-  bullet: (entityId) => `/library?bullet=${entityId}`,
-  source: (entityId) => `/profile/sources/${entityId}`,
+  bullet: libraryBulletHref,
+  source: sourceDetailHref,
   worklog: () => "/worklog",
   job_application: () => "/applications",
   identity_variant: () => "/profile/identities",
   skill: () => "/profile/skills",
 };
 
-/** Where an unknown entity_type degrades to: the app root, never a broken link. */
-export const ENTITY_HREF_FALLBACK = "/";
+/**
+ * Where an unknown entity_type degrades to: the app's Home, never a broken link
+ * and never the public page at `/`, which would eject a signed-in user out of
+ * the app.
+ */
+export const ENTITY_HREF_FALLBACK = "/home";
 
 /** The affected object's link: a route that exists for the event's entity type. */
 export function entityHref(event: FeedEvent): string {

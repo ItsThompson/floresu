@@ -2,7 +2,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { DEFAULT_FILTERS } from "../constants";
+import { DEFAULT_SEARCH_FILTERS } from "@/lib/searchFilters";
+
 import { buildSource, buildTag } from "../test-support/fixtures";
 import { SearchFilters } from "./SearchFilters";
 
@@ -11,7 +12,7 @@ function renderFilters(onChange = vi.fn()) {
     <SearchFilters
       sources={[buildSource({ id: 1, display_label: "Acme" })]}
       tags={[buildTag({ id: 1, label: "backend" })]}
-      filters={DEFAULT_FILTERS}
+      filters={DEFAULT_SEARCH_FILTERS}
       onChange={onChange}
     />,
   );

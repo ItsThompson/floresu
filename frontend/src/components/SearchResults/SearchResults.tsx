@@ -1,16 +1,22 @@
 import { useMemo } from "react";
 
-import { EMPTY_SEARCH_MESSAGE } from "../constants";
-import type { SearchResultsProps } from "../types";
-import { buildRankedRows, buildSearchGroups } from "../searchResults";
+import { EMPTY_SEARCH_MESSAGE } from "./constants";
 import { RankedHitList } from "./RankedHitList";
+import { buildRankedRows } from "./rankedRows";
+import type { SearchResult } from "./rankedRows";
 import { SearchSourceGroupCard } from "./SearchSourceGroupCard";
+import { buildSearchGroups } from "./sourceGroups";
+
+interface SearchResultsProps {
+  result: SearchResult;
+}
 
 /**
- * The search result view: the flat ranked relevance list beside the same hits
- * grouped under their sources. Any soft notice (e.g. semantic retrieval degraded
- * to lexical-only) is surfaced above the results rather than failing the query.
- * Derives its view model from the result with pure `searchResults`.
+ * The search result view, shared by every surface that searches: the flat ranked
+ * relevance list beside the same hits grouped under their sources. Any soft
+ * notice (e.g. semantic retrieval degraded to lexical-only) is surfaced above the
+ * results rather than failing the query. Derives its view model from the result
+ * with pure `rankedRows` and `sourceGroups`.
  */
 export function SearchResults({ result }: SearchResultsProps) {
   const rows = useMemo(() => buildRankedRows(result), [result]);

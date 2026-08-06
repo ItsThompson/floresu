@@ -5,6 +5,7 @@ import { buildEntryRecord } from "@/mocks/worklogFixtures";
 
 import type {
   BulletpointRecord,
+  SearchQuery,
   SearchResult,
   SourceSummary,
   TagRead,
@@ -33,7 +34,8 @@ export interface WorklogApiCalls {
   created: WorklogWrite[];
   updated: { id: number; body: WorklogWrite }[];
   archived: number[];
-  searched: string[];
+  /** Full search request bodies, so a test can assert the mapped filters too. */
+  searched: SearchQuery[];
 }
 
 const ARCHIVED_AT = "2026-07-21T00:00:00Z";
@@ -116,8 +118,8 @@ export function installWorklogApi(options: WorklogApiOptions = {}): WorklogApiCa
     }),
 
     http.post("*/search", async ({ request }) => {
-      const body = (await request.json()) as { query: string };
-      calls.searched.push(body.query);
+      const body = (await request.json()) as SearchQuery;
+      calls.searched.push(body);
       if (options.failSearch) return new HttpResponse(null, { status: 500 });
       return HttpResponse.json(
         options.search ?? { ranked: [], graph: { sources: [], worklog: [], bullets: [] }, notices: [] },

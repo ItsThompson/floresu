@@ -1,5 +1,6 @@
 import type { components } from "@/api";
 import type { WriteState } from "@/lib/asyncState";
+import type { SearchFilterValues } from "@/lib/searchFilters";
 
 /** A canonical library bullet with its provenance edges and usage count. */
 export type Bullet = components["schemas"]["BulletpointRecord"];
@@ -13,10 +14,7 @@ export type WorklogEntry = components["schemas"]["WorklogSummary"];
 export type Tag = components["schemas"]["TagRead"];
 export type SourceKind = components["schemas"]["SourceKind"];
 export type SearchLayer = components["schemas"]["SearchLayer"];
-export type SearchQueryFilters = components["schemas"]["SearchFilters"];
 export type SearchResult = components["schemas"]["SearchResult"];
-export type SearchGraph = components["schemas"]["SearchGraph"];
-export type EmbedItemKind = components["schemas"]["EmbedItemKind"];
 
 /**
  * Bullets rolled up under one source (browse mode). A bullet linked to two
@@ -28,40 +26,6 @@ export interface BulletGroup {
   label: string;
   kind: SourceKind | null;
   bullets: Bullet[];
-}
-
-/**
- * A source node from the search graph with its matched children attached, for
- * the grouped-by-source result view. `matchScore` is non-null only when the
- * source's own text matched the query directly.
- */
-export interface SearchSourceGroup {
-  id: number;
-  label: string;
-  kind: SourceKind;
-  score: number;
-  matchScore: number | null;
-  worklog: SearchGraph["worklog"];
-  bullets: SearchGraph["bullets"];
-}
-
-/** One row of the flat RRF-ranked list, its label resolved from the graph. */
-export interface RankedRow {
-  key: string;
-  type: EmbedItemKind;
-  label: string;
-  score: number;
-}
-
-/** Local filter UI state; mapped to the API `SearchFilters` on submit. */
-export interface LibraryFilters {
-  sourceIds: number[];
-  kinds: SourceKind[];
-  tags: string[];
-  layer: SearchLayer;
-  /** ISO date (`YYYY-MM-DD`); empty string means unset. */
-  dateFrom: string;
-  dateTo: string;
 }
 
 /** The bullet form's controlled values. */
@@ -95,7 +59,7 @@ export interface LibraryData {
 export interface LibraryState {
   data: LibraryData;
   query: string;
-  filters: LibraryFilters;
+  filters: SearchFilterValues;
   search: SearchState;
   editor: LibraryEditor | null;
   /**
@@ -109,7 +73,7 @@ export interface LibraryState {
 
 export interface LibraryActions {
   setQuery: (query: string) => void;
-  updateFilters: (patch: Partial<LibraryFilters>) => void;
+  updateFilters: (patch: Partial<SearchFilterValues>) => void;
   submitSearch: () => void;
   clearSearch: () => void;
   openCreate: () => void;
@@ -139,18 +103,27 @@ export interface FilterCheckboxOption<T extends string | number> {
   label: string;
 }
 
+/**
+ * How a filter group renders its options: neutral checkbox rows for provenance
+ * links inside a form, or pills for the search filters, where the checked pill
+ * carries the accent fill.
+ */
+export type FilterOptionVariant = "checkbox" | "chip";
+
 export interface FilterCheckboxGroupProps<T extends string | number> {
   legend: string;
   options: FilterCheckboxOption<T>[];
   selected: readonly T[];
   onToggle: (value: T) => void;
+  /** Defaults to the neutral checkbox rows. */
+  variant?: FilterOptionVariant;
 }
 
 export interface SearchFiltersProps {
   sources: Source[];
   tags: Tag[];
-  filters: LibraryFilters;
-  onChange: (patch: Partial<LibraryFilters>) => void;
+  filters: SearchFilterValues;
+  onChange: (patch: Partial<SearchFilterValues>) => void;
 }
 
 export interface BulletRowProps {
@@ -163,18 +136,6 @@ export interface BrowseGroupsProps {
   groups: BulletGroup[];
   onEdit: (bullet: Bullet) => void;
   onArchive: (bulletId: number) => void;
-}
-
-export interface SearchResultsProps {
-  result: SearchResult;
-}
-
-export interface RankedHitListProps {
-  rows: RankedRow[];
-}
-
-export interface SearchSourceGroupCardProps {
-  group: SearchSourceGroup;
 }
 
 export interface BulletFormProps {

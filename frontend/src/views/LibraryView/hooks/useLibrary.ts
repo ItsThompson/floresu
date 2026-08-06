@@ -3,24 +3,19 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSessionClient } from "@/api";
 import type { WriteState } from "@/lib/asyncState";
 import { extractProblem } from "@/lib/problemDetail";
+import { DEFAULT_SEARCH_FILTERS, toSearchFilters } from "@/lib/searchFilters";
+import type { SearchFilterValues } from "@/lib/searchFilters";
 
-import {
-  ARCHIVE_ERROR_FALLBACK,
-  DEFAULT_FILTERS,
-  SAVE_ERROR_FALLBACK,
-  SEARCH_ERROR_MESSAGE,
-} from "../constants";
+import { ARCHIVE_ERROR_FALLBACK, SAVE_ERROR_FALLBACK, SEARCH_ERROR_MESSAGE } from "../constants";
 import type {
   BulletFormValues,
   BulletWrite,
   LibraryActions,
   LibraryData,
   LibraryEditor,
-  LibraryFilters,
   LibraryState,
   SearchState,
 } from "../types";
-import { toSearchFilters } from "../searchFilters";
 
 interface UseLibrary {
   state: LibraryState;
@@ -49,7 +44,7 @@ export function useLibrary(): UseLibrary {
 
   const [data, setData] = useState<LibraryData>(EMPTY_DATA);
   const [query, setQuery] = useState("");
-  const [filters, setFilters] = useState<LibraryFilters>(DEFAULT_FILTERS);
+  const [filters, setFilters] = useState<SearchFilterValues>(DEFAULT_SEARCH_FILTERS);
   const [search, setSearch] = useState<SearchState>({ status: "idle" });
   const [editor, setEditor] = useState<LibraryEditor | null>(null);
   const [write, setWrite] = useState<WriteState>({ status: "idle" });
@@ -106,7 +101,7 @@ export function useLibrary(): UseLibrary {
   }, [client]);
 
   const runSearch = useCallback(
-    async (rawQuery: string, activeFilters: LibraryFilters) => {
+    async (rawQuery: string, activeFilters: SearchFilterValues) => {
       const trimmed = rawQuery.trim();
       if (trimmed === "") {
         setSearch({ status: "idle" });

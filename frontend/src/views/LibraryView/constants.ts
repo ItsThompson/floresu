@@ -1,12 +1,6 @@
-import type { LibraryFilters, SearchLayer, SourceKind } from "./types";
+import { SOURCE_KIND_LABELS } from "@/lib/sourceKindLabels";
 
-/** Human labels for the four ground-truth source kinds. */
-export const SOURCE_KIND_LABELS: Record<SourceKind, string> = {
-  role: "Role",
-  project: "Project",
-  certification: "Certification",
-  education: "Education",
-};
+import type { SearchLayer, SourceKind } from "./types";
 
 /** The source-kind filter options, in a stable display order. */
 export const SOURCE_KIND_OPTIONS: { value: SourceKind; label: string }[] = [
@@ -23,16 +17,6 @@ export const SEARCH_LAYER_OPTIONS: { value: SearchLayer; label: string }[] = [
   { value: "library", label: "Library" },
 ];
 
-/** Filters at rest: no narrowing, both layers. */
-export const DEFAULT_FILTERS: LibraryFilters = {
-  sourceIds: [],
-  kinds: [],
-  tags: [],
-  layer: "both",
-  dateFrom: "",
-  dateTo: "",
-};
-
 export const UNATTACHED_GROUP_KEY = "unattached";
 export const UNATTACHED_GROUP_LABEL = "Unattached";
 
@@ -41,4 +25,3 @@ export const SEARCH_ERROR_MESSAGE = "Search failed. Try again.";
 export const SAVE_ERROR_FALLBACK = "Could not save the bullet. Try again.";
 export const ARCHIVE_ERROR_FALLBACK = "Could not archive the bullet. Try again.";
 export const EMPTY_LIBRARY_MESSAGE = "No bullets yet. Write your first framing.";
-export const EMPTY_SEARCH_MESSAGE = "No matches. Try a different query or fewer filters.";
