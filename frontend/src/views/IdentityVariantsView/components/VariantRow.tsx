@@ -1,4 +1,4 @@
-import { Archive, Pencil, Star } from "lucide-react";
+import { Pencil, Star, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -15,20 +15,24 @@ interface VariantRowProps {
  * One identity variant row: label, name, contact preview, and controls to edit,
  * set default, and archive. The default is marked and its archive control is
  * disabled, since the default cannot be archived until another is made default.
+ *
+ * The default marker pairs its tint with the word "Default", and archive pairs its
+ * crimson with a bin glyph and a label, so neither state nor consequence is
+ * carried by color alone.
  */
 export function VariantRow({ variant, onEdit, onSetDefault, onArchive }: VariantRowProps) {
   return (
-    <li className="border-border flex items-center gap-3 rounded-md border px-3 py-2">
+    <li className="border-border bg-card flex items-center gap-3 rounded-md border px-3 py-2">
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center gap-2">
-          <span className="truncate text-sm font-medium">{variant.label}</span>
+          <span className="text-foreground truncate text-sm font-medium">{variant.label}</span>
           {variant.is_default && (
-            <span className="text-muted-foreground inline-flex items-center gap-0.5 text-xs">
-              <Star className="size-3 fill-current" /> Default
+            <span className="bg-success-tint text-foreground caption inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5">
+              <Star aria-hidden className="size-3 fill-current" /> Default
             </span>
           )}
         </div>
-        <span className="text-muted-foreground truncate text-xs">
+        <span className="text-muted-foreground caption truncate">
           {variant.full_name}
           {variant.contact.email ? ` · ${variant.contact.email}` : ""}
         </span>
@@ -47,16 +51,18 @@ export function VariantRow({ variant, onEdit, onSetDefault, onArchive }: Variant
       >
         <Pencil className="size-3.5" />
       </button>
-      <button
+      <Button
         type="button"
+        size="sm"
+        variant="ghost"
         aria-label={`Archive ${variant.label}`}
         onClick={() => onArchive(variant.id)}
         disabled={variant.is_default}
         title={variant.is_default ? "Make another variant the default first" : undefined}
-        className="text-muted-foreground hover:text-destructive rounded p-1 disabled:opacity-40"
+        className="text-destructive hover:bg-destructive-tint hover:text-destructive"
       >
-        <Archive className="size-3.5" />
-      </button>
+        <Trash2 aria-hidden /> Archive
+      </Button>
     </li>
   );
 }

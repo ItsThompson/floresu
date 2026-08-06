@@ -1,7 +1,7 @@
+import { TagPill } from "@/components/TagPill";
 import { formatDay } from "@/lib/formatDate";
 
 import type { WorklogSummary } from "../types";
-import { TagPill } from "./TagPill";
 
 interface WorklogEntryRowProps {
   entry: WorklogSummary;
@@ -16,13 +16,13 @@ export function WorklogEntryRow({ entry }: WorklogEntryRowProps) {
   return (
     <li className="flex flex-col gap-1 py-1.5">
       <div className="flex items-baseline gap-2">
-        <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
+        <time dateTime={entry.entry_date} className="text-muted-foreground mono-meta shrink-0">
           {formatDay(entry.entry_date)}
-        </span>
-        <span className="text-sm font-medium">{entry.title}</span>
+        </time>
+        <span className="text-foreground text-sm font-medium">{entry.title}</span>
       </div>
       {entry.description && (
-        <p className="text-muted-foreground line-clamp-2 text-xs">{entry.description}</p>
+        <p className="text-muted-foreground caption line-clamp-2">{entry.description}</p>
       )}
       {entry.tags.length > 0 && (
         <div className="flex flex-wrap gap-1">

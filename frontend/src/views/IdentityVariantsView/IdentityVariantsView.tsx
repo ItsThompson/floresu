@@ -23,9 +23,14 @@ export function IdentityVariantsView() {
 
   const editingVariant =
     typeof editing === "number" ? state.variants.find((v) => v.id === editing) : null;
+  const isEmpty = state.status === "ready" && state.variants.length === 0;
+  // The empty state carries the only primary action, so the header offers one just
+  // when there is a list to add to. That keeps one primary call to action on screen
+  // and stops it moving as the list resolves.
+  const hasHeaderAction = editing === null && state.status === "ready" && !isEmpty;
 
   return (
-    <section className="mx-auto flex w-full max-w-2xl flex-col gap-6 p-8">
+    <section className="reading-width flex w-full flex-col gap-6">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Link
@@ -36,7 +41,7 @@ export function IdentityVariantsView() {
           </Link>
           <h1 className="text-xl font-semibold tracking-tight">Identity variants</h1>
         </div>
-        {editing === null && (
+        {hasHeaderAction && (
           <Button type="button" size="sm" onClick={() => setEditing("new")}>
             <Plus className="size-3.5" /> New variant
           </Button>
@@ -72,10 +77,16 @@ export function IdentityVariantsView() {
           Could not load your identity variants.
         </p>
       )}
-      {state.status === "ready" && state.variants.length === 0 && editing === null && (
-        <p className="text-muted-foreground text-sm">
-          No identity variants yet. Add one to project contact details on a resume.
-        </p>
+      {isEmpty && editing === null && (
+        <div className="flex flex-col items-start gap-3 py-6">
+          <p className="display-m text-foreground">No identity variants yet.</p>
+          <p className="text-muted-foreground text-sm">
+            Add one to project contact details on a resume.
+          </p>
+          <Button type="button" onClick={() => setEditing("new")}>
+            <Plus className="size-3.5" /> New variant
+          </Button>
+        </div>
       )}
       {state.status === "ready" && state.variants.length > 0 && (
         <ul className="flex flex-col gap-2">

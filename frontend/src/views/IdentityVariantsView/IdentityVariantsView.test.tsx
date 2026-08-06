@@ -34,6 +34,15 @@ describe("IdentityVariantsView", () => {
     expect(screen.getByText("Default")).toBeInTheDocument();
   });
 
+  it("offers exactly one primary action from the empty state", async () => {
+    mockVariantsList([]);
+    renderWithProviders(<IdentityVariantsView />);
+
+    expect(await screen.findByText("No identity variants yet.")).toBeInTheDocument();
+    // The empty state owns the call to action, so the header suppresses its own.
+    expect(screen.getAllByRole("button", { name: "New variant" })).toHaveLength(1);
+  });
+
   it("forces the default on when creating the first variant", async () => {
     const state = mockVariantsList([]);
     let created: { is_default: boolean; label: string } | null = null;

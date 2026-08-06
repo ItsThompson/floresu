@@ -15,6 +15,9 @@ interface ContextualWorklogPanelProps {
  * Column three of the source detail: this source's worklog, grouped by month,
  * with a quick add that pre-attaches the new entry to the source. Adding closes
  * the form on success (the entry count grows), so the panel reflects the write.
+ *
+ * This column is context for the form beside it, not a peer of it, so its heading
+ * and metadata sit in the muted step while the form and the framings keep the ink.
  */
 export function ContextualWorklogPanel({ worklog }: ContextualWorklogPanelProps) {
   const [isAdding, setIsAdding] = useState(false);
@@ -39,7 +42,7 @@ export function ContextualWorklogPanel({ worklog }: ContextualWorklogPanelProps)
   return (
     <section aria-label="Work log" className="flex flex-col gap-3">
       <header className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold tracking-tight">Work Log</h2>
+        <h2 className="text-muted-foreground text-sm font-semibold tracking-tight">Work Log</h2>
         {!isAdding && (
           <Button type="button" size="sm" variant="outline" onClick={openForm}>
             <Plus className="size-3.5" /> Add entry

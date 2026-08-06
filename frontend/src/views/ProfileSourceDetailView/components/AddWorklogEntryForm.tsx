@@ -24,7 +24,12 @@ const INITIAL_VALUES: AddEntryFormValues = {
  * required; description and tags are optional. The panel pre-attaches the created
  * entry to the current source, so this form carries no source concern.
  */
-export function AddWorklogEntryForm({ isAdding, error, onAdd, onCancel }: AddWorklogEntryFormProps) {
+export function AddWorklogEntryForm({
+  isAdding,
+  error,
+  onAdd,
+  onCancel,
+}: AddWorklogEntryFormProps) {
   const [values, setValues] = useState<AddEntryFormValues>(INITIAL_VALUES);
   const [missing, setMissing] = useState<Record<string, string>>({});
 
@@ -68,12 +73,12 @@ export function AddWorklogEntryForm({ isAdding, error, onAdd, onCancel }: AddWor
         onChange={(event) => setField("entryDate", event.target.value)}
       />
       <label className="flex flex-col gap-1.5">
-        <span className="text-foreground text-sm font-medium">Description</span>
+        <span className="text-foreground caption">Description</span>
         <textarea
           name="description"
           value={values.description}
           onChange={(event) => setField("description", event.target.value)}
-          className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 min-h-16 rounded-md border px-3 py-2 text-sm outline-none focus-visible:ring-[3px]"
+          className="border-input bg-card text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 min-h-16 rounded-md border px-3 py-2 text-sm outline-none focus-visible:ring-[3px]"
         />
       </label>
       <FormInputField

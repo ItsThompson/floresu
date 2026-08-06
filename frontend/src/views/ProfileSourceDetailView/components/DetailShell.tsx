@@ -12,10 +12,14 @@ interface DetailShellProps {
  * Chrome for the source detail screen: a back link to the profile hub, an
  * optional title and header action, and the body. Kept presentational so the
  * orchestrator composes create and edit layouts into it.
+ *
+ * A working surface, not a reading column: the body is three columns wide, so it
+ * takes a wide cap rather than the `reading-width` measure. The page gutter comes
+ * from `frontend/src/components/AppShell.tsx`.
  */
 export function DetailShell({ title, action, children }: DetailShellProps) {
   return (
-    <section className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-8">
+    <section className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Link
