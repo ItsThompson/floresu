@@ -29,7 +29,7 @@ function startOnboarded() {
 describe("OnboardingView route guard", () => {
   it("routes a non-onboarded user from the app to the wizard", async () => {
     startNotOnboarded();
-    renderApp(["/"]);
+    renderApp(["/home"]);
     expect(await screen.findByRole("heading", { name: "Welcome to Floresu" })).toBeInTheDocument();
   });
 
@@ -113,7 +113,7 @@ describe("OnboardingView wizard", () => {
     await user.click(await screen.findByRole("button", { name: "Get started" }));
     await user.click(await screen.findByRole("button", { name: /Start manually/ }));
 
-    // The failure contract (US-ONB-03): the inline error shows and no navigation
+    // The failure contract: the inline error shows and no navigation
     // happens, so the choice step stays put and the entry form never opens.
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "How do you want to start?" })).toBeInTheDocument();
@@ -128,8 +128,8 @@ describe("OnboardingView wizard", () => {
     await user.click(await screen.findByRole("button", { name: "Skip" }));
 
     // Landing on Home proves the flag flipped: otherwise the onboarding guard
-    // would bounce "/" straight back to the wizard. The app chrome is shown and
-    // the wizard is gone.
+    // would bounce "/home" straight back to the wizard. The app chrome is shown
+    // and the wizard is gone.
     expect(await screen.findByRole("heading", { name: "Home" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Home" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Welcome to Floresu" })).not.toBeInTheDocument();

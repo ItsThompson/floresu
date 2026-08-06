@@ -12,7 +12,7 @@ import { createWorklog, getMe, registerAndOnboard } from "../harness/support";
 test("the activity feed reflects a human action live", async ({ page }) => {
   await registerAndOnboard(page);
 
-  await page.goto("/");
+  await page.goto("/home");
   const feed = page.getByRole("region", { name: "Activity feed" });
   await expect(feed.getByText("No activity yet.")).toBeVisible();
 
@@ -39,7 +39,7 @@ test("an agent write streams into the open feed live", async ({ page }) => {
   await registerAndOnboard(page);
   const me = await getMe(page.request);
 
-  await page.goto("/");
+  await page.goto("/home");
   const feed = page.getByRole("region", { name: "Activity feed" });
   await expect(feed.getByText("No activity yet.")).toBeVisible();
 

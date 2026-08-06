@@ -8,6 +8,7 @@ import { ConsentView } from "@/views/ConsentView";
 import { HomeView } from "@/views/HomeView";
 import { IdentityVariantsView } from "@/views/IdentityVariantsView";
 import { JobApplicationsView } from "@/views/JobApplicationsView";
+import { LandingView } from "@/views/LandingView";
 import { LibraryView } from "@/views/LibraryView";
 import { OnboardingView } from "@/views/OnboardingView";
 import { ProfileHubView } from "@/views/ProfileHubView";
@@ -21,12 +22,17 @@ import { WorklogView } from "@/views/WorklogView";
 /**
  * The application route tree. Kept separate from `App` (the provider
  * composition) so a routing-config test can assert the structural invariants:
- * that `/signin` and `/signup` live OUTSIDE `RequireAuth` (chrome-free, always
- * reachable), the wizard at `/onboarding` is guarded by the session but sits
- * OUTSIDE the app shell (chrome-free), and the in-app routes live behind BOTH
- * the session guard and the onboarding guard, without rendering the views.
+ * that the public page at `/` and the auth screens at `/signin` and `/signup`
+ * live OUTSIDE `RequireAuth` (chrome-free, always reachable), the wizard at
+ * `/onboarding` is guarded by the session but sits OUTSIDE the app shell
+ * (chrome-free), and the in-app routes live behind BOTH the session guard and
+ * the onboarding guard, without rendering the views.
  */
 export const appRoutes: RouteObject[] = [
+  // The public page, served to everyone: a signed-in visitor sees it too, and its
+  // header carries them back into the app. No session, no app chrome.
+  { path: "/", element: <LandingView /> },
+
   // Chrome-free auth screens, always reachable (no session required).
   { path: "/signin", element: <AuthView mode="login" /> },
   { path: "/signup", element: <AuthView mode="register" /> },
@@ -49,10 +55,13 @@ export const appRoutes: RouteObject[] = [
         element: <RequireOnboarded />,
         children: [
           {
-            path: "/",
+            // A pathless layout route: the shell owns the chrome, not a URL
+            // segment. `/` belongs to the public page above, so the shell claims
+            // no path of its own and no index route, and its children stay
+            // rooted at the app root (`worklog` resolves to `/worklog`).
             element: <AppShell />,
             children: [
-              { index: true, element: <HomeView /> },
+              { path: "home", element: <HomeView /> },
               { path: "worklog", element: <WorklogView /> },
               { path: "library", element: <LibraryView /> },
               { path: "resumes", element: <ResumesListView /> },

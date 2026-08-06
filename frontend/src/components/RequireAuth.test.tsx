@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { mockAuthUser } from "@/mocks/data";
 import { server } from "@/mocks/server";
 import { renderApp } from "@/test/renderWithProviders";
+import { HERO_HEADLINE } from "@/views/LandingView/constants";
 
 /** Make resume-on-mount authenticate, so guarded routes render the app shell. */
 function authenticateOnResume() {
@@ -14,14 +15,23 @@ function authenticateOnResume() {
 
 describe("RequireAuth guard", () => {
   it("redirects an anonymous visitor from a protected route to sign-in", async () => {
-    // Default MSW refresh returns 401 → the session resolves anonymous.
-    renderApp(["/"]);
+    // Default MSW refresh returns 401 → the session resolves anonymous. The entry
+    // is an in-app route: "/" is public, so it would prove nothing here.
+    renderApp(["/home"]);
     expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeInTheDocument();
+  });
+
+  it("leaves the public page at / reachable without a session", async () => {
+    renderApp(["/"]);
+    expect(
+      await screen.findByRole("heading", { level: 1, name: HERO_HEADLINE }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Welcome back" })).not.toBeInTheDocument();
   });
 
   it("renders the protected Home inside the app shell for an authenticated session", async () => {
     authenticateOnResume();
-    renderApp(["/"]);
+    renderApp(["/home"]);
     expect(await screen.findByRole("heading", { name: "Home" })).toBeInTheDocument();
     // The shell shows nav and the signed-in identity.
     expect(screen.getByRole("link", { name: "Home" })).toBeInTheDocument();
@@ -30,7 +40,7 @@ describe("RequireAuth guard", () => {
 
   it("signs out and returns to sign-in", async () => {
     authenticateOnResume();
-    renderApp(["/"]);
+    renderApp(["/home"]);
     await screen.findByRole("heading", { name: "Home" });
 
     const user = userEvent.setup();

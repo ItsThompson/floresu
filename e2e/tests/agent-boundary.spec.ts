@@ -52,7 +52,7 @@ test("connect an agent via consent; attribute its write; boundaries fail closed"
   const agent = await agentContext(me.id);
   await agentCreateWorklog(agent, { title: "Agent authored entry", entryDate: "2026-06-01" });
 
-  await page.goto("/");
+  await page.goto("/home");
   const feed = page.getByRole("region", { name: "Activity feed" });
   await expect(feed.getByText(AGENT_LABEL)).toBeVisible();
   await expect(feed.getByTestId("agent-glyph").first()).toBeVisible();

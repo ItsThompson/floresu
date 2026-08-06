@@ -21,9 +21,11 @@ function Providers({ children }: { children: ReactNode }) {
 /**
  * Render the whole application route tree in memory at `initialEntries`, wrapped
  * in the API + auth providers. The most sociable harness: exercises real routing,
- * guards, and the session lifecycle against the MSW backend.
+ * guards, and the session lifecycle against the MSW backend. The default entry is
+ * the app's Home, the first in-app screen; `/` is the public page, which is
+ * outside the guards and needs neither a session nor the app shell.
  */
-export function renderApp(initialEntries: string[] = ["/"]): RenderResult {
+export function renderApp(initialEntries: string[] = ["/home"]): RenderResult {
   const router = createMemoryRouter(appRoutes, { initialEntries });
   return render(
     <Providers>
@@ -34,8 +36,10 @@ export function renderApp(initialEntries: string[] = ["/"]): RenderResult {
 
 /**
  * Render a single component inside the providers and a memory router, for
- * isolated component tests. A `/` route stub lets components that redirect Home
- * (`<Navigate to="/"/>`) be asserted without the full app tree.
+ * isolated component tests. `initialEntries` positions the router, so a component
+ * that reads the location (an active `NavLink`, say) can be asserted without the
+ * full app tree; the component itself is the only route, so a redirect it renders
+ * changes the location without needing a destination view.
  */
 export function renderWithProviders(
   ui: ReactElement,

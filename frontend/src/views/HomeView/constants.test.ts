@@ -1,9 +1,12 @@
-import { matchRoutes } from "react-router";
 import { describe, expect, it } from "vitest";
 
+import { AppShell } from "@/components/AppShell";
+import { RequireAuth } from "@/components/RequireAuth";
+import { RequireOnboarded } from "@/components/RequireOnboarded";
 import { buildFeedEvent } from "@/mocks/data";
-import { appRoutes } from "@/routes";
+import { routeComponents } from "@/test/routeComponents";
 
+import { HomeView } from "./HomeView";
 import { ENTITY_HREF_FALLBACK, entityHref } from "./constants";
 
 /** A fixed entity id so detail routes carry a concrete, matchable value. */
@@ -32,10 +35,23 @@ describe("entityHref", () => {
   });
 });
 
-describe("entityHref produces routes that exist", () => {
+describe("entityHref produces in-app routes", () => {
   const producedHrefs = [...KNOWN_ENTITY_HREFS.map(([, href]) => href), ENTITY_HREF_FALLBACK];
 
-  it.each(producedHrefs)("%s matches a route defined in routes.tsx", (href) => {
-    expect(matchRoutes(appRoutes, href)).not.toBeNull();
+  it.each(producedHrefs)("%s resolves to a route inside the app shell", (href) => {
+    // Existence is not enough: a feed row is clicked by a signed-in user, so its
+    // target has to resolve INSIDE the app. The public page at "/" matches a route
+    // too, which is how a fallback aimed there would pass a weaker assertion while
+    // ejecting the user out of the app.
+    expect(routeComponents(href)).toContain(AppShell);
+  });
+
+  it("degrades an unknown entity_type to the in-app Home, not the public page", () => {
+    expect(routeComponents(ENTITY_HREF_FALLBACK)).toEqual([
+      RequireAuth,
+      RequireOnboarded,
+      AppShell,
+      HomeView,
+    ]);
   });
 });
