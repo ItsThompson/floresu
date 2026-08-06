@@ -78,9 +78,9 @@ export function LinkResumeDialog({
 
       {hasLivingResumes ? (
         <label className="flex flex-col gap-1.5">
-          <span className="text-foreground text-sm font-medium">Fork from</span>
+          <span className="text-foreground caption">Fork from</span>
           <select
-            className="border-input bg-background h-9 rounded-md border px-3 text-sm"
+            className="border-input bg-card text-foreground focus-visible:border-ring focus-visible:ring-ring/50 h-9 rounded-md border px-3 text-sm outline-none focus-visible:ring-[3px]"
             value={sourceId ?? ""}
             onChange={(event) =>
               setSourceId(event.target.value ? Number(event.target.value) : null)
@@ -111,10 +111,10 @@ export function LinkResumeDialog({
       )}
 
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={close}>
+        <Button type="button" variant="ghost" size="sm" onClick={close}>
           Cancel
         </Button>
-        <Button onClick={() => void submit()} disabled={!canSubmit}>
+        <Button type="button" size="sm" onClick={() => void submit()} disabled={!canSubmit}>
           Create resume
         </Button>
       </div>

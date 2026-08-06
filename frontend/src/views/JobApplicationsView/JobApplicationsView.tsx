@@ -17,6 +17,11 @@ import type { JobApplicationSummary } from "./types";
  * fork-a-resume flow, opening a linked resume, and the confirm-gated mark-submitted
  * action that finalizes the linked resume. Composition only: `useJobApplications`
  * owns the fetch and every write; this view wires them to the table and dialogs.
+ *
+ * A table, so it stays calm: hairlines, quiet metadata, and tinted status pills
+ * carry the page. The header's add action is the view's only loud element, so the
+ * empty state invites in words rather than repeating the button, and it holds the
+ * view's one serif display moment.
  */
 export function JobApplicationsView() {
   const navigate = useNavigate();
@@ -36,7 +41,7 @@ export function JobApplicationsView() {
   }, [actions, submit]);
 
   return (
-    <section className="mx-auto flex w-full max-w-[960px] flex-col gap-8 p-8">
+    <section className="reading-width flex w-full flex-col gap-6">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">Job Applications</h1>
         <Button onClick={() => setIsCreating(true)}>+ New application</Button>
@@ -65,9 +70,10 @@ export function JobApplicationsView() {
 
       {state.status === "ready" &&
         (state.applications.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            No job applications yet. Add one to start tracking where you applied.
-          </p>
+          <div className="flex flex-col gap-1">
+            <p className="display-m">No job applications yet.</p>
+            <p className="text-muted-foreground">Add one to start tracking where you applied.</p>
+          </div>
         ) : (
           <JobApplicationsTable
             applications={state.applications}
