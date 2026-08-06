@@ -118,10 +118,22 @@ Run `just resume-goldens` only after bumping the current schema version and regi
 | OAuth 2.1 AS | `OAUTH_PRIVATE_KEY_PATH`, `OAUTH_KEY_ID`, `OAUTH_ACCESS_TTL_SECONDS`, `OAUTH_REFRESH_TTL_SECONDS`, and the reaper knobs | The signing key, active `kid`, token TTLs, and the stale-client reaper |
 | MCP resource server | `MCP_TRUSTED_PROXIES`, `RATE_LIMIT_WINDOW_SECONDS`, `RATE_LIMIT_REQUEST_BUDGET`, `RATE_LIMIT_EMBED_WRITE_BUDGET` | The trusted proxy CIDR and the per-user rate-limit budgets |
 | Embedding provider | `OPENAI_API_KEY`, `OPENAI_BASE_URL` | The only external AI dependency; an empty key lets a box boot and items stay lexically searchable |
-| Object storage (R2) | `R2_ENDPOINT_URL`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | S3-compatible storage for rendered PDFs |
+| Object storage (R2) | `R2_ENDPOINT_URL`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | S3-compatible storage for rendered PDFs. Empty by default: the editor preview renders without a bucket, while export, finalize, and revision history need real credentials |
 | Worker | `WORKER_METRICS_PORT` | The port the worker exposes its metrics on |
 
-The embedding model and vector dimension are pinned in `floresu.embedding.config` (changing them is a migration), so they are not tunable settings.
+The embedding model and vector dimension are pinned in `floresu.embedding.config` (changing them is a migration), so they are not tunable settings. The presigned-URL lifetime is pinned in `floresu.storage.config` for the same reason.
+
+### Frontend build-time variables
+
+The SPA reads three variables, and they behave differently from every group above: Vite reads env files from `frontend/`, not from the repo-root `.env`, and it inlines the values into the bundle at build time rather than reading them at runtime. Setting them in the root `.env` has no effect. `frontend/src/vite-env.d.ts` types them.
+
+| Variable | Read at | Purpose | Unset |
+|----------|---------|---------|-------|
+| `VITE_API_BASE_URL` | the `App` root | The API origin the SPA calls | Same-origin, which the dev proxy and the mock harness rely on |
+| `VITE_MCP_URL` | `frontend/src/lib/mcpUrl.ts` | The MCP endpoint shown on the onboarding connect-agent step | Falls back to the production endpoint, so a local dev box shows a production URL there. That is the default, not a defect |
+| `VITE_MOCK_API` | `frontend/src/main.tsx` | `true` starts the MSW mock worker | The worker does not start |
+
+For a host inner loop, set them in `frontend/.env*` (or inline, as `npm run dev:mock` does for the third). `docker-compose.yml` and the CD workflow pass the first two into the frontend image as build arguments, derived from `PUBLIC_BASE_URL` and `MCP_PUBLIC_URL`.
 
 ### OAuth stale-client reaper knobs
 
@@ -139,4 +151,5 @@ See `docs/auth.md` for the reaper and `backend/src/floresu/oauth/` for the imple
 - Testing layers and commands: `docs/testing.md`.
 - CI jobs and the deploy pipeline: `docs/ci-cd.md`.
 - The generated client and the REST surface: `docs/api.md`.
+- Frontend architecture, the theme layer, and the view conventions: `docs/frontend.md`.
 - System topology and trust zones: `docs/architecture.md`.

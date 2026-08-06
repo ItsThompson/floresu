@@ -117,4 +117,6 @@ The detailed sequence diagrams live with the domain that owns each flow:
 - REST route catalog and the error contract: `docs/api.md`.
 - MCP transport and the internal-hop contract: `docs/mcp.md`.
 - Metrics, alerts, and retention: `docs/monitoring.md`.
+- Frontend architecture, the theme layer, and the view conventions: `docs/frontend.md`.
+- Look-and-feel rules and the contrast posture: `docs/design-language.md`.
 - Local setup and workflows: `docs/development.md`.
