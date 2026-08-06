@@ -64,6 +64,16 @@ describe("ConnectedAgentsPanel", () => {
     expect(screen.getByText("Cursor")).toBeInTheDocument();
   });
 
+  it("states the connected status in words, not by the badge tint alone", async () => {
+    authenticateOnResume();
+    mockClients([buildClient()]);
+
+    renderApp(["/settings/agents"]);
+
+    const claudeRow = within((await screen.findByText("Claude")).closest("li") as HTMLElement);
+    expect(claudeRow.getByText("Connected")).toBeInTheDocument();
+  });
+
   it("revokes an agent after confirmation and removes it from the list", async () => {
     authenticateOnResume();
     mockClients([buildClient()]);

@@ -18,6 +18,17 @@ export const SETTINGS_SECTIONS = [
  */
 export const ACCESS_STATEMENT = "Full read-write (single scope).";
 
+/**
+ * The treatment for a destructive control that sits in a list row: crimson ink on
+ * a ghost button, filling with the crimson tint only on hover. Rows are the calm
+ * register, so a row control states its consequence in ink rather than taking a
+ * filled crimson block on every row; the filled treatment is reserved for the
+ * confirmation that commits the action. Shared by the connected-agent and
+ * archived-item rows so the two read as one gesture.
+ */
+export const DESTRUCTIVE_ROW_ACTION_CLASS =
+  "text-destructive hover:bg-destructive-tint hover:text-destructive";
+
 /** Human label for each archived entity kind, for the item's type badge. */
 export const ENTITY_TYPE_LABEL: Record<ArchivedEntityType, string> = {
   worklog: "Worklog entry",

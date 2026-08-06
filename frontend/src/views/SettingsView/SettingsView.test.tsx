@@ -43,4 +43,21 @@ describe("SettingsView", () => {
 
     await waitFor(() => expect(screen.getByLabelText("MCP URL")).toBeInTheDocument());
   });
+
+  it("marks the active section with a muted fill and leaves the bloom marker to the sidebar", async () => {
+    authenticateOnResume();
+
+    renderApp(["/settings/account"]);
+
+    const sectionNav = within(await screen.findByRole("navigation", { name: "Settings sections" }));
+    expect(sectionNav.getByRole("link", { name: "Account" })).toHaveClass(
+      "bg-muted",
+      "text-foreground",
+    );
+    expect(sectionNav.getByRole("link", { name: "Data" })).toHaveClass("text-muted-foreground");
+    // The sidebar holds the only bloom indicator on screen: a second one would read
+    // as two active locations at once, so a settings tab never renders one.
+    expect(sectionNav.queryByTestId("nav-active-indicator")).not.toBeInTheDocument();
+    expect(screen.getAllByTestId("nav-active-indicator")).toHaveLength(1);
+  });
 });

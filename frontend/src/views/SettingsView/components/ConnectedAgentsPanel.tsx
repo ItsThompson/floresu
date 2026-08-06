@@ -8,6 +8,7 @@ import { useConnectedAgents } from "../hooks/useConnectedAgents";
 import type { ConnectedClient } from "../types";
 import { ConfirmDestructiveDialog } from "./ConfirmDestructiveDialog";
 import { ConnectedClientRow } from "./ConnectedClientRow";
+import { SettingsPanel } from "./SettingsPanel";
 
 /**
  * The Connected agents section: the MCP URL to add an agent, the list of
@@ -27,16 +28,13 @@ export function ConnectedAgentsPanel() {
   };
 
   return (
-    <div className="flex flex-col gap-6">
-      <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold tracking-tight">Connect an agent</h2>
-        <p className="text-muted-foreground text-sm">Add this MCP URL to your AI client.</p>
+    <div className="flex flex-col gap-4">
+      <SettingsPanel title="Connect an agent" description="Add this MCP URL to your AI client.">
         <McpUrlField url={mcpUrl} />
-        <p className="text-muted-foreground text-sm">Access: {ACCESS_STATEMENT}</p>
-      </section>
+        <p className="caption text-muted-foreground">Access: {ACCESS_STATEMENT}</p>
+      </SettingsPanel>
 
-      <section className="flex flex-col gap-3">
-        <h3 className="text-sm font-semibold tracking-tight">Connected agents</h3>
+      <SettingsPanel title="Connected agents">
         {state.status === "loading" && (
           <p className="text-muted-foreground text-sm">Loading connected agents…</p>
         )}
@@ -49,7 +47,7 @@ export function ConnectedAgentsPanel() {
           <p className="text-muted-foreground text-sm">No agents are connected yet.</p>
         )}
         {state.status === "ready" && state.clients.length > 0 && (
-          <ul className="flex flex-col gap-2">
+          <ul className="divide-border/60 flex flex-col divide-y">
             {state.clients.map((client) => (
               <ConnectedClientRow
                 key={client.client_id}
@@ -65,7 +63,7 @@ export function ConnectedAgentsPanel() {
             {state.revokeError}
           </p>
         )}
-      </section>
+      </SettingsPanel>
 
       {pendingRevoke && (
         <ConfirmDestructiveDialog

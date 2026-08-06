@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 
 import { useAccountData } from "../hooks/useAccountData";
 import { ConfirmDestructiveDialog } from "./ConfirmDestructiveDialog";
+import { SettingsPanel } from "./SettingsPanel";
 
 /**
  * The Data section: export the account's records, and delete the account.
@@ -31,12 +32,11 @@ export function DataPanel() {
   const exportHref = `${baseUrl}/account/export`;
 
   return (
-    <div className="flex flex-col gap-6">
-      <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold tracking-tight">Export your data</h2>
-        <p className="text-muted-foreground text-sm">
-          Download an archive of your records: profile, worklog, library, and resumes.
-        </p>
+    <div className="flex flex-col gap-4">
+      <SettingsPanel
+        title="Export your data"
+        description="Download an archive of your records: profile, worklog, library, and resumes."
+      >
         <div>
           <Button asChild variant="outline">
             <a href={exportHref} download>
@@ -45,14 +45,12 @@ export function DataPanel() {
             </a>
           </Button>
         </div>
-      </section>
+      </SettingsPanel>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold tracking-tight">Delete account</h2>
-        <p className="text-muted-foreground text-sm">
-          Permanently delete your account and all records, and revoke every connected agent. This is
-          irreversible.
-        </p>
+      <SettingsPanel
+        title="Delete account"
+        description="Permanently delete your account and all records, and revoke every connected agent. This is irreversible."
+      >
         <div>
           <Button variant="destructive" onClick={() => setIsConfirming(true)}>
             <Trash2 aria-hidden />
@@ -64,7 +62,7 @@ export function DataPanel() {
             {state.error}
           </p>
         )}
-      </section>
+      </SettingsPanel>
 
       {isConfirming && (
         <ConfirmDestructiveDialog

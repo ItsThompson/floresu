@@ -5,6 +5,7 @@ import { useArchive } from "../hooks/useArchive";
 import type { ArchivedItem } from "../types";
 import { ArchivedItemRow } from "./ArchivedItemRow";
 import { ConfirmDestructiveDialog } from "./ConfirmDestructiveDialog";
+import { SettingsPanel } from "./SettingsPanel";
 
 /**
  * The Archive & Trash section: archived worklog entries, sources, and bullets
@@ -27,42 +28,41 @@ export function ArchivePanel() {
     state.pending !== null && isSameArchivedItem(state.pending, item);
 
   return (
-    <div className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold tracking-tight">Archive &amp; Trash</h2>
-      <p className="text-muted-foreground text-sm">
-        Restore an archived item, or permanently delete it. Permanent delete cannot be undone and is
-        available only here in the web app.
-      </p>
-
-      {state.status === "loading" && (
-        <p className="text-muted-foreground text-sm">Loading archived items…</p>
-      )}
-      {state.status === "error" && (
-        <p role="alert" className="text-destructive text-sm">
-          {state.loadError}
-        </p>
-      )}
-      {state.status === "ready" && state.items.length === 0 && (
-        <p className="text-muted-foreground text-sm">Nothing is archived.</p>
-      )}
-      {state.status === "ready" && state.items.length > 0 && (
-        <ul className="flex flex-col gap-2">
-          {state.items.map((item) => (
-            <ArchivedItemRow
-              key={`${item.entityType}-${item.id}`}
-              item={item}
-              isPending={isPending(item)}
-              onRestore={() => actions.restore(item)}
-              onDelete={() => setPendingDelete(item)}
-            />
-          ))}
-        </ul>
-      )}
-      {state.actionError && (
-        <p role="alert" className="text-destructive text-sm">
-          {state.actionError}
-        </p>
-      )}
+    <>
+      <SettingsPanel
+        title="Archive & Trash"
+        description="Restore an archived item, or permanently delete it. Permanent delete cannot be undone and is available only here in the web app."
+      >
+        {state.status === "loading" && (
+          <p className="text-muted-foreground text-sm">Loading archived items…</p>
+        )}
+        {state.status === "error" && (
+          <p role="alert" className="text-destructive text-sm">
+            {state.loadError}
+          </p>
+        )}
+        {state.status === "ready" && state.items.length === 0 && (
+          <p className="text-muted-foreground text-sm">Nothing is archived.</p>
+        )}
+        {state.status === "ready" && state.items.length > 0 && (
+          <ul className="divide-border/60 flex flex-col divide-y">
+            {state.items.map((item) => (
+              <ArchivedItemRow
+                key={`${item.entityType}-${item.id}`}
+                item={item}
+                isPending={isPending(item)}
+                onRestore={() => actions.restore(item)}
+                onDelete={() => setPendingDelete(item)}
+              />
+            ))}
+          </ul>
+        )}
+        {state.actionError && (
+          <p role="alert" className="text-destructive text-sm">
+            {state.actionError}
+          </p>
+        )}
+      </SettingsPanel>
 
       {pendingDelete && (
         <ConfirmDestructiveDialog
@@ -74,6 +74,6 @@ export function ArchivePanel() {
           onCancel={() => setPendingDelete(null)}
         />
       )}
-    </div>
+    </>
   );
 }
