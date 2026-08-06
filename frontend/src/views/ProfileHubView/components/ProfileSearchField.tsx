@@ -22,7 +22,7 @@ export function ProfileSearchField({ onSearch }: ProfileSearchFieldProps) {
 
   return (
     <form role="search" onSubmit={handleSubmit} className="flex items-center gap-2">
-      <div className="border-input bg-background focus-within:border-ring focus-within:ring-ring/50 flex h-9 items-center gap-2 rounded-md border px-3 focus-within:ring-[3px]">
+      <div className="border-input bg-card focus-within:border-ring focus-within:ring-ring/50 flex h-9 items-center gap-2 rounded-md border px-3 focus-within:ring-[3px]">
         <Search aria-hidden className="text-muted-foreground size-4" />
         <input
           type="search"
@@ -30,7 +30,7 @@ export function ProfileSearchField({ onSearch }: ProfileSearchFieldProps) {
           placeholder="Search experience"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          className="w-48 bg-transparent text-sm outline-none"
+          className="placeholder:text-muted-foreground w-48 bg-transparent text-sm outline-none"
         />
       </div>
     </form>

@@ -19,6 +19,9 @@ import type { HubData, ProfileHubActions, SectionId } from "./types";
  * the source cards' items reorder per kind and archive; skills and identity
  * previews route to their management surfaces. The search field emits its query
  * to the Library search.
+ *
+ * A two-column card grid, not a reading column, so it takes a wide cap rather
+ * than the `reading-width` measure.
  */
 export function ProfileHubView() {
   const { state, actions } = useProfileHub();
@@ -27,7 +30,7 @@ export function ProfileHubView() {
   const sectionDrag = useDragReorder(order, (next) => reorder(next as SectionId[]));
 
   return (
-    <section className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-8">
+    <section className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Career Profile</h1>
         <ProfileSearchField

@@ -32,7 +32,7 @@ export function SkillRow({ skill, handleProps, isDragging, onRename, onArchive }
   return (
     <li
       {...handleProps}
-      className={`group border-border flex items-center gap-2 rounded-md border px-2 py-1.5 ${
+      className={`group hover:bg-muted flex items-center gap-2 px-1.5 py-2 ${
         isDragging ? "opacity-50" : ""
       }`}
     >
@@ -45,9 +45,13 @@ export function SkillRow({ skill, handleProps, isDragging, onRename, onArchive }
             value={draft}
             autoFocus
             onChange={(event) => setDraft(event.target.value)}
-            className="border-input bg-background h-7 flex-1 rounded border px-2 text-sm outline-none"
+            className="border-input bg-card text-foreground focus-visible:border-ring focus-visible:ring-ring/50 h-8 flex-1 rounded-md border px-2 text-sm outline-none focus-visible:ring-[3px]"
           />
-          <button type="submit" aria-label="Save name" className="text-muted-foreground hover:text-foreground p-1">
+          <button
+            type="submit"
+            aria-label="Save name"
+            className="text-muted-foreground hover:text-foreground p-1"
+          >
             <Check className="size-3.5" />
           </button>
           <button
@@ -64,8 +68,10 @@ export function SkillRow({ skill, handleProps, isDragging, onRename, onArchive }
         </form>
       ) : (
         <>
-          <span className="flex-1 text-sm font-medium">{skill.name}</span>
-          <span className="text-muted-foreground text-xs">used in {skill.usage_count}</span>
+          <span className="flex-1 truncate text-sm font-medium">{skill.name}</span>
+          <span className="mono-meta text-muted-foreground shrink-0">
+            used in {skill.usage_count}
+          </span>
           <button
             type="button"
             aria-label={`Rename ${skill.name}`}

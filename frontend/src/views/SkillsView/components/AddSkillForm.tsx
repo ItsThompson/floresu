@@ -29,10 +29,10 @@ export function AddSkillForm({ onAdd }: AddSkillFormProps) {
         placeholder="Add a skill…"
         value={name}
         onChange={(event) => setName(event.target.value)}
-        className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-9 flex-1 rounded-md border px-3 text-sm outline-none focus-visible:ring-[3px]"
+        className="border-input bg-card text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 h-9 flex-1 rounded-md border px-3 text-sm outline-none focus-visible:ring-[3px]"
       />
-      <Button type="submit" size="sm" disabled={!name.trim()}>
-        <Plus className="size-3.5" /> Add
+      <Button type="submit" disabled={!name.trim()}>
+        <Plus className="size-4" /> Add
       </Button>
     </form>
   );

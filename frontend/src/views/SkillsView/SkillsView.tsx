@@ -22,7 +22,7 @@ export function SkillsView() {
   );
 
   return (
-    <section className="mx-auto flex w-full max-w-2xl flex-col gap-6 p-8">
+    <section className="reading-width flex w-full flex-col gap-6">
       <div className="flex items-center gap-3">
         <Link
           to="/profile"
@@ -48,12 +48,13 @@ export function SkillsView() {
         </p>
       )}
       {state.status === "ready" && state.skills.length === 0 && (
-        <p className="text-muted-foreground text-sm">
-          No skills yet. Add the skills your resumes should present.
-        </p>
+        <div className="flex flex-col gap-1">
+          <p className="display-m">No skills yet.</p>
+          <p className="text-muted-foreground">Add the skills your resumes should present.</p>
+        </div>
       )}
       {state.status === "ready" && state.skills.length > 0 && (
-        <ul className="flex flex-col gap-1.5">
+        <ul className="divide-border/60 flex flex-col divide-y">
           {state.skills.map((skill) => (
             <SkillRow
               key={skill.id}

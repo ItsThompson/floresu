@@ -18,6 +18,10 @@ interface SkillsSectionCardProps {
  * Hub preview of the curated skills list: each skill as a pill with its derived
  * usage count. Full add/rename/reorder/archive management lives behind the
  * "Manage" link, so this card stays a read-only preview.
+ *
+ * Skill pills are deliberately neutral, never hash-colored: hue is reserved for
+ * tags and identities, so coloring skills too would double the color load and
+ * blur two separate concepts.
  */
 export function SkillsSectionCard({
   skills,
@@ -50,15 +54,15 @@ export function SkillsSectionCard({
           {preview.map((skill) => (
             <li
               key={skill.id}
-              className="border-border bg-secondary text-secondary-foreground inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
+              className="bg-secondary text-muted-foreground inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm"
             >
               <span className="font-medium">{skill.name}</span>
-              <span className="text-muted-foreground">{skill.usage_count}</span>
+              <span className="mono-meta">{skill.usage_count}</span>
             </li>
           ))}
         </ul>
       )}
-      {overflow > 0 && <span className="text-muted-foreground text-xs">+{overflow} more</span>}
+      {overflow > 0 && <span className="mono-meta text-muted-foreground">+{overflow} more</span>}
     </SectionCardShell>
   );
 }

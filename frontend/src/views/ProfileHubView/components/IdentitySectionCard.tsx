@@ -18,6 +18,9 @@ interface IdentitySectionCardProps {
  * Hub preview of the identity variants (the labeled contact sets a resume
  * projects), marking the default. Create/edit/set-default/archive management
  * lives behind the "Manage" link.
+ *
+ * The default marker pairs its icon with the word "Default", so the state never
+ * rests on a glyph or a color alone.
  */
 export function IdentitySectionCard({
   variants,
@@ -48,18 +51,18 @@ export function IdentitySectionCard({
       ) : (
         <ul className="flex flex-col gap-1.5">
           {preview.map((variant) => (
-            <li key={variant.id} className="flex items-center gap-2 text-sm">
+            <li key={variant.id} className="text-muted-foreground flex items-center gap-2 text-sm">
               <span className="truncate font-medium">{variant.label}</span>
               {variant.is_default && (
-                <span className="text-muted-foreground inline-flex items-center gap-0.5 text-xs">
-                  <Star className="size-3 fill-current" /> Default
+                <span className="caption inline-flex items-center gap-1">
+                  <Star aria-hidden className="size-3" /> Default
                 </span>
               )}
             </li>
           ))}
         </ul>
       )}
-      {overflow > 0 && <span className="text-muted-foreground text-xs">+{overflow} more</span>}
+      {overflow > 0 && <span className="mono-meta text-muted-foreground">+{overflow} more</span>}
     </SectionCardShell>
   );
 }

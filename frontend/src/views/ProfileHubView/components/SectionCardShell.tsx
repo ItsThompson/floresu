@@ -33,7 +33,7 @@ export function SectionCardShell({
     <article
       aria-label={title}
       {...targetProps}
-      className={`border-border bg-card flex flex-col gap-3 rounded-xl border p-4 transition-opacity ${
+      className={`border-border bg-card text-card-foreground flex flex-col gap-3 rounded-lg border p-5 transition-opacity ${
         isDragging ? "opacity-50" : ""
       }`}
     >
@@ -46,7 +46,7 @@ export function SectionCardShell({
         >
           <GripVertical className="size-4" />
         </button>
-        <h2 className="flex-1 text-sm font-semibold tracking-tight">{title}</h2>
+        <h2 className="flex-1 text-base font-semibold tracking-tight">{title}</h2>
         {headerAction}
       </header>
       {children}
