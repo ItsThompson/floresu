@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
 import type { SourceSummary, WorklogFilterValues } from "../types";
 
 interface WorklogFiltersProps {
@@ -10,9 +13,24 @@ interface WorklogFiltersProps {
   onClear: () => void;
 }
 
-const SELECT_CLASS =
-  "border-input bg-background h-9 rounded-md border px-2 text-sm";
-const DATE_CLASS = "border-input bg-background h-9 rounded-md border px-2 text-sm";
+// The chips reuse the tag pill's shape. An active chip is the only loud moment in
+// the bar: the accent tint carries its own deeper coral text, which clears the AA
+// floor where the action coral does not.
+//
+// The controls inside drop their own outline, so the ring lives on the pill: the
+// chip is what the user perceives as the control, and a square outline inside a
+// full-radius pill reads as a mistake. Focus is never left unindicated.
+const CHIP_BASE =
+  "caption focus-within:border-ring focus-within:ring-ring/50 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 focus-within:ring-[3px]";
+const CHIP_IDLE = "border-input bg-card text-muted-foreground";
+const CHIP_ACTIVE = "bg-accent text-accent-foreground border-transparent";
+
+const chipClass = (isActive: boolean) => cn(CHIP_BASE, isActive ? CHIP_ACTIVE : CHIP_IDLE);
+
+// The control inherits the chip's color, so an active chip reads as one pill
+// rather than a tinted frame around unrelated text.
+const SELECT_CLASS = "cursor-pointer bg-transparent outline-none";
+const DATE_CLASS = "bg-transparent outline-none";
 
 /**
  * Source, tag, and date-range filters for the timeline. Each is a controlled
@@ -35,13 +53,15 @@ export function WorklogFilters({
     filters.dateTo !== null;
 
   return (
-    <div className="flex flex-wrap items-end gap-3">
-      <label className="flex flex-col gap-1 text-xs font-medium">
+    <div className="flex flex-wrap items-center gap-2">
+      <label className={chipClass(filters.sourceId !== null)}>
         Source
         <select
           className={SELECT_CLASS}
           value={filters.sourceId ?? ""}
-          onChange={(event) => onSourceChange(event.target.value === "" ? null : Number(event.target.value))}
+          onChange={(event) =>
+            onSourceChange(event.target.value === "" ? null : Number(event.target.value))
+          }
         >
           <option value="">All sources</option>
           {sources.map((source) => (
@@ -52,7 +72,7 @@ export function WorklogFilters({
         </select>
       </label>
 
-      <label className="flex flex-col gap-1 text-xs font-medium">
+      <label className={chipClass(filters.tag !== null)}>
         Tag
         <select
           className={SELECT_CLASS}
@@ -68,7 +88,7 @@ export function WorklogFilters({
         </select>
       </label>
 
-      <label className="flex flex-col gap-1 text-xs font-medium">
+      <label className={chipClass(filters.dateFrom !== null)}>
         From
         <input
           type="date"
@@ -78,7 +98,7 @@ export function WorklogFilters({
         />
       </label>
 
-      <label className="flex flex-col gap-1 text-xs font-medium">
+      <label className={chipClass(filters.dateTo !== null)}>
         To
         <input
           type="date"
@@ -89,13 +109,9 @@ export function WorklogFilters({
       </label>
 
       {hasActiveFilter && (
-        <button
-          type="button"
-          onClick={onClear}
-          className="text-muted-foreground h-9 text-sm hover:underline"
-        >
+        <Button type="button" variant="ghost" size="sm" onClick={onClear}>
           Clear
-        </button>
+        </Button>
       )}
     </div>
   );
