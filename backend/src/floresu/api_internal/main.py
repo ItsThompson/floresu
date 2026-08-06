@@ -3,9 +3,9 @@
 Never tunnel-routed and never host-published: reachable in-network by first-party
 ``app-net`` containers only (the MCP server is its intended caller). The
 composition root for the trusted-header surface the agent path calls. Built from
-the shared factory with the internal service identity injected, differing from the
-external app only by these settings; the trusted-header identity boundary is
-layered on by the internal-boundary slice.
+the shared factory with the internal service identity injected, and it injects the
+trusted-header identity boundary (``require_internal_user``) in place of the
+external app's cookie session.
 """
 
 from __future__ import annotations

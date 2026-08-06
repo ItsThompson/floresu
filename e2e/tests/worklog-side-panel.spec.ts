@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { bodyText, createRole, createWorklog, registerAndOnboard } from "../harness/support";
 
 /**
- * B6: the source detail's contextual worklog side panel. A role's entries appear
+ * The source detail's contextual worklog side panel. A role's entries appear
  * grouped by month, and an entry added from the panel's quick-add form is
  * pre-attached to that source. The pre-attach is proven through the API (a
  * UI-only attachment check would be flaky), per the cross-flow rule.

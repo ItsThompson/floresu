@@ -17,7 +17,7 @@ while a hard delete of an entry, a source, or a tag removes only its edges.
 These models are the single schema ``alembic/env.py`` imports so ``--autogenerate``
 diffs the real tables; they mirror migration ``0007``. ``title`` and
 ``description`` are the entry's searchable text, so they stay plain ``TEXT`` for
-the full-text indexes a later slice adds.
+the corpus full-text indexes (migration ``0011``).
 """
 
 from __future__ import annotations

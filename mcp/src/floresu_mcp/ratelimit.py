@@ -2,8 +2,8 @@
 
 A runaway agent is the one real abuse vector at this scale: it can loop and burn
 embedding cost and DB load. This limiter caps it with two fixed-window budgets,
-keyed per user (the token ``sub``; a token maps to one user, so this is the
-"per bearer token / user" budget the spec calls for):
+keyed per user (the token ``sub``; a token maps to one user, so the budget is per
+bearer token and per user alike):
 
 - a **request budget** every tool call counts against, capping overall volume;
 - a tighter **embed-write budget** that only content-writing tools count against
@@ -11,8 +11,8 @@ keyed per user (the token ``sub``; a token maps to one user, so this is the
 
 A trip raises a model-recoverable :class:`ToolError` telling the agent to slow
 down, so it backs off and retries rather than crashing. This is cost/abuse
-control, not multi-tenant fairness; per-IP WAF rules and adaptive limits are
-deferred (section 07).
+control, not multi-tenant fairness; per-IP WAF rules and adaptive limits do not
+exist here.
 
 The Redis interaction is one deep operation (:class:`RateLimitStore.hit`:
 atomic increment + first-hit TTL), so the limiter itself is pure budget logic and

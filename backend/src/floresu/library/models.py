@@ -16,8 +16,8 @@ source, or a worklog entry removes only its edges.
 
 These models are the single schema ``alembic/env.py`` imports so ``--autogenerate``
 diffs the real tables; they mirror migration ``0008``. ``text`` is the bullet's
-searchable text, so it stays plain ``TEXT`` for the full-text indexes a later
-slice adds.
+searchable text, so it stays plain ``TEXT`` for the corpus full-text indexes
+(migration ``0011``).
 """
 
 from __future__ import annotations

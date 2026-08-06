@@ -2,7 +2,7 @@
 
 The RS shares no code with the backend, so these constants are a duplicated
 domain truth. These tests pin the exact wire strings the RS emits (header names,
-the single scope, discovery paths). The cross-package contract tests (Ticket 22)
+the single scope, discovery paths). The contract tests in ``contract/tests/``
 assert equality against the backend; here we only lock the RS-side values so an
 accidental rename fails locally too.
 """

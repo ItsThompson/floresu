@@ -7,7 +7,7 @@ identity. Search is read-only (no actor, no write event), so both boundaries sha
 the same handler and the service holds all retrieval, fusion, and graph logic.
 
 The route is ``POST /search`` (a query with a filter body is a POST, not a GET),
-mapped by the MCP ``search_experience`` tool to this internal route (section 07).
+mapped by the MCP ``search_experience`` tool to this internal route.
 """
 
 from __future__ import annotations

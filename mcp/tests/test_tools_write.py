@@ -1,7 +1,7 @@
 """Surface-wide write-tool tests: the boundary contract every write tool shares.
 
 Drives each write tool through the mounted transport with a valid minted bearer and
-asserts the invariants the ticket makes every write tool honor: resolves identity +
+asserts the invariants every write tool honors: resolves identity +
 actor from the token (never a tool argument), makes exactly one internal call to the
 mapped route carrying ``X-User-ID`` / ``X-Actor`` and never the agent bearer, is
 annotated with the correct idempotent/destructive hints, and emits
@@ -192,7 +192,7 @@ def test_no_permanent_delete_tool_is_registered() -> None:
     with harness.open() as client:
         names = {tool["name"] for tool in harness.list_tools(client)}
 
-    # Agents get archive but never permanent delete (section 08): no tool may
+    # Agents get archive but never permanent delete: no tool may
     # permanently delete an entity, delete the account, or export data (web-only).
     forbidden = ("delete", "destroy", "purge", "erase", "account")
     offenders = [name for name in names if any(word in name for word in forbidden)]

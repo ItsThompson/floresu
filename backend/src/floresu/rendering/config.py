@@ -5,7 +5,7 @@ ships (also the fallback for an unknown id), and the Typst templates directory. 
 templates live at the repo root (``templates/``) per the architecture; the path is
 resolved from this file's location so it works whether the process runs from the
 repo root or ``backend/``. The deployed backend image must include that directory
-(the render image stage; section 12).
+(see ``backend/Dockerfile``).
 """
 
 from __future__ import annotations

@@ -7,7 +7,7 @@ import { bodyText } from "./support";
  * The internal trust boundary (:8001) is what the MCP server proxies to: a
  * validated `X-Internal-Api-Token` plus the trusted `X-User-ID` and the agent's
  * `X-Actor` label. Driving it directly is the lightweight stand-in for a full MCP
- * client, and it is exactly the boundary the acceptance criteria call out
+ * client, and it is exactly the boundary that carries the agent guarantees
  * (internal-denies-without-token, agent-has-no-delete-route, agent attribution).
  */
 export const AGENT_LABEL = "e2e-agent";

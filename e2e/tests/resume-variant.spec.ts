@@ -13,7 +13,7 @@ import { bodyText, createLivingResume, createVariant, registerAndOnboard } from 
 test("switches the resume header identity variant through the selector", async ({ page }) => {
   await registerAndOnboard(page);
 
-  // The first variant is server-forced default (US-ID-01); the second is a distinct,
+  // The first variant is server-forced default; the second is a distinct,
   // non-default identity the user can switch to.
   const primary = await createVariant(page.request, { label: "Primary identity", fullName: "Ada Lovelace" });
   const recruiting = await createVariant(page.request, {

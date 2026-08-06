@@ -6,7 +6,7 @@ mutation of an existing resume carries the resume's current ``revision`` as
 ``if_match_revision`` (forwarded as the ``If-Match`` header); the backend rejects
 a stale revision as a recoverable conflict, so the agent re-reads and retries
 rather than silently overwriting a concurrent change. ``resume_create`` mirrors
-the section 05 creation contract (``kind`` + ``source`` + ``job_application_id``
+the backend creation contract (``kind`` + ``source`` + ``job_application_id``
 for an application). ``resume_finalize`` freezes an application resume;
 ``resume_render`` renders the resume to a persisted PDF and returns a reference the
 user can open. Resume writes carry no embeddable content of their own (they

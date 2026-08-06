@@ -9,7 +9,7 @@ import {
 } from "../harness/support";
 
 /**
- * B1 data export. An account-scoped, full-stack flow: seed a known graph (a
+ * Data export. An account-scoped, full-stack flow: seed a known graph (a
  * role, a worklog entry attached to it, and a bullet linked to both) through the
  * API, trigger the export control on the Settings data surface, and assert the
  * produced archive holds exactly the seeded records. The control is a credentialed

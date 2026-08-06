@@ -3,11 +3,11 @@
 The request is a :class:`SearchQuery` (a query string plus optional filters); the
 response is a :class:`SearchResult` carrying a flat RRF-ranked list and the same
 hits rolled into the provenance DAG (nodes + edges). Field names are snake_case to
-match the rest of the backend wire surface (the ``§06`` interface is illustrative
-TypeScript; the codebase, e.g. ``BulletpointRecord``, uses snake_case, and the MCP
-tool + generated frontend client mirror the backend types). The one nested object
-that keeps its spec names is ``date_range`` (``from`` / ``to``), because ``from``
-is a Python keyword the field aliases around.
+match the rest of the backend wire surface (the codebase, e.g.
+``BulletpointRecord``, uses snake_case, and the MCP tool + generated frontend
+client mirror the backend types). The one nested object that keeps the wire names
+``from`` / ``to`` is ``date_range``, because ``from`` is a Python keyword the field
+aliases around.
 
 Filter semantics (each provided filter narrows the eligible corpus; see
 :mod:`floresu.search.eligibility` for how a filter that cannot apply to a kind

@@ -11,9 +11,9 @@ import. Two groups matter:
 - The single OAuth scope MUST match the backend AS's ``SCOPE_FULL``
   (``floresu:full``), so the PRM advertises the same access level the AS grants.
 
-Both equalities are mechanically enforced by the cross-package contract tests
-(Ticket 22), the only interpreter where the MCP and backend packages import
-together; the MCP tests here compare each constant only to itself.
+Both equalities are mechanically enforced by the tests in ``contract/tests/``, the
+only interpreter where the MCP and backend packages import together; the MCP tests
+here compare each constant only to itself.
 """
 
 from __future__ import annotations

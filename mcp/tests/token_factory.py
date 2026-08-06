@@ -6,7 +6,7 @@ ships as a separate image): a throwaway RSA key stands in for the AS signing key
 two discovery hops (AS metadata -> JWKS) the
 :class:`~floresu_mcp.keys.RemoteKeyProvider` performs. The token claim shape
 mirrors the backend AS ``AccessTokenCodec`` (iss/sub/aud/client_id/scope/exp);
-the cross-package contract tests (Ticket 22) hold that mirror honest.
+the contract tests in ``contract/tests/`` hold that mirror honest.
 """
 
 from __future__ import annotations

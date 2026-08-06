@@ -3,7 +3,7 @@
 The single public entry point resolves the query, retrieves lexically and (best
 effort) semantically, fuses the two rankings with RRF, then loads the hit set's
 provenance edges and rolls the hits into the scored DAG. It owns two soft-failure
-rules the acceptance criteria require:
+rules:
 
 - an empty query (or one filtered down to no eligible kinds) returns an empty
   result, never a full dump and never an error;

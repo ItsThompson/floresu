@@ -8,9 +8,8 @@ an unscoped endpoint cannot ship.
 The registries are declared centrally and separately from where routers are
 mounted, on purpose: forgetting to declare a route is exactly what the coverage
 test catches. The same path can carry different access levels on the two apps, so
-the registries are per-app. They start empty: the two apps mount only the health
-and metrics infra routes today (excluded by construction), and each domain slice
-adds its product routes here as it lands.
+the registries are per-app. The health and metrics infra routes are excluded by
+construction; every domain declares its product routes here.
 """
 
 from __future__ import annotations
@@ -45,8 +44,7 @@ RouteRegistry = Mapping[RouteKey, AccessLevel]
 
 # Declarative per-app registries. Product routes are declared here by the module
 # that mounts them. The coverage test fails safe (deny) the moment a mounted
-# product route is missing an entry. The sources domain is the first slice mounted
-# on the internal app, so its routes populate the internal registry too.
+# product route is missing an entry.
 EXTERNAL_ROUTE_ACCESS: RouteRegistry = {
     # Human web auth. The session-establishing endpoints are PUBLIC (they resolve
     # identity from credentials or the refresh cookie, not a prior session);

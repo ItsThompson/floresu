@@ -4,10 +4,9 @@ The migration engine reuses ``floresu.core.db.create_db_engine`` and reads the U
 from ``EnvSettings`` (``DATABASE_URL``), so migrations, the app, and tests share
 one source of truth for the connection string (no hardcoded URL).
 
-``target_metadata`` is the shared declarative ``Base.metadata``. Each domain's
-model module is imported below so its tables attach to that metadata and
-``--autogenerate`` can diff the real schema. No domain models exist yet: the
-baseline chain is hand-authored. Add domain model imports here as slices land.
+``target_metadata`` is the shared declarative ``Base.metadata``. Every domain's
+model module is imported through ``floresu.models_registry`` below, so its tables
+attach to that metadata and ``--autogenerate`` can diff the real schema.
 """
 
 from __future__ import annotations

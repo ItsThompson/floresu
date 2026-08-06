@@ -19,8 +19,8 @@ interface ResumeApiSeed {
 }
 
 /**
- * A stateful in-memory implementation of the resume backend (T12 core, T13
- * copy-on-write, T14 rendering) as MSW handlers. It mirrors the real contract:
+ * A stateful in-memory implementation of the resume backend (the core CRUD,
+ * copy-on-write, and rendering) as MSW handlers. It mirrors the real contract:
  * `If-Match` guards a write and a mismatch is a recoverable 409, item add/remove
  * reindex the shared bullet count, and `bullet-edit` runs the scope resolution
  * that drives the prompt. Tests seed it and register `handlers`, so the views

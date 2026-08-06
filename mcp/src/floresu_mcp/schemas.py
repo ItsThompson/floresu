@@ -4,8 +4,8 @@ The MCP server ships as a separate image with no backend-code dependency, so it
 re-declares the wire types it uses (the same "duplicated domain truth kept in
 sync by contract" pattern as :mod:`floresu_mcp.config`'s header names). The
 per-domain read shapes live in sibling ``schemas_*`` modules; this module holds
-the worklog + tag shapes the worklog tools use. The cross-package contract tests
-(Ticket 22) keep every mirror honest.
+the worklog + tag shapes the worklog tools use. The contract tests in
+``contract/tests/`` keep every mirror honest.
 
 Inputs mirror the backend write body; outputs are lean summary-first projections
 that ignore unrecognized fields, so a backend addition never breaks a read. IDs,

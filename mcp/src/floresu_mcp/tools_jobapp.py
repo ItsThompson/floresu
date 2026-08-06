@@ -1,11 +1,10 @@
-"""Job-application tools: the read pair (closing the T20 follow-up) and the writes.
+"""Job-application tools: the read pair and the writes.
 
-The job-application backend (created in the finalize/jobapps slice) is now
-available on the internal API, so this module completes the MCP job-application
-surface: the read tools ``jobapp_list`` / ``jobapp_get`` that the read ticket
-deferred, plus the write tools ``jobapp_create`` / ``jobapp_update``. Each tool is
-a thin adapter: resolve ``(user_id, actor)`` from the bearer, check the rate
-limit, make exactly one internal call, and validate the response into
+The read tools ``jobapp_list`` / ``jobapp_get`` and the write tools
+``jobapp_create`` / ``jobapp_update`` are the whole MCP job-application surface
+over the internal API. Each tool is a thin adapter: resolve ``(user_id, actor)``
+from the bearer, check the rate limit, make exactly one internal call, and
+validate the response into
 :class:`~floresu_mcp.schemas_jobapp.JobApplicationSummary`.
 
 Setting the status to ``submitted`` via ``jobapp_update`` is the P0 finalize

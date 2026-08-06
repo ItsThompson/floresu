@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
 _MCP_HEADERS = {"Accept": "application/json, text/event-stream", "Content-Type": "application/json"}
 _TOOLS_LIST = {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
-# A representative slice of the registered surface: one read tool and one write
+# A representative sample of the registered surface: one read tool and one write
 # tool. The full read/write surfaces are asserted in the per-domain tool tests, so
 # this app-assembly check only needs the tool transport to serve a non-empty,
 # superset-containing list.

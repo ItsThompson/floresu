@@ -32,7 +32,7 @@ pytestmark = pytest.mark.integration
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 # The structural diff kinds that would signal the model and schema disagree; the
-# T2 hazard is precisely a spurious remove_table on ``users``.
+# hazard is precisely a spurious remove_table on ``users``.
 _STRUCTURAL_OPS = frozenset(
     {"add_table", "remove_table", "add_column", "remove_column", "add_index", "remove_index"}
 )
@@ -145,7 +145,7 @@ def test_accounts_migration_is_reversible(
 def test_autogenerate_emits_no_structural_diff(
     postgres_url: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # The T2 handoff hazard: without the ORM models, autogenerate would DROP the
+    # Without the ORM models, autogenerate would DROP the
     # accounts tables. With them imported onto Base.metadata, a head database
     # produces no add/remove of any table, column, or index.
     monkeypatch.setenv("DATABASE_URL", postgres_url)

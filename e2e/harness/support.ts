@@ -206,7 +206,7 @@ interface VariantRecord {
 /**
  * Create an identity variant through POST /identity-variants. Maps `fullName` to
  * `full_name`, nests `contact`, and posts `links` as `{ label, url }` objects. The
- * server marks the first variant default (US-ID-01), so a caller may omit
+ * server marks the first variant default, so a caller may omit
  * `isDefault`; the returned `isDefault` reflects the server's resolved state.
  */
 export async function createVariant(

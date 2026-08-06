@@ -57,12 +57,12 @@ vitest layer):
 Three browser-flaky flows stay at the vitest layer; this suite does not claim
 them:
 
-- Transient SSE disconnect + gap replay (US-FEED-02):
+- Transient SSE disconnect + gap replay:
   `frontend/src/views/HomeView/feedConnection.test.ts`. The live-feed spec here
   asserts only live push + reload replay, not drop/restore.
-- Debounced preview refresh + expand-thumbnail timing (US-RES-02):
+- Debounced preview refresh + expand-thumbnail timing:
   `frontend/src/views/ResumeEditorView/hooks/useResumePreview.test.ts`.
-- Drag-to-reorder sections and items (US-RES-03, US-PROF-01/05):
+- Drag-to-reorder sections and items:
   `frontend/src/views/ResumeEditorView/hooks/useDragList.test.ts` and
   `frontend/src/views/ProfileHubView/hooks/useSectionOrder.test.ts`. Skills reorder
   is drag-only too, so the skills spec asserts the `POST /skills/reorder` outcome

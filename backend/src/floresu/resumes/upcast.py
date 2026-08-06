@@ -1,7 +1,7 @@
 """Schema versioning: the read-time upcaster and canonical serialization.
 
-The document shape evolves, so it is versioned on the gofin pattern adapted for
-authored (non-recomputable) content:
+The document shape evolves, so it is versioned for authored (non-recomputable)
+content:
 
 - ``schema_version`` lives in both the row column and the document JSON.
 - On read, a version-keyed upcaster migrates an older document to CURRENT before
@@ -9,7 +9,9 @@ authored (non-recomputable) content:
 - On write, the incoming document is validated against the current schema and
   persisted with ``schema_version = CURRENT``.
 - Canonical (stable-key-order) serialization gives a byte-stable form for hashing
-  and golden snapshots (the CI drift guard that locks it lands later).
+  and golden snapshots, locked by ``tests/test_resume_golden.py`` and
+  ``tests/test_resume_golden_guard.py``: a released golden and its recorded sha256
+  can never change silently.
 
 The upcaster registry maps a source version N to the pure transform that produces
 a version N+1 document. It is empty at v1 (there is nothing to upcast yet); the

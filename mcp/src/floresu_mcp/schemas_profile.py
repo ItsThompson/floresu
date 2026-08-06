@@ -12,7 +12,7 @@ two backend storage patterns, so a read returns one of three shapes:
 :class:`ProfileKind` is the tool input discriminator; :class:`SourceKind` is the
 narrower source discriminator carried on source reads (and shared with the search
 graph). Outputs ignore unrecognized fields so a backend addition never breaks a
-read. The cross-package contract tests (Ticket 22) keep every mirror honest.
+read. The contract tests in ``contract/tests/`` keep every mirror honest.
 """
 
 from __future__ import annotations

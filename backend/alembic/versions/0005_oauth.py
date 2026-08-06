@@ -4,9 +4,9 @@ Adds the five OAuth 2.1 AS tables: ``oauth_clients`` (DCR),
 ``oauth_auth_requests`` (parked authorize requests), ``oauth_authorization_codes``
 (one-time PKCE-bound codes), ``oauth_refresh_tokens`` (rotating refresh, stored
 hashed), and ``oauth_grants`` (the connected-client relationship, tracking a
-connected time and a last-active time). Chained after the audit_log slice to keep
-a single linear head (both the audit_log and oauth slices branch off the accounts
-slice; wave integration linearizes oauth onto audit_log).
+connected time and a last-active time). Chained after ``0004_audit_log`` to keep a
+single linear head: the audit-log and OAuth tables both depend only on the
+accounts tables, so the chain orders them arbitrarily.
 
 Constraint and index names follow the deterministic convention so the ORM models
 in ``floresu.oauth.models`` autogenerate no structural diff and downgrades are

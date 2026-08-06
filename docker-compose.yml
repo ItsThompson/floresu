@@ -189,8 +189,8 @@ services:
   # Data tier
   # ---------------------------------------------------------------------------
   postgres:
-    # pgvector-enabled image (spec §12: pgvector in the Postgres image), so
-    # `CREATE EXTENSION vector` and the vector column work.
+    # pgvector-enabled image, so `CREATE EXTENSION vector` and the vector column
+    # work.
     image: pgvector/pgvector:pg17
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-floresu}
@@ -343,8 +343,8 @@ services:
   grafana:
     # First-party image: stock Grafana OSS with the Prometheus datasource + the
     # Floresu overview dashboard baked in (deployments/grafana). Provisioned but
-    # NON-GATING (spec §12): never a release gate. The admin password is supplied
-    # at runtime (a GitHub secret at deploy; the stock default for local dev).
+    # NON-GATING: never a release gate. The admin password is supplied at runtime
+    # (a GitHub secret at deploy; the stock default for local dev).
     image: ghcr.io/${GHCR_OWNER:-floresu-platform}/floresu/grafana:${FLORESU_IMAGE_TAG:-latest}
     build:
       context: ./deployments/grafana

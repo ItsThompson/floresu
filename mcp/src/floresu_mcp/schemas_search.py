@@ -1,7 +1,7 @@
 """Lean search wire schemas (re-declared, not imported).
 
 ``search_experience`` is the one search tool. Its input is a free-text ``query``
-plus the section 06 :class:`SearchFilters`; its output is a :class:`SearchResult`
+plus a :class:`SearchFilters`; its output is a :class:`SearchResult`
 carrying the flat RRF-ranked list and the same hits rolled into the scored
 provenance DAG (:class:`SearchGraph`: sources / worklog / bullets with edges and
 scores), so the agent reconstructs the hierarchy in one call.
@@ -9,7 +9,7 @@ scores), so the agent reconstructs the hierarchy in one call.
 Field names are snake_case to match the backend wire surface; the one aliased
 field is ``date_range``'s ``from`` (a Python keyword). Filter input forbids
 unknown fields; result outputs ignore them so a backend addition never breaks a
-read. The cross-package contract tests (Ticket 22) keep every mirror honest.
+read. The contract tests in ``contract/tests/`` keep every mirror honest.
 """
 
 from __future__ import annotations

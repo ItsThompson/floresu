@@ -22,12 +22,12 @@ const EDITED_TEXT = "REWRITTEN library text after the version was published";
 const APP_BULLET = "Drove the billing platform re-architecture across three teams";
 
 /**
- * Follow-up #1: view a published version read-only. Export a living resume twice
+ * View a published version read-only. Export a living resume twice
  * (each export stores a PDF in R2/MinIO under its revision), then open the editor's
  * History control: it lists the published versions newest-first, opens the selected
  * one as a read-only PDF fetched straight from the presigned R2 URL, and never
- * leaks the object key. A later everywhere library edit leaves an already-published
- * version byte-identical (the US-REV-03 freeze guarantee).
+ * leaks the object key. A later library edit leaves an already-published
+ * version byte-identical: publishing freezes it.
  */
 test("History lists published versions newest-first, views one read-only, and freezes it", async ({
   page,
@@ -38,7 +38,7 @@ test("History lists published versions newest-first, views one read-only, and fr
   const { sectionId } = await seedResumeSection(page.request, resumeId);
   await placeBulletViaApi(page.request, resumeId, sectionId, bullet.id);
 
-  // Export once through the editor (the P0 export flow): a stored PDF surfaced via a
+  // Export once through the editor: a stored PDF surfaced via a
   // presigned download link. This records the first published version.
   await page.goto(`/resumes/${resumeId}`);
   const preview = page.getByRole("complementary", { name: "Resume preview" });

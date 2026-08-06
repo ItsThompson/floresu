@@ -3,7 +3,7 @@
 The flat RRF ranking answers "what is most relevant"; this module rolls the SAME
 hits into the provenance DAG so a consumer can walk any ``source → worklog →
 bullet`` chain. It reuses :func:`floresu.library.provenance.build_provenance_dag`
-(the shared, scoped three-join grouping from Ticket 9), so "assemble the DAG" has
+(the shared, scoped three-join grouping), so "assemble the DAG" has
 one definition.
 
 Node rules:

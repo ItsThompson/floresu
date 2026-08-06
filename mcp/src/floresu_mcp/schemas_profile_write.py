@@ -12,8 +12,8 @@ bodies carry no kind).
 
 Inputs mirror the backend write bodies field-for-field and forbid unknown fields;
 server-owned columns (id, timestamps, ``sort_order``, ``archived_at``,
-``usage_count``) are never accepted on a write. The cross-package contract tests
-(Ticket 22) keep every mirror honest.
+``usage_count``) are never accepted on a write. The contract tests in
+``contract/tests/`` keep every mirror honest.
 """
 
 from __future__ import annotations

@@ -8,7 +8,7 @@ role title only); :class:`JobApplicationUpdateInput` is a partial write that can
 change the company/role title and/or set the status: setting ``submitted`` is the
 finalize trigger the backend acts on (rejected with a recoverable error when no
 resume is linked). The status and the resume link are server-owned and never
-accepted on a write. The cross-package contract tests (Ticket 22) keep the mirror
+accepted on a write. The contract tests in ``contract/tests/`` keep the mirror
 honest.
 """
 

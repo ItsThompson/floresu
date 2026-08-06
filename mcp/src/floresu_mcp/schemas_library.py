@@ -4,7 +4,7 @@
 resolved provenance edges (the ``source_ids`` it frames directly and the
 ``worklog_ids`` it frames), its ``revision`` token, and ``used_in_count`` (how
 many resumes reference it). The read shape ignores unrecognized fields so a
-backend addition never breaks it. The cross-package contract tests (Ticket 22)
+backend addition never breaks it. The contract tests in ``contract/tests/``
 keep the mirror honest.
 """
 

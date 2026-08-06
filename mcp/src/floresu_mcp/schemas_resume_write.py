@@ -1,18 +1,18 @@
 """Lean resume-write wire schemas (re-declared, not imported).
 
-The write surface carries the creation contract and the document mutations from
-section 05. :class:`ResumeCreateInput` mirrors the contract exactly: ``kind``
-chooses the result (living vs application) and is never inferred from ``source``;
-``source`` is a discriminated union saying where the initial content comes from;
-``job_application_id`` is required only for an application resume. The document
-write (:class:`ResumeUpdateInput`) reuses the resolved header and section shapes;
-:class:`AddItemInput` mints no id (the server does); :class:`ResumeReorderInput`
-addresses sections and items by id.
+The write surface carries the resume creation contract and the document mutations.
+:class:`ResumeCreateInput` mirrors the backend ``POST /resumes`` body exactly:
+``kind`` chooses the result (living vs application) and is never inferred from
+``source``; ``source`` is a discriminated union saying where the initial content
+comes from; ``job_application_id`` is required only for an application resume. The
+document write (:class:`ResumeUpdateInput`) reuses the resolved header and section
+shapes; :class:`AddItemInput` mints no id (the server does);
+:class:`ResumeReorderInput` addresses sections and items by id.
 
 Every resume mutation carries the resume ``If-Match`` revision as a header (not a
 body field); a stale revision is a recoverable conflict. :class:`FinalizeResult`
 and :class:`RenderReference` are the terminal outputs (what was frozen/stored, and
-where the PDF lives). The cross-package contract tests (Ticket 22) keep every
+where the PDF lives). The contract tests in ``contract/tests/`` keep every
 mirror honest.
 """
 

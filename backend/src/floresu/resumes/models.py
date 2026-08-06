@@ -17,9 +17,8 @@ fully resolved snapshot (references resolved to text at that moment) so a later
 library edit can never rewrite the past.
 
 ``job_applications`` is created before ``resumes`` because ``resumes`` holds the
-FK; the link is one-directional, so there is no circular dependency. This ticket
-creates the ``job_applications`` table and the FK only; its lifecycle/service
-lands later. These models are the single schema ``alembic/env.py`` imports so
+FK; the link is one-directional, so there is no circular dependency. These models
+are the single schema ``alembic/env.py`` imports so
 ``--autogenerate`` diffs the real tables; they mirror migration ``0010``.
 """
 
@@ -196,6 +195,6 @@ class ResumeRevision(Base):
     # later library edit never rewrites this past snapshot.
     document: Mapped[dict[str, Any]] = mapped_column(postgresql.JSONB, nullable=False)
     schema_version: Mapped[int] = mapped_column(Integer, nullable=False)
-    # R2 object key of the rendered PDF for this revision; set by the rendering slice.
+    # R2 object key of the rendered PDF for this revision; set by the render path.
     pdf_object_key: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

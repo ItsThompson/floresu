@@ -2,8 +2,8 @@
 
 Keeps the "which consumers are registered" decision at the composition root and
 out of the seam and services. The audit append is always the transactional
-consumer, so every write is recorded in its own transaction. Later slices pass the
-SSE and embed side channels as ``best_effort`` from the app entrypoint, without
+consumer, so every write is recorded in its own transaction. The app entrypoint
+passes the SSE and embed side channels as post-commit consumers, without
 editing the seam or any service.
 
 The transactional consumer builds a request-scoped audit service over the caller's
@@ -54,7 +54,7 @@ def build_write_event_publisher(
 def build_audit_service_provider() -> ServiceProvider[AuditService]:
     """A FastAPI dependency that builds a request-scoped :class:`AuditService`.
 
-    Backs the read endpoints (the activity-feed initial load; the future item
+    Backs the read endpoints (the activity-feed initial load and the item
     history) over a per-request session, mirroring the accounts service provider.
     """
     return session_provider(lambda session: AuditService(SqlAlchemyAuditRepository(session)))

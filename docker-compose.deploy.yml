@@ -48,7 +48,7 @@ services:
       # Authenticate to the password-protected redis (see the redis override above).
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       # Optional (:-): the embedding fast-path fails soft when unset. Wire the
-      # real key at go-live (spec lists the embedding API key as required infra).
+      # real key at go-live: the embedding API key is required infra in production.
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       # R2 object storage for rendered PDFs (export, finalize, published-version
       # viewing). The endpoint URL and bucket are non-secret config from .env.prod

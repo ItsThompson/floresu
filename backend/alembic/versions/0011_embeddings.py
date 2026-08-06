@@ -1,7 +1,7 @@
 """embeddings: pgvector storage plus the corpus full-text indexes
 
 Ships the storage and lexical indexes hybrid search depends on (the retrieval and
-fusion module itself lands in a later slice):
+fusion modules live in ``floresu.search``):
 
 - The ``embed_item_kind`` enum (``worklog | bullet | source``) and the
   ``embeddings`` table: one ``vector(1536)`` per corpus item, keyed by the

@@ -7,7 +7,7 @@ import { createLivingResume, registerAndOnboard } from "../harness/support";
  * silent: because a living resume points at the variant, the identities page opens
  * a replacement prompt. Choosing a replacement re-points the referencing resume's
  * header to it and archives the original in one atomic backend operation. Reopening
- * the resume shows the replacement selected, never "None selected" (BUG-004).
+ * the resume shows the replacement selected, never "None selected".
  */
 test("archiving a referenced variant with a replacement re-points the resume", async ({ page }) => {
   await registerAndOnboard(page);

@@ -1,6 +1,6 @@
 """End-to-end feed test: a committed write reaches the live feed, a rollback does not.
 
-The definitive runtime proof of the T23 seam change, wired exactly as the external
+The definitive runtime proof of the write-event seam, wired exactly as the external
 app composes it: the real :class:`WriteEventPublisher` with the audit transactional
 consumer and the SSE feed publish as a post-commit consumer, over real Postgres
 (the audit append + commit) and real Redis (the pub/sub fan-out). A committed write

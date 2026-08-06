@@ -1,7 +1,7 @@
 """Surface-wide read-tool tests: the boundary contract every read tool shares.
 
 Drives each read tool through the mounted transport with a valid minted bearer and
-asserts the invariants the ticket makes every read tool honor: annotated
+asserts the invariants every read tool honors: annotated
 ``readOnlyHint``, resolves identity + actor from the token (never a tool
 argument), makes exactly one internal call carrying ``X-User-ID`` / ``X-Actor``
 and never the agent bearer, and emits ``mcp_tool_invocations_total``. Per-domain

@@ -4,8 +4,8 @@ Composes the per-domain read-tool registrars (worklog, profile, library, resume,
 search) onto the shared FastMCP server that :mod:`floresu_mcp.app` mounts behind
 the bearer-guarded ``/mcp`` prefix. Every tool registers through the one counted
 registrar (:func:`~floresu_mcp.tool_registry.counted_tool_registrar`), so each is
-uniformly metered, annotated, and schema-preserving. The write tool surface lands
-in a later ticket via a sibling ``register_write_tools`` on the same seam.
+uniformly metered, annotated, and schema-preserving. The write tool surface is the
+sibling ``register_write_tools`` on the same seam.
 """
 
 from __future__ import annotations

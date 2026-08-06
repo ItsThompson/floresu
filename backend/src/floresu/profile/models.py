@@ -16,7 +16,7 @@ These models are the single schema source ``alembic/env.py`` imports so
 ``--autogenerate`` diffs the real tables; they mirror migration ``0006``.
 ``display_label``, ``summary``, and the role company/title columns are the source
 text that becomes part of the searchable corpus, so they stay plain ``TEXT`` for
-the full-text indexes a later slice adds.
+the corpus full-text indexes (migration ``0011``).
 """
 
 from __future__ import annotations
