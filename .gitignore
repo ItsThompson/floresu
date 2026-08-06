@@ -17,6 +17,7 @@ node_modules/
 dist/
 *.local
 .vite/
+frontend/coverage/
 
 # Environment and secrets
 .env
@@ -25,6 +26,10 @@ dist/
 # .env.prod is the COMMITTED, non-secret half of the production config (see the
 # file header). Real secrets live only in GitHub Actions, never here.
 !.env.prod
+# Private keys and credential dumps. No negations here: a file of either shape
+# is never committed.
+*.pem
+*token*.json
 
 # Editor / OS
 .DS_Store
