@@ -1,3 +1,5 @@
+import { TriangleAlert } from "lucide-react";
+
 import { Modal } from "@/components/Modal";
 import { Button } from "@/components/ui/button";
 
@@ -15,13 +17,19 @@ interface StaleBulletDialogProps {
  * revision guard), so the edit was not applied. The user re-reads the latest
  * revision and retries: the write is never silently overwritten. Mirrors the
  * resume editor's stale-save prompt so both edit paths recover the same way.
+ *
+ * The prompt is ochre rather than crimson: nothing was lost, the retry is safe.
+ * It carries its message text, so the tint alone never has to convey that.
  */
 export function StaleBulletDialog({ isOpen, onReread, onDismiss }: StaleBulletDialogProps) {
   return (
     <Modal isOpen={isOpen} onClose={onDismiss} title="This bulletpoint changed">
-      <p className="text-muted-foreground text-sm">
-        Someone (or one of your agents) changed this bulletpoint since you opened it, so your last
-        edit was not applied. Re-read the latest version and try again.
+      <p className="bg-warning-tint text-foreground flex items-start gap-2 rounded-md p-3 text-sm">
+        <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+        <span>
+          Someone (or one of your agents) changed this bulletpoint since you opened it, so your last
+          edit was not applied. Re-read the latest version and try again.
+        </span>
       </p>
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={onDismiss}>
