@@ -14,9 +14,14 @@ describe("AgentAvatar", () => {
     expect(screen.getByTestId("agent-glyph")).toBeInTheDocument();
   });
 
-  it("colors the swatch by the shared hash of the name", () => {
+  it("mixes both the fill and the initial from the name's hashed hue", () => {
     render(<AgentAvatar name="Cursor" />);
-    const swatch = screen.getByRole("img", { name: "Cursor" }).querySelector("span");
-    expect(swatch).toHaveStyle({ backgroundColor: colorForName("Cursor") });
+    const swatch = screen.getByRole("img", { name: "Cursor" }).querySelector("span")!;
+    const tagColor = colorForName("Cursor");
+
+    expect(swatch.style.backgroundColor).toContain(tagColor);
+    expect(swatch.style.color).toContain(tagColor);
+    // A pastel fill cannot carry light text: the initial is a deeper mix.
+    expect(swatch.style.color).not.toBe(swatch.style.backgroundColor);
   });
 });

@@ -12,6 +12,12 @@ describe("ActorAvatar", () => {
     const avatar = screen.getByRole("img", { name: "You" });
     expect(avatar).toBeInTheDocument();
     expect(screen.getByText("Y")).toBeInTheDocument();
+    // Coral comes from the accent token pair, not a computed hue.
+    const swatch = avatar.querySelector("span")!;
+    expect(swatch).toHaveClass("bg-accent", "text-accent-foreground");
+    // The hairline ring keeps the disc visible where the surface shares its fill.
+    expect(swatch).toHaveClass("ring-1", "ring-border");
+    expect(swatch.getAttribute("style")).toBeNull();
     // Distinguished by shape too: the human carries no bot glyph.
     expect(screen.queryByTestId("agent-glyph")).not.toBeInTheDocument();
   });
@@ -22,10 +28,15 @@ describe("ActorAvatar", () => {
     const avatar = screen.getByRole("img", { name: "claude" });
     expect(avatar).toBeInTheDocument();
     expect(screen.getByText("C")).toBeInTheDocument();
-    // Shape differentiator present, and the color is the shared hash (not coral).
+    // Shape differentiator present, and both shades come from the shared hash.
     expect(screen.getByTestId("agent-glyph")).toBeInTheDocument();
-    const swatch = avatar.querySelector("span");
-    expect(swatch).toHaveStyle({ backgroundColor: colorForName("claude") });
+    const swatch = avatar.querySelector("span")!;
+    const tagColor = colorForName("claude");
+
+    expect(swatch.style.backgroundColor).toContain(tagColor);
+    expect(swatch.style.color).toContain(tagColor);
+    // A pastel fill cannot carry light text: the initial is a deeper mix.
+    expect(swatch.style.color).not.toBe(swatch.style.backgroundColor);
   });
 
   it("falls back to 'Agent' when a named agent has no label", () => {
