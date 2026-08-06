@@ -1,3 +1,4 @@
+import { Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { Modal } from "@/components/Modal";
@@ -17,6 +18,9 @@ interface DeleteResumeDialogProps {
  * Confirm-gated permanent delete. This action is web-only (never exposed to an
  * agent) and irreversible, so the dialog states that plainly and only fires the
  * delete on an explicit confirmation click.
+ *
+ * The confirm button pairs its crimson with a bin glyph and a label, so the
+ * consequence is never carried by color alone.
  */
 export function DeleteResumeDialog({ resume, onClose, onConfirm }: DeleteResumeDialogProps) {
   const [isDeleting, setIsDeleting] = useState(false);
@@ -49,10 +53,17 @@ export function DeleteResumeDialog({ resume, onClose, onConfirm }: DeleteResumeD
       )}
 
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onClose}>
+        <Button type="button" variant="ghost" size="sm" onClick={onClose}>
           Cancel
         </Button>
-        <Button variant="destructive" onClick={() => void confirm()} disabled={isDeleting}>
+        <Button
+          type="button"
+          variant="destructive"
+          size="sm"
+          onClick={() => void confirm()}
+          disabled={isDeleting}
+        >
+          <Trash2 aria-hidden />
           Delete permanently
         </Button>
       </div>

@@ -13,10 +13,15 @@ interface ResumeGroupSectionProps {
  * One titled group in the resumes list (Living or Applications): a heading plus
  * the rows, or an encouraging empty message when the group has no resumes yet.
  */
-export function ResumeGroupSection({ heading, emptyMessage, resumes, onDelete }: ResumeGroupSectionProps) {
+export function ResumeGroupSection({
+  heading,
+  emptyMessage,
+  resumes,
+  onDelete,
+}: ResumeGroupSectionProps) {
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">{heading}</h2>
+      <h2 className="text-muted-foreground caption">{heading}</h2>
       {resumes.length === 0 ? (
         <p className="text-muted-foreground text-sm">{emptyMessage}</p>
       ) : (

@@ -29,8 +29,8 @@ interface NewResumeDialogProps {
  * Create a living resume: blank, a faithful duplicate of an existing one, or
  * seeded from an existing one. Application resumes are created from the Job
  * Applications view (they must link to a job application), so this dialog is
- * living-only. `kind` sets the result; `source` seeds the content (the §05
- * creation contract). A failed create keeps the dialog open with an inline error.
+ * living-only. `kind` sets the result; `source` seeds the content. A failed create
+ * keeps the dialog open with an inline error.
  */
 export function NewResumeDialog({
   isOpen,
@@ -70,7 +70,7 @@ export function NewResumeDialog({
       />
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="text-foreground mb-1 text-sm font-medium">Start from</legend>
+        <legend className="text-foreground caption mb-1">Start from</legend>
         {SOURCE_OPTIONS.map((option) => (
           <label key={option.mode} className="flex items-center gap-2 text-sm">
             <input
@@ -86,9 +86,9 @@ export function NewResumeDialog({
 
       {needsSource && (
         <label className="flex flex-col gap-1.5">
-          <span className="text-foreground text-sm font-medium">Source resume</span>
+          <span className="text-foreground caption">Source resume</span>
           <select
-            className="border-input bg-background h-9 rounded-md border px-3 text-sm"
+            className="border-input bg-card text-foreground focus-visible:border-ring focus-visible:ring-ring/50 h-9 rounded-md border px-3 text-sm outline-none focus-visible:ring-[3px]"
             value={values.sourceId ?? ""}
             onChange={(event) =>
               setValues((prev) => ({
@@ -114,10 +114,10 @@ export function NewResumeDialog({
       )}
 
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onClose}>
+        <Button type="button" variant="ghost" size="sm" onClick={onClose}>
           Cancel
         </Button>
-        <Button onClick={() => void submit()} disabled={!canSubmit}>
+        <Button type="button" size="sm" onClick={() => void submit()} disabled={!canSubmit}>
           Create
         </Button>
       </div>
@@ -125,7 +125,11 @@ export function NewResumeDialog({
   );
 }
 
-function buildCreateRequest(mode: SourceMode, sourceId: number | null, title: string): ResumeCreateRequest {
+function buildCreateRequest(
+  mode: SourceMode,
+  sourceId: number | null,
+  title: string,
+): ResumeCreateRequest {
   const base = { kind: "living" as const, title: title || null };
   if (mode === "duplicate" && sourceId !== null) {
     return { ...base, source: { mode: "duplicate", duplicate_id: sourceId } };
