@@ -1,0 +1,89 @@
+/*
+ * Canonical design tokens. This is the only file in the repo where a design
+ * value is defined; every other stylesheet, component, and view reads these
+ * variables. oklch is canonical because Tailwind v4 stores color as oklch, so
+ * no value here needs translating at the point of use.
+ *
+ * Framework-neutral by design: no `@import "tailwindcss"`, no `@theme`, no
+ * `@layer`. `frontend/src/globals.css` bridges these onto Tailwind's
+ * vocabulary; keeping this file free of framework syntax is what lets the
+ * bridge stay a pure mapping.
+ *
+ * The font stacks and the elevation shadow sit in a neutral `--font-*-stack` /
+ * `--elevation-*` namespace, deliberately outside Tailwind's own `--font-*` and
+ * `--shadow-*` theme namespaces: the bridge aliases them with
+ * `--font-sans: var(--font-sans-stack)`, which would be a self-reference cycle
+ * if they were named `--font-sans` and `--shadow-floating` here.
+ *
+ * No dark mode. When dark mode arrives it redefines these same variables under
+ * a dark scope; do not add dark-mode tokens before then.
+ */
+:root {
+  --radius: 0.75rem;
+
+  --background: oklch(0.9726 0.0086 67.73);
+  --foreground: oklch(0.2244 0.0146 57.43);
+  --card: oklch(0.9915 0.0057 84.57);
+  --card-foreground: oklch(0.2244 0.0146 57.43);
+  --popover: oklch(0.9915 0.0057 84.57);
+  --popover-foreground: oklch(0.2244 0.0146 57.43);
+
+  --primary: oklch(0.55 0.1517 34.02);
+  --primary-foreground: oklch(0.9748 0.0119 79.79);
+  --primary-hover: oklch(0.4999 0.1363 34.06);
+  --secondary: oklch(0.9247 0.0194 80.12);
+  --secondary-foreground: oklch(0.2244 0.0146 57.43);
+  --muted: oklch(0.942 0.0148 80.71);
+  --muted-foreground: oklch(0.5065 0.0232 69.7);
+  --accent: oklch(0.9137 0.0336 43.5);
+  /* A deeper step than `--primary`, which is otherwise the same coral. Text on
+     the accent tint runs at normal size (the active nav item, the outline and
+     ghost button hover states), and the `--primary` shade clears only 4.00:1
+     there, under the 4.5:1 AA floor; this step measures 4.64:1. */
+  --accent-foreground: oklch(0.515 0.1517 34.02);
+  --destructive: oklch(0.4976 0.1532 18.61);
+  --destructive-foreground: oklch(0.9748 0.0119 79.79);
+  --destructive-tint: oklch(0.9075 0.0291 9.75);
+
+  --border: oklch(0.8976 0.0224 80.68);
+  --input: oklch(0.8709 0.0272 80.24);
+  /* Aliased, not repeated: the focus ring is the bloom coral. Two identical
+     literals here would let an edit to one silently desynchronize the other. */
+  --ring: var(--bloom);
+
+  /* Semantic extensions beyond the shadcn set. `--bloom` is the bright coral
+     showcase fill; it cannot carry light text, so text on bloom uses
+     `--espresso` and text-bearing coral uses the deeper `--primary`.
+
+     `frontend/public/favicon.svg` spells this value out as a literal, the only
+     other copy of it in the repo: a static SVG cannot read a custom property.
+     An edit here must be applied there too. */
+  --bloom: oklch(0.6799 0.1567 34.71);
+  --success: oklch(0.6092 0.0856 121.19);
+  --success-foreground: oklch(0.9748 0.0119 79.79);
+  --success-tint: oklch(0.9225 0.0269 116.11);
+  --warning: oklch(0.6869 0.125 80.64);
+  --warning-foreground: oklch(0.2244 0.0146 57.43);
+  --warning-tint: oklch(0.9242 0.0392 87.57);
+  --espresso: oklch(0.2336 0.018 62.95);
+
+  /* Tag palette: hash-assigned by `frontend/src/lib/colorForName/`. The order
+     is a frozen contract; reordering repaints every existing tag. */
+  --tag-1: oklch(0.7078 0.107 42.71);
+  --tag-2: oklch(0.7421 0.1064 75.99);
+  --tag-3: oklch(0.7134 0.1072 95.49);
+  --tag-4: oklch(0.6818 0.0843 127.73);
+  --tag-5: oklch(0.6736 0.0665 171.25);
+  --tag-6: oklch(0.6712 0.0801 245.16);
+  --tag-7: oklch(0.6796 0.0907 277.24);
+  --tag-8: oklch(0.6599 0.1041 312.5);
+  --tag-9: oklch(0.6893 0.1055 353.63);
+  --tag-10: oklch(0.6771 0.0314 57.15);
+
+  --elevation-floating:
+    0 1px 2px oklch(0.2244 0.0146 57.43 / 0.05), 0 8px 24px oklch(0.2244 0.0146 57.43 / 0.05);
+
+  --font-serif-stack: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-sans-stack: "Hanken Grotesk", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono-stack: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+}

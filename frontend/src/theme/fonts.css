@@ -1,0 +1,53 @@
+/*
+ * Self-hosted variable fonts, Latin subset only. Self-hosting keeps a career
+ * tracker free of a third-party font request, keeps the app correct offline,
+ * and lets the preview server the end-to-end suite boots work without network
+ * access.
+ *
+ * Family names match the stacks in `frontend/src/theme/tokens.css` so Tailwind
+ * utilities resolve them without an alias. The bare `@fontsource-variable/...`
+ * url() specifiers resolve through Vite's asset pipeline against
+ * `frontend/node_modules`, so the three packages are direct dependencies of
+ * `frontend/package.json`.
+ */
+
+/* Fraunces: variable display serif. The `full` instance is required, not
+   `standard`: the display utilities set the `SOFT` axis, which `standard`
+   omits. */
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("@fontsource-variable/fraunces/files/fraunces-latin-full-normal.woff2")
+    format("woff2-variations");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Hanken Grotesk: variable body grotesque (wght). */
+@font-face {
+  font-family: "Hanken Grotesk";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("@fontsource-variable/hanken-grotesk/files/hanken-grotesk-latin-wght-normal.woff2")
+    format("woff2-variations");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* JetBrains Mono: variable monospace (wght) for metadata and tags. */
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url("@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2")
+    format("woff2-variations");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}

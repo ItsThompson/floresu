@@ -2,7 +2,11 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { App } from "@/App";
-import "@/index.css";
+// Fixed order: fonts, then tokens, then the Tailwind bridge. The bridge reads
+// token variables, so it must come last.
+import "@/theme/fonts.css";
+import "@/theme/tokens.css";
+import "@/globals.css";
 
 /**
  * Start the MSW worker before rendering when the mock harness is enabled
