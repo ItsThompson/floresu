@@ -11,7 +11,10 @@ interface SharedMarkerProps {
  */
 export function SharedMarker({ usedIn }: SharedMarkerProps) {
   return (
-    <span className="text-muted-foreground inline-flex items-center gap-1 text-xs" title="Shared bullet">
+    <span
+      className="text-muted-foreground caption inline-flex items-center gap-1"
+      title="Shared bullet"
+    >
       <Flag aria-hidden className="size-3" /> used in {usedIn}
     </span>
   );

@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { GripVertical, Trash2 } from "lucide-react";
 
+import { FormTextareaField } from "@/components/FormInputField";
+import { Button } from "@/components/ui/button";
+
 import type { BulletpointRecord, ResumeItem } from "../types";
 import { SharedMarker } from "./SharedMarker";
 
@@ -27,11 +30,23 @@ interface ItemRowProps {
 /**
  * One editable item row: a drag handle, the bullet text, a shared marker, and
  * remove/promote controls. A library_ref shows the resolved canonical text and a
- * ⚑ "used in N" marker when shared; editing it runs the copy-on-write scope flow.
- * A local item edits its own text directly and can be promoted to the library. A
+ * "used in N" marker when shared; editing it runs the copy-on-write scope flow. A
+ * local item edits its own text directly and can be promoted to the library. A
  * finalized resume renders read-only (no edit, drag, or remove).
+ *
+ * The row draws no frame of its own: the field carries the only border, and the
+ * hairline between rows comes from the list. Its label is present but off screen,
+ * because one drawn label per row is noise on the densest surface in the app.
  */
-export function ItemRow({ item, bullet, isReadOnly, onEditText, onRemove, onPromote, drag }: ItemRowProps) {
+export function ItemRow({
+  item,
+  bullet,
+  isReadOnly,
+  onEditText,
+  onRemove,
+  onPromote,
+  drag,
+}: ItemRowProps) {
   const resolvedText = item.kind === "local" ? item.text : (bullet?.text ?? "…");
   const usedIn = bullet?.used_in_count ?? 0;
   const isShared = item.kind === "library_ref" && usedIn >= 2;
@@ -51,52 +66,51 @@ export function ItemRow({ item, bullet, isReadOnly, onEditText, onRemove, onProm
 
   if (isReadOnly) {
     return (
-      <li className="flex items-start gap-2 rounded-md border px-3 py-2 text-sm">
-        <span className="flex-1">{resolvedText}</span>
+      <li className="flex items-start gap-2 py-2.5 text-sm">
+        <span className="text-foreground flex-1">{resolvedText}</span>
         {isShared && <SharedMarker usedIn={usedIn} />}
       </li>
     );
   }
 
   return (
-    <li className="flex items-start gap-2 rounded-md border px-3 py-2 text-sm">
+    <li className="flex items-start gap-2 py-2.5">
       <button
         type="button"
         aria-label="Drag to reorder item"
-        className="text-muted-foreground mt-0.5 cursor-grab"
+        className="text-muted-foreground mt-2.5 cursor-grab"
         {...drag}
       >
         <GripVertical aria-hidden className="size-4" />
       </button>
 
-      <textarea
-        aria-label="Bullet text"
-        rows={2}
-        value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={commit}
-        className="border-input bg-background focus-visible:ring-ring/50 flex-1 resize-y rounded-md border px-2 py-1 outline-none focus-visible:ring-[2px]"
-      />
+      <div className="min-w-0 flex-1">
+        <FormTextareaField
+          label="Bullet text"
+          labelVisibility="hidden"
+          rows={2}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={commit}
+        />
+      </div>
 
       <div className="flex flex-col items-end gap-1">
         {isShared && <SharedMarker usedIn={usedIn} />}
         {item.kind === "local" && (
-          <button
-            type="button"
-            onClick={() => onPromote(item.id)}
-            className="text-muted-foreground hover:text-primary text-xs"
-          >
+          <Button type="button" variant="ghost" size="sm" onClick={() => onPromote(item.id)}>
             Promote
-          </button>
+          </Button>
         )}
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           aria-label="Remove item"
           onClick={() => onRemove(item.id)}
-          className="text-muted-foreground hover:text-destructive"
         >
-          <Trash2 aria-hidden className="size-4" />
-        </button>
+          <Trash2 aria-hidden />
+        </Button>
       </div>
     </li>
   );

@@ -7,6 +7,12 @@ import type { ExportState } from "@/lib/asyncState";
 import type { ResumeRecord, TemplateInfo } from "../types";
 import { TemplateSelect } from "./TemplateSelect";
 
+// The resume title is the page heading that happens to be editable, so it reads
+// as a heading at rest instead of taking the shared field shape. The transparent
+// border is always present, so focus adds the ring without shifting the layout.
+const TITLE_CLASS =
+  "text-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex-1 rounded-md border border-transparent bg-transparent text-2xl font-semibold tracking-tight outline-none focus-visible:ring-[3px] disabled:opacity-70";
+
 interface EditorTopBarProps {
   record: ResumeRecord;
   templates: TemplateInfo[];
@@ -67,7 +73,7 @@ export function EditorTopBar({
   };
 
   return (
-    <header className="flex flex-col gap-3 border-b pb-4">
+    <header className="border-border flex flex-col gap-3 border-b pb-4">
       <div className="flex items-center gap-3">
         <input
           aria-label="Resume title"
@@ -75,9 +81,9 @@ export function EditorTopBar({
           disabled={isReadOnly}
           onChange={(event) => setTitle(event.target.value)}
           onBlur={() => title.trim() && title !== record.title && onSetTitle(title.trim())}
-          className="flex-1 rounded-md border-transparent bg-transparent text-xl font-semibold outline-none focus-visible:border-input focus-visible:border disabled:opacity-70"
+          className={TITLE_CLASS}
         />
-        <span className="text-muted-foreground text-sm capitalize">
+        <span className="text-muted-foreground caption capitalize">
           {record.kind} · {record.status}
         </span>
       </div>

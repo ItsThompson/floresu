@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 
+import { FIELD_SHAPE_CLASS } from "@/components/FormInputField";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 import { DEFAULT_SECTION_KIND, SECTION_KIND_OPTIONS, sectionKindLabel } from "../constants";
 import type { SectionKind } from "../types";
@@ -33,23 +35,29 @@ export function AddSectionControl({ onAddSection }: AddSectionControlProps) {
 
   if (draft === null) {
     return (
-      <Button variant="outline" size="sm" onClick={() => setDraft({ kind: DEFAULT_SECTION_KIND, title: "" })}>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setDraft({ kind: DEFAULT_SECTION_KIND, title: "" })}
+      >
         <Plus aria-hidden /> New section
       </Button>
     );
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-md border p-3">
+    <div className="bg-card border-border flex flex-col gap-2 rounded-lg border p-3">
       <div className="flex gap-2">
         <select
           aria-label="Section kind"
           value={draft.kind}
           onChange={(event) => {
-            const selected = SECTION_KIND_OPTIONS.find((option) => option.kind === event.target.value);
+            const selected = SECTION_KIND_OPTIONS.find(
+              (option) => option.kind === event.target.value,
+            );
             if (selected) setDraft({ ...draft, kind: selected.kind });
           }}
-          className="border-input bg-background h-8 rounded-md border px-2 text-sm"
+          className={cn(FIELD_SHAPE_CLASS, "h-8 px-2")}
         >
           {SECTION_KIND_OPTIONS.map((option) => (
             <option key={option.kind} value={option.kind}>
@@ -64,7 +72,7 @@ export function AddSectionControl({ onAddSection }: AddSectionControlProps) {
           value={draft.title}
           onChange={(event) => setDraft({ ...draft, title: event.target.value })}
           onKeyDown={(event) => event.key === "Enter" && submit()}
-          className="border-input bg-background h-8 flex-1 rounded-md border px-2 text-sm"
+          className={cn(FIELD_SHAPE_CLASS, "h-8 flex-1 px-2")}
         />
       </div>
       <div className="flex gap-2">

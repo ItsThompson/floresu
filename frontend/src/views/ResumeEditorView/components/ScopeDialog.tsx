@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 
 import { Modal } from "@/components/Modal";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,10 @@ interface ScopeDialogProps {
  * view never computes scope). The default is "Only this resume" (a safe fork);
  * "Everywhere" is visibly marked higher-impact because it rewrites the canonical
  * bullet for every resume that references it.
+ *
+ * That mark is ochre rather than crimson: the edit is legitimate, it just reaches
+ * past this resume. The tint carries the words "Higher impact" and the count it
+ * would rewrite, so the option never states its consequence in color alone.
  */
 export function ScopeDialog({ context, onApply, onCancel }: ScopeDialogProps) {
   const [scope, setScope] = useState<ResumeEditScope>("this_resume");
@@ -34,11 +38,15 @@ export function ScopeDialog({ context, onApply, onCancel }: ScopeDialogProps) {
   if (!context) return null;
 
   return (
-    <Modal isOpen onClose={onCancel} title={`This bullet is used in ${context.usedInCount} resumes`}>
+    <Modal
+      isOpen
+      onClose={onCancel}
+      title={`This bullet is used in ${context.usedInCount} resumes`}
+    >
       <p className="text-muted-foreground text-sm">Apply your edit:</p>
 
-      <fieldset className="flex flex-col gap-3">
-        <label className="flex items-start gap-2 text-sm">
+      <fieldset className="flex flex-col gap-2">
+        <label className="flex items-start gap-2 rounded-md p-3 text-sm">
           <input
             type="radio"
             name="edit-scope"
@@ -47,14 +55,14 @@ export function ScopeDialog({ context, onApply, onCancel }: ScopeDialogProps) {
             onChange={() => setScope("this_resume")}
           />
           <span>
-            <span className="font-medium">Only this resume</span>
-            <span className="text-muted-foreground block text-xs">
+            <span className="text-foreground font-medium">Only this resume</span>
+            <span className="text-muted-foreground caption block">
               Forks a private copy; other resumes keep the original.
             </span>
           </span>
         </label>
 
-        <label className="flex items-start gap-2 text-sm">
+        <label className="bg-warning-tint text-foreground flex items-start gap-2 rounded-md p-3 text-sm">
           <input
             type="radio"
             name="edit-scope"
@@ -63,14 +71,14 @@ export function ScopeDialog({ context, onApply, onCancel }: ScopeDialogProps) {
             onChange={() => setScope("everywhere")}
           />
           <span>
-            <span className="flex items-center gap-1 font-medium">
+            <span className="flex items-center gap-1.5 font-medium">
               Everywhere it&apos;s used
-              <span className="text-destructive inline-flex items-center gap-1 text-xs font-semibold">
-                <AlertTriangle aria-hidden className="size-3" />
+              <span className="caption inline-flex items-center gap-1">
+                <TriangleAlert aria-hidden className="size-3.5" />
                 Higher impact
               </span>
             </span>
-            <span className="text-muted-foreground block text-xs">
+            <span className="caption block">
               Rewrites the shared bullet for all {context.usedInCount} resumes.
             </span>
           </span>
@@ -78,7 +86,7 @@ export function ScopeDialog({ context, onApply, onCancel }: ScopeDialogProps) {
       </fieldset>
 
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onCancel}>
+        <Button variant="ghost" onClick={onCancel}>
           Cancel
         </Button>
         <Button onClick={() => onApply(scope)}>Apply</Button>

@@ -1,7 +1,9 @@
 import { useState } from "react";
 
+import { FIELD_SHAPE_CLASS } from "@/components/FormInputField";
 import { Modal } from "@/components/Modal";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 import type { BulletpointRecord } from "../types";
 
@@ -20,7 +22,12 @@ interface LibraryPickerDialogProps {
  * A text filter narrows the list; the usage count is shown so shared bullets are
  * recognizable before they are added.
  */
-export function LibraryPickerDialog({ isOpen, onClose, bullets, onSelect }: LibraryPickerDialogProps) {
+export function LibraryPickerDialog({
+  isOpen,
+  onClose,
+  bullets,
+  onSelect,
+}: LibraryPickerDialogProps) {
   const [query, setQuery] = useState("");
 
   const available = bullets.filter((bullet) => bullet.archived_at === null);
@@ -36,22 +43,22 @@ export function LibraryPickerDialog({ isOpen, onClose, bullets, onSelect }: Libr
         placeholder="Filter bullets…"
         value={query}
         onChange={(event) => setQuery(event.target.value)}
-        className="border-input bg-background h-9 rounded-md border px-3 text-sm"
+        className={cn(FIELD_SHAPE_CLASS, "h-9 px-3")}
       />
 
       {matches.length === 0 ? (
         <p className="text-muted-foreground text-sm">No matching library bullets.</p>
       ) : (
-        <ul className="flex max-h-80 flex-col gap-2 overflow-auto">
+        <ul className="divide-border/60 flex max-h-80 flex-col divide-y overflow-auto">
           {matches.map((bullet) => (
             <li key={bullet.id}>
               <button
                 type="button"
                 onClick={() => onSelect(bullet.id)}
-                className="hover:bg-accent flex w-full flex-col items-start gap-0.5 rounded-md border px-3 py-2 text-left text-sm"
+                className="hover:bg-muted flex w-full flex-col items-start gap-0.5 rounded-md px-2 py-2.5 text-left text-sm"
               >
-                <span>{bullet.text}</span>
-                <span className="text-muted-foreground text-xs">
+                <span className="text-foreground">{bullet.text}</span>
+                <span className="text-muted-foreground mono-meta">
                   Used in {bullet.used_in_count} {bullet.used_in_count === 1 ? "resume" : "resumes"}
                 </span>
               </button>

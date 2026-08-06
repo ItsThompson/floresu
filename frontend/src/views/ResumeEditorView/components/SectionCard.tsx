@@ -36,6 +36,9 @@ interface SectionCardProps {
  * One collapsible, drag-reorderable resume section: a header (drag handle,
  * collapse toggle, title) over its ordered item rows and the add controls. Items
  * reorder by drag within the section; a finalized resume renders read-only.
+ *
+ * The card is the only frame in the left column, so the rows inside separate on a
+ * hairline rather than each drawing a box of its own.
  */
 export function SectionCard({
   section,
@@ -57,10 +60,15 @@ export function SectionCard({
   const itemDrag = useDragList(itemIds, (nextIds) => onReorderItems(section.id, nextIds));
 
   return (
-    <section className="rounded-md border">
-      <div className="flex items-center gap-2 border-b px-3 py-2">
+    <section className="bg-card border-border rounded-lg border">
+      <div className="border-border flex items-center gap-2 border-b px-3 py-2">
         {!isReadOnly && (
-          <button type="button" aria-label="Drag to reorder section" className="text-muted-foreground cursor-grab" {...drag}>
+          <button
+            type="button"
+            aria-label="Drag to reorder section"
+            className="text-muted-foreground cursor-grab"
+            {...drag}
+          >
             <GripVertical aria-hidden className="size-4" />
           </button>
         )}
@@ -68,9 +76,13 @@ export function SectionCard({
           type="button"
           onClick={() => setIsOpen((open) => !open)}
           aria-expanded={isOpen}
-          className="flex flex-1 items-center gap-2 text-left font-medium"
+          className="text-foreground flex flex-1 items-center gap-2 text-left font-medium"
         >
-          {isOpen ? <ChevronDown aria-hidden className="size-4" /> : <ChevronRight aria-hidden className="size-4" />}
+          {isOpen ? (
+            <ChevronDown aria-hidden className="size-4" />
+          ) : (
+            <ChevronRight aria-hidden className="size-4" />
+          )}
           {section.title}
         </button>
       </div>
@@ -80,7 +92,7 @@ export function SectionCard({
           {items.length === 0 ? (
             <p className="text-muted-foreground text-sm">No items yet.</p>
           ) : (
-            <ul className="flex flex-col gap-2">
+            <ul className="divide-border/60 flex flex-col divide-y">
               {items.map((item, index) => (
                 <ItemRow
                   key={item.id}
