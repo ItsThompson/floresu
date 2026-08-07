@@ -37,10 +37,10 @@ services:
       args:
         # Baked into the SPA bundle at build time. VITE_API_BASE_URL is the API
         # origin the SPA calls cross-origin (api.floresu.com in prod; empty ->
-        # same-origin). VITE_MCP_URL is the MCP endpoint the onboarding wizard
-        # shows. cd.yml passes the prod values explicitly from .env.prod.
+        # same-origin). VITE_MCP_URL is the /mcp transport URL derived from the
+        # public MCP origin. cd.yml passes the prod values explicitly from .env.prod.
         VITE_API_BASE_URL: ${PUBLIC_BASE_URL:-}
-        VITE_MCP_URL: ${MCP_PUBLIC_URL:-}
+        VITE_MCP_URL: ${MCP_PUBLIC_URL:-https://mcp.floresu.com}/mcp
     expose:
       - "80"
     networks:

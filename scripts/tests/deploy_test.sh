@@ -264,15 +264,21 @@ test_compose_deploy_overlay_feeds_app_env_from_env_prod_and_secrets() {
   contains "${base}" "path: .env" || return 1
 }
 
-test_cd_frontend_image_bakes_prod_api_and_mcp_origins() {
-  local workflow
+test_cd_frontend_image_bakes_prod_api_origin_and_mcp_endpoint() {
+  local workflow envprod base
   workflow="$(cat "${REPO_DIR}/.github/workflows/cd.yml")"
+  envprod="$(cat "${REPO_DIR}/.env.prod")"
+  base="$(cat "${REPO_DIR}/docker-compose.yml")"
   contains "${workflow}" "id: frontend-build-args" || return 1
   contains "${workflow}" 'if [[ "${{ matrix.service }}" != "frontend" ]]; then' || return 1
   contains "${workflow}" "source .env.prod" || return 1
+  contains "${workflow}" 'mcp_public_url="${MCP_PUBLIC_URL' || return 1
   contains "${workflow}" 'VITE_API_BASE_URL=${PUBLIC_BASE_URL' || return 1
-  contains "${workflow}" 'VITE_MCP_URL=${MCP_PUBLIC_URL' || return 1
+  contains "${workflow}" 'VITE_MCP_URL=${mcp_public_url%/}/mcp' || return 1
   contains "${workflow}" 'build-args: ${{ steps.frontend-build-args.outputs.value }}' || return 1
+  contains "${base}" 'VITE_MCP_URL: ${MCP_PUBLIC_URL:-https://mcp.floresu.com}/mcp' || return 1
+  contains "${envprod}" "MCP_PUBLIC_URL=https://mcp.floresu.com" || return 1
+  not_contains "${envprod}" "MCP_ENDPOINT_URL=" || return 1
 }
 
 test_deploy_overlay_and_cd_wire_r2_to_backend() {
@@ -432,7 +438,7 @@ main_tests() {
   run_test test_compose_base_is_expose_only_no_host_ports
   run_test test_compose_data_tier_isolation
   run_test test_compose_deploy_overlay_feeds_app_env_from_env_prod_and_secrets
-  run_test test_cd_frontend_image_bakes_prod_api_and_mcp_origins
+  run_test test_cd_frontend_image_bakes_prod_api_origin_and_mcp_endpoint
   run_test test_deploy_overlay_and_cd_wire_r2_to_backend
   run_test test_read_deployed_sha_returns_prev_and_refuses_on_empty
   run_test test_failed_gate_no_internal_redeploy

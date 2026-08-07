@@ -101,10 +101,11 @@ jobs:
           set -a
           source .env.prod
           set +a
+          mcp_public_url="${MCP_PUBLIC_URL:?MCP_PUBLIC_URL is required}"
           {
             echo 'value<<EOF'
             echo "VITE_API_BASE_URL=${PUBLIC_BASE_URL:?PUBLIC_BASE_URL is required}"
-            echo "VITE_MCP_URL=${MCP_PUBLIC_URL:?MCP_PUBLIC_URL is required}"
+            echo "VITE_MCP_URL=${mcp_public_url%/}/mcp"
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
