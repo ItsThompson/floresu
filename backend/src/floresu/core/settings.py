@@ -67,6 +67,9 @@ class EnvSettings(BaseSettings):
     # Empty in dev, where the SPA reaches the API same-origin via the Vite dev
     # proxy; prod pins the SPA origin so the cross-subdomain cookie flow works.
     cors_origin: str = ""
+    # Discord Incoming Webhook the external app posts to on a successful signup.
+    # Empty by default so the notification path is a no-op when unconfigured.
+    discord_webhook_url: SecretStr = SecretStr("")
     # Pinned public URLs the OAuth 2.1 AS derives every issuer/metadata/endpoint
     # URL from (the "Site-URL gotcha": the tunnel reaches the origin as
     # http://backend:8000, so a request-derived URL would break client issuer/
@@ -127,6 +130,7 @@ class AppSettings(BaseModel):
     session_jwt_secret: SecretStr = SecretStr("")
     cookie_domain: str = ""
     cors_origin: str = ""
+    discord_webhook_url: SecretStr = SecretStr("")
     # OAuth AS knobs, defaulted so the shared test settings factory and any
     # non-OAuth caller need not supply them.
     public_base_url: str = "http://localhost:8000"

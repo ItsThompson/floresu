@@ -21,6 +21,11 @@ from sqlalchemy.exc import IntegrityError
 
 from floresu.accounts.injection import Clock, utcnow
 from floresu.accounts.models import User
+from floresu.accounts.notifications import (
+    NULL_EVENT_PUBLISHER,
+    EventPublisher,
+    UserRegistered,
+)
 from floresu.accounts.passwords import PasswordHasher, validate_password_strength
 from floresu.accounts.schemas import AuthenticatedUser, Session
 from floresu.core.db import is_unique_violation
@@ -53,6 +58,7 @@ class AccountService:
         codec: SessionTokenCodec,
         *,
         clock: Clock = utcnow,
+        event_publisher: EventPublisher = NULL_EVENT_PUBLISHER,
     ) -> None:
         self._repo = repo
         self._hasher = hasher
@@ -60,6 +66,7 @@ class AccountService:
         # Injected so tests pin the created/updated timestamps without patching
         # globals; the default reproduces the prior ambient call.
         self._clock = clock
+        self._events = event_publisher
 
     async def register(self, email: str, password: str) -> Session:
         """Create a user and start a session, or raise a field-level error.
@@ -90,6 +97,7 @@ class AccountService:
             raise _duplicate_email_conflict() from exc
 
         _log.info("user_registered", user_id=user.id)
+        self._events.publish(UserRegistered(user_id=user.id, email=user.email))
         return self._start_session(user)
 
     async def login(self, email: str, password: str) -> Session:

@@ -50,6 +50,7 @@ services:
       # Optional (:-): the embedding fast-path fails soft when unset. Wire the
       # real key at go-live: the embedding API key is required infra in production.
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
       # R2 object storage for rendered PDFs (export, finalize, published-version
       # viewing). The endpoint URL and bucket are non-secret config from .env.prod
       # (env_file above); the access key id and secret are GitHub secrets passed

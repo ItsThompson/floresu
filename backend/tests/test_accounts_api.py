@@ -8,14 +8,17 @@ service is backed by the in-memory repository; no database is required.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 
 import httpx
 from fastapi.testclient import TestClient
+from pydantic import SecretStr
 
 from floresu.accounts.api import create_accounts_router
 from floresu.accounts.config import REFRESH_COOKIE_NAME, CookieConfig
 from floresu.accounts.me_api import create_me_router
+from floresu.accounts.notifications import BestEffortEventPublisher, DiscordUserRegisteredHandler
 from floresu.accounts.service import AccountService
 from floresu.accounts.session import create_session_verifier
 from floresu.core.app_factory import create_app
@@ -139,6 +142,53 @@ def test_weak_password_is_a_422_field_error(make_settings: MakeSettings) -> None
     response = client.post("/auth/register", json={"email": "ada@example.com", "password": "weak"})
     assert response.status_code == 422
     assert response.json()["fields"]["password"]
+
+
+async def test_register_makes_exactly_one_discord_post_and_returns_201(
+    make_settings: MakeSettings,
+) -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(204)
+
+    event_publisher = BestEffortEventPublisher(
+        [
+            DiscordUserRegisteredHandler(
+                SecretStr("https://discord.test/webhooks/123/secret"),
+                transport=httpx.MockTransport(handler),
+            )
+        ]
+    )
+    repo = InMemoryAccountRepository()
+
+    def provider() -> AccountService:
+        return AccountService(
+            repo,
+            build_test_hasher(),
+            build_test_codec(),
+            event_publisher=event_publisher,
+        )
+
+    app = create_app(
+        make_settings(service="floresu-external", environment="development"),
+        routers=[create_accounts_router(provider, cookie_config=_DEV_COOKIES)],
+        exception_handlers=build_exception_handlers(),
+    )
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.post(
+            "/auth/register", json={"email": "ada@example.com", "password": _PASSWORD}
+        )
+    await event_publisher.aclose()
+
+    assert response.status_code == 201, response.text
+    assert len(seen) == 1
+    assert seen[0].method == "POST"
+    assert json.loads(seen[0].content) == {"content": "🎉 New user registered: ada@example.com"}
 
 
 def test_wrong_password_and_unknown_email_are_the_same_generic_401(
