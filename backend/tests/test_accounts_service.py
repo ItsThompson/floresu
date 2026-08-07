@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 import pytest
 from sqlalchemy.exc import IntegrityError
 
+from floresu.accounts.notifications import UserRegistered
 from floresu.accounts.service import AccountService
 from floresu.core.errors import Conflict, Unauthorized, Validation
 from tests.accounts_fakes import (
@@ -20,17 +21,38 @@ from tests.accounts_fakes import (
 
 if TYPE_CHECKING:
     from floresu.accounts.models import User
+    from floresu.accounts.notifications import EventPublisher
     from floresu.accounts.tokens import SessionTokenCodec
 
 _PASSWORD = "Str0ngPass"
 
 
+class _RecordingPublisher:
+    def __init__(self, repo: InMemoryAccountRepository) -> None:
+        self._repo = repo
+        self.events: list[UserRegistered] = []
+        self.commits_seen: list[int] = []
+
+    def publish(self, event: UserRegistered) -> None:
+        self.events.append(event)
+        self.commits_seen.append(self._repo.commits)
+
+    async def aclose(self) -> None:
+        return
+
+
 def _service(
     repo: InMemoryAccountRepository | None = None,
     codec: SessionTokenCodec | None = None,
+    event_publisher: EventPublisher | None = None,
 ) -> tuple[AccountService, InMemoryAccountRepository]:
     repo = repo or InMemoryAccountRepository()
-    service = AccountService(repo, build_test_hasher(), codec or build_test_codec())
+    if event_publisher is None:
+        service = AccountService(repo, build_test_hasher(), codec or build_test_codec())
+    else:
+        service = AccountService(
+            repo, build_test_hasher(), codec or build_test_codec(), event_publisher=event_publisher
+        )
     return service, repo
 
 
@@ -54,6 +76,28 @@ async def test_registered_password_is_stored_only_as_a_bcrypt_hash() -> None:
     assert stored is not None
     assert stored.password_hash != _PASSWORD
     assert stored.password_hash.startswith("$2b$")
+
+
+async def test_register_publishes_the_user_registered_event_after_commit() -> None:
+    repo = InMemoryAccountRepository()
+    publisher = _RecordingPublisher(repo)
+    service, _ = _service(repo=repo, event_publisher=publisher)
+
+    session = await service.register("Ada@Example.com", _PASSWORD)
+
+    assert publisher.events == [UserRegistered(user_id=session.user.id, email="ada@example.com")]
+    assert publisher.commits_seen == [1]
+
+
+async def test_failed_registration_does_not_publish_an_event() -> None:
+    repo = InMemoryAccountRepository()
+    publisher = _RecordingPublisher(repo)
+    service, _ = _service(repo=repo, event_publisher=publisher)
+
+    with pytest.raises(Validation):
+        await service.register("ada@example.com", "weak")
+
+    assert publisher.events == []
 
 
 async def test_new_registrations_start_not_onboarded() -> None:

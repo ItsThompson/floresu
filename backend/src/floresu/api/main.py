@@ -26,7 +26,7 @@ from floresu.accounts.me_api import create_me_router
 from floresu.accounts.passwords import BcryptPasswordHasher
 from floresu.accounts.session import build_revocation_lookup, create_session_verifier
 from floresu.accounts.tokens import SessionTokenCodec
-from floresu.accounts.wiring import build_account_service_provider
+from floresu.accounts.wiring import build_account_service_provider, build_event_publisher
 from floresu.api.app_builder import build_shared_router_block
 from floresu.audit.wiring import build_audit_service_provider, build_write_event_publisher
 from floresu.core.actor import resolve_web_actor
@@ -97,7 +97,10 @@ def create_external_app() -> FastAPI:
     validate_session_secret(session_config, is_dev=settings.is_dev)
     cookie_config = build_cookie_config(settings)
     codec = SessionTokenCodec(session_config)
-    service_provider = build_account_service_provider(BcryptPasswordHasher(), codec)
+    event_publisher = build_event_publisher(settings)
+    service_provider = build_account_service_provider(
+        BcryptPasswordHasher(), codec, event_publisher
+    )
     accounts_router = create_accounts_router(service_provider, cookie_config=cookie_config)
     # GET /me resolves the human session via require_user and reuses the same service
     # provider. External app only.
@@ -165,6 +168,7 @@ def create_external_app() -> FastAPI:
                 yield
             finally:
                 await stop_stale_client_cleanup(cleanup_task)
+                await event_publisher.aclose()
                 await embed_queue.aclose()
                 await search_query_client.aclose()
                 await redis_client.aclose()

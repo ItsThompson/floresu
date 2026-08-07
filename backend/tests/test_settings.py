@@ -36,7 +36,7 @@ def test_build_app_settings_injects_per_app_identity() -> None:
 
 
 def test_build_app_settings_forwards_every_env_field_unchanged() -> None:
-    # Distinct non-default values for all 24 env fields prove build_app_settings
+    # Distinct non-default values for all 25 env fields prove build_app_settings
     # forwards each one 1:1 (including the SecretStr fields) rather than dropping,
     # renaming, or crossing any as the model_dump() splat is applied.
     env = EnvSettings(
@@ -49,6 +49,7 @@ def test_build_app_settings_forwards_every_env_field_unchanged() -> None:
         session_jwt_secret=SecretStr("session-secret"),
         cookie_domain="floresu.example",
         cors_origin="https://app.floresu.example",
+        discord_webhook_url=SecretStr("https://discord.test/webhooks/123/secret"),
         public_base_url="https://api.floresu.example",
         app_public_url="https://app.floresu.example",
         mcp_public_url="https://mcp.floresu.example",
@@ -66,7 +67,7 @@ def test_build_app_settings_forwards_every_env_field_unchanged() -> None:
         r2_bucket="floresu-pdfs",
     )
     dumped = env.model_dump()
-    assert len(dumped) == 24
+    assert len(dumped) == 25
 
     app = build_app_settings(service=EXTERNAL_SERVICE, port=EXTERNAL_PORT, env=env)
 
