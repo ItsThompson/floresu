@@ -37,8 +37,8 @@ class User(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
     # Per-account onboarding completion. Server default false so new rows start
-    # un-onboarded; the onboarding wizard (a later slice) flips it. Register sets
-    # it false explicitly at the ORM level.
+    # un-onboarded; the onboarding wizard flips it. Register sets it false
+    # explicitly at the ORM level.
     has_completed_onboarding: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )

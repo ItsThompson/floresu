@@ -57,7 +57,7 @@ export function FramingsPanel({ framings }: FramingsPanelProps) {
           placeholder="Add a bullet framing…"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 min-h-16 rounded-md border px-3 py-2 text-sm outline-none focus-visible:ring-[3px]"
+          className="border-input bg-card text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 min-h-16 rounded-md border px-3 py-2 text-sm outline-none focus-visible:ring-[3px]"
         />
         {addError && (
           <p role="alert" className="text-destructive text-sm">

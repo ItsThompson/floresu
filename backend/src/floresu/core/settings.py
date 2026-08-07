@@ -5,8 +5,8 @@ Deployment-wide configuration is sourced from the environment once
 ``service`` name and ``port``) is injected at construction time so the external
 and internal apps differ *only* by their injected settings, per the two-app split.
 
-Later slices extend this with the identity, OAuth, and Redis knobs their features
-need; the core kit keeps only what both apps and the DB layer require.
+This holds the knobs both apps and the DB layer require, plus the identity, OAuth,
+and Redis knobs the domains layer on top.
 """
 
 from __future__ import annotations
@@ -47,16 +47,16 @@ class EnvSettings(BaseSettings):
     # docker-compose.yml published to localhost; prod injects the in-network form.
     database_url: str = "postgresql+asyncpg://floresu:floresu@localhost:5432/floresu"
     # Redis URL. Backs the SSE activity feed (per-user pub/sub channel + bounded
-    # replay buffer); later slices also use it for the arq queue and rate-limit
-    # counters. Dev default targets the Redis in docker-compose.yml on localhost.
+    # replay buffer), the arq queue, and the rate-limit counters. Dev default
+    # targets the Redis in docker-compose.yml on localhost.
     redis_url: str = "redis://localhost:6379/0"
     # Shared secret gating the internal trust boundary. Empty by default so the
     # internal boundary fails closed (denies) until a token is provisioned; prod
     # injects a real secret and the MCP server presents the same value.
     internal_api_token: str = ""
     # HS256 secret for human session JWTs (external app), separate from the agent
-    # OAuth keypair (a later slice). Empty by default so an unconfigured external
-    # app fail-safe denies every session (no cookie resolves). SecretStr so an
+    # OAuth keypair. Empty by default so an unconfigured external app fail-safe
+    # denies every session (no cookie resolves). SecretStr so an
     # accidental settings dump/log masks it; read via .get_secret_value() only at
     # JWT sign/verify.
     session_jwt_secret: SecretStr = SecretStr("")
@@ -99,12 +99,12 @@ class EnvSettings(BaseSettings):
     # tunable settings.
     openai_api_key: SecretStr = SecretStr("")
     openai_base_url: str = "https://api.openai.com"
-    # Cloudflare R2 object storage for rendered PDFs (sections 10 and 12). R2 is
-    # S3-compatible: ``r2_endpoint_url`` is the account endpoint
+    # Cloudflare R2 object storage for rendered PDFs. R2 is S3-compatible:
+    # ``r2_endpoint_url`` is the account endpoint
     # (https://<account>.r2.cloudflarestorage.com), and the key id/secret authenticate
     # the S3 API. Empty by default so a dev/test box needs no bucket: preview still
     # renders and streams bytes, and only export persists, which is faked in tests.
-    # Delivered box-less like the other secrets (section 12).
+    # Delivered box-less like the other secrets.
     r2_endpoint_url: str = ""
     r2_access_key_id: SecretStr = SecretStr("")
     r2_secret_access_key: SecretStr = SecretStr("")

@@ -32,6 +32,17 @@ describe("MyResumesSection", () => {
     expect(screen.getByText("No resumes yet.")).toBeInTheDocument();
   });
 
+  it("keeps the empty state calm: one primary action and no serif line", () => {
+    renderSection({ items: [], status: "ready" });
+
+    expect(screen.getByRole("link", { name: "Start a resume" })).toHaveAttribute(
+      "href",
+      "/resumes",
+    );
+    // Home's single display moment belongs to the worklog region, not this one.
+    expect(document.querySelectorAll('[class*="display-"]')).toHaveLength(0);
+  });
+
   it("lists each resume with a link that opens its editor", () => {
     renderSection({
       items: [

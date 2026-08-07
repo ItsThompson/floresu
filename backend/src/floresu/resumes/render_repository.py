@@ -1,7 +1,8 @@
 """Persistence for the render/export path: resume read, latest revision, PDF key.
 
-A narrow repository the render service depends on, separate from the T12 write
-repository so the rendering slice adds no methods to the single-writer's interface.
+A narrow repository the render service depends on, separate from the write
+repository in ``repository.py`` so the render path adds no methods to the
+single-writer's interface.
 It reads the resume (user-scoped, so another account's resume is invisible), reads
 the latest revision (whose number keys the object and whose ``pdf_object_key`` the
 export records), and writes that object key back. It also serves the revision-history

@@ -343,7 +343,7 @@ class InternalApiClient:
         )
 
     async def resume_create(self, user_id: str, actor: str, body: Any) -> httpx.Response:
-        """Create a resume per the section 05 contract (``POST /resumes``)."""
+        """Create a resume (``POST /resumes``)."""
         return await self._request("POST", "/resumes", user_id=user_id, actor=actor, json=body)
 
     async def resume_update(

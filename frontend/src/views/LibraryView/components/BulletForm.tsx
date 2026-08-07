@@ -6,6 +6,11 @@ import type { BulletFormProps, BulletFormValues } from "../types";
 import { toggleValue } from "@/lib/toggleValue";
 import { FilterCheckboxGroup } from "./FilterCheckboxGroup";
 
+// The statement textarea carries the calm field shape of
+// `frontend/src/components/FormInputField`.
+const STATEMENT_CLASS =
+  "border-input bg-card text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 rounded-md border px-3 py-2 text-sm outline-none focus-visible:ring-[3px]";
+
 /**
  * The create/edit bullet form. It owns its controlled values seeded from
  * `initialValues`, so a failed save (the parent keeps the form open and passes
@@ -36,15 +41,15 @@ export function BulletForm({
     <form
       onSubmit={handleSubmit}
       aria-label={mode === "edit" ? "Edit bullet" : "New bullet"}
-      className="border-border flex flex-col gap-3 rounded-md border p-4"
+      className="bg-card border-border flex flex-col gap-3 rounded-md border p-4"
     >
-      <label className="flex flex-col gap-1.5 text-sm font-medium">
+      <label className="caption text-foreground flex flex-col gap-1.5">
         Statement
         <textarea
           value={values.text}
           onChange={(event) => setValues((prev) => ({ ...prev, text: event.target.value }))}
           rows={3}
-          className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 rounded-md border px-3 py-2 text-sm outline-none focus-visible:ring-[3px]"
+          className={STATEMENT_CLASS}
         />
       </label>
 

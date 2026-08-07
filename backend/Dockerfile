@@ -15,9 +15,8 @@
 # straight from backend/uv.lock: no sibling package source ever enters this
 # image (the backend<->mcp firewall holds by construction).
 #
-# The Typst binary is bundled here (spec §12: "the Typst binary is bundled in
-# the render image"): resume PDF rendering runs synchronously in the backend
-# process, so typst must be on PATH.
+# The Typst binary is bundled here: resume PDF rendering runs synchronously in the
+# backend process, so typst must be on PATH.
 # =============================================================================
 
 FROM python:3.12-slim-bookworm AS builder
@@ -60,7 +59,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 COPY scripts/serve-backend.sh /app/scripts/serve-backend.sh
 
 # The Typst templates the render path reads. The backend IS the render image, so
-# the templates ship in it (populated by the rendering slice under templates/).
+# the templates ship in it from the repo-root templates/ directory.
 COPY templates/ /app/templates/
 
 # ---------------------------------------------------------------------------

@@ -14,7 +14,7 @@ this keypair for separate blast radii.
 
 Scope: Floresu grants a single full read-write scope. Consent presents exactly
 one access level, so there is no partial-scope state. The MCP resource server
-(a later slice) requires this same scope; it is the single value both sides pin.
+requires this same scope; it is the single value both sides pin.
 """
 
 from __future__ import annotations

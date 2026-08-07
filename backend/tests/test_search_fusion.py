@@ -1,8 +1,8 @@
 """Unit tests for the pure Reciprocal Rank Fusion module.
 
 RRF is model-free and rank-only: an item's score is the sum of ``1 / (k + rank)``
-over the lists it appears in. These tests lock in the two properties the spec
-requires: an item in both lists outranks one in a single list at the same rank,
+over the lists it appears in. These tests lock in its two defining properties: an
+item in both lists outranks one in a single list at the same rank,
 and the ordering is deterministic (stable tie-breaking).
 """
 

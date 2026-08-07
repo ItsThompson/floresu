@@ -27,12 +27,12 @@ test("sign up, onboard, and seed the first record", async ({ page }) => {
   await page.getByRole("button", { name: "Finish" }).click();
 
   // Landed on Home.
-  await expect(page).toHaveURL("/");
+  await expect(page).toHaveURL("/home");
   await expect(page.getByRole("heading", { name: "Home", level: 1 })).toBeVisible();
 
   // The wizard does not reappear on reload (onboarding is persisted server-side).
   await page.reload();
-  await expect(page).toHaveURL("/");
+  await expect(page).toHaveURL("/home");
   await expect(page.getByRole("heading", { name: "Home", level: 1 })).toBeVisible();
 
   // Add profile data: a role.

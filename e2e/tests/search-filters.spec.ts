@@ -36,7 +36,7 @@ async function search(page: Page): Promise<void> {
 }
 
 /**
- * C2: search filters and grouping. A role and a project each carry a raw worklog
+ * Search filters and grouping. A role and a project each carry a raw worklog
  * entry and a library bullet that share a query term; a third worklog entry is
  * unattached. One query retrieves the corpus; the kind, tag, layer, and date
  * filters each narrow membership, results render grouped by source, and the

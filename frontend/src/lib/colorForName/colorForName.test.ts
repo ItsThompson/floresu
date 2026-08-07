@@ -2,29 +2,32 @@ import { describe, expect, it } from "vitest";
 
 import { colorForName } from "./colorForName";
 
+// The ten entries of the frozen palette, and nothing else.
+const PALETTE_ENTRY = /^var\(--tag-([1-9]|10)\)$/;
+
 describe("colorForName", () => {
   it("is deterministic: the same name always yields the same color", () => {
     expect(colorForName("claude")).toBe(colorForName("claude"));
     expect(colorForName("gpt-5")).toBe(colorForName("gpt-5"));
   });
 
-  it("produces a legible hsl color with the fixed saturation and lightness", () => {
-    expect(colorForName("claude")).toMatch(/^hsl\(\d{1,3} 65% 45%\)$/);
+  it("returns a palette token reference, never a color value", () => {
+    expect(colorForName("claude")).toMatch(PALETTE_ENTRY);
   });
 
-  it("keeps the hue within a valid range", () => {
+  it("stays inside the ten-entry palette for any name", () => {
     for (const name of ["a", "claude", "a much longer agent name", "z"]) {
-      const hue = Number(colorForName(name).match(/^hsl\((\d{1,3}) /)?.[1]);
-      expect(hue).toBeGreaterThanOrEqual(0);
-      expect(hue).toBeLessThan(360);
+      expect(colorForName(name)).toMatch(PALETTE_ENTRY);
     }
   });
 
   it("distinguishes different names by color", () => {
+    // The palette has ten entries, so two names can legitimately share one. This pair is
+    // chosen to land on different entries; changing either name needs that check re-done.
     expect(colorForName("claude")).not.toBe(colorForName("gpt-5"));
   });
 
   it("handles the empty string without throwing", () => {
-    expect(colorForName("")).toMatch(/^hsl\(0 65% 45%\)$/);
+    expect(colorForName("")).toBe("var(--tag-1)");
   });
 });

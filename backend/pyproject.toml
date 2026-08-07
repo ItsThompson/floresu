@@ -3,8 +3,8 @@ name = "floresu-backend"
 version = "0.0.0"
 description = "Floresu shared application core and the two in-process HTTP adapters."
 requires-python = ">=3.12"
-# Upper-major caps bound an unpinned resolve to the majors this ticket validated
-# against; the committed uv.lock is the source of truth (`uv sync --frozen`).
+# Upper-major caps bound an unpinned resolve to the validated majors; the
+# committed uv.lock is the source of truth (`uv sync --frozen`).
 # structlog is left uncapped so security patches are never blocked.
 dependencies = [
     "fastapi>=0.115.0,<1",

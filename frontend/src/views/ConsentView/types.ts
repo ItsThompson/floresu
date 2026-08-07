@@ -1,8 +1,8 @@
 /**
  * Consent state as a discriminated union on `phase`, so impossible combinations
  * (a `ready` card with no agent, an `error` with no message) are unrepresentable
- * rather than merely render-guarded. Mirrors T3's `useAuthSession` `{status,user}`
- * precedent.
+ * rather than merely render-guarded. Mirrors the `useAuthSession` `{status,user}`
+ * precedent in `src/auth/`.
  *
  * `loading`             the parked request's context is being fetched.
  * `ready` / `deciding`  the card is shown; `deciding` disables the actions while

@@ -8,10 +8,9 @@ not a config flip, so the column and this constant move together.
 The arq queue name and the two job names are a duplicated wire contract with the
 worker package (which re-declares the same literals), like the internal-boundary
 header names. A change here that is not mirrored in ``floresu_worker`` would route
-enqueued jobs to a queue the worker never drains. The cross-package contract tests
-that mechanically pin the two sides equal are a Ticket 22 follow-up (the contract
-package is the only interpreter that imports both packages); until they land the
-match is an unenforced convention.
+enqueued jobs to a queue the worker never drains. No machine guard pins the two
+sides equal: ``contract/tests/`` covers the MCP-to-backend mirror only, so this
+backend-to-worker match is an unenforced convention.
 """
 
 from __future__ import annotations

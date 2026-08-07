@@ -101,5 +101,5 @@ first real deploy, provision and supply:
    secrets. Required: the deploy preflight fails fast if any `R2_*` value is unset,
    and export/finalize/history do not work without them.
 
-Backups / point-in-time recovery are explicitly deferred (spec §12/§15);
-`HostDiskAlmostFull` warns before the disk fills.
+Backups / point-in-time recovery do not exist yet; `HostDiskAlmostFull` warns
+before the disk fills.

@@ -1,9 +1,9 @@
 """Job-application tool behavior: the read pair and the submit=finalize write.
 
-Completes the MCP job-application surface the read ticket deferred. Asserts the
-read tools are read-only and return the linked resume id, that create starts an
-application at ``added``, that ``jobapp_update`` forwards the submit trigger, and
-that submitting with no linked resume surfaces the backend's recoverable conflict.
+Asserts the read tools are read-only and return the linked resume id, that create
+starts an application at ``added``, that ``jobapp_update`` forwards the submit
+trigger, and that submitting with no linked resume surfaces the backend's
+recoverable conflict.
 """
 
 from __future__ import annotations

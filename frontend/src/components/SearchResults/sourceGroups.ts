@@ -1,4 +1,24 @@
-import type { RankedRow, SearchGraph, SearchResult, SearchSourceGroup } from "./types";
+import type { components } from "@/api";
+
+type SourceKind = components["schemas"]["SourceKind"];
+
+/** The hit set rolled into the provenance graph: scored nodes plus their edges. */
+export type SearchGraph = components["schemas"]["SearchGraph"];
+
+/**
+ * A source node from the search graph with its matched children attached, for
+ * the grouped-by-source result view. `matchScore` is non-null only when the
+ * source's own text matched the query directly.
+ */
+export interface SearchSourceGroup {
+  id: number;
+  label: string;
+  kind: SourceKind;
+  score: number;
+  matchScore: number | null;
+  worklog: SearchGraph["worklog"];
+  bullets: SearchGraph["bullets"];
+}
 
 const byScoreDesc = (a: { score: number }, b: { score: number }): number => b.score - a.score;
 
@@ -30,32 +50,6 @@ export function buildSearchGroups(graph: SearchGraph): SearchSourceGroup[] {
       matchScore: source.match_score ?? null,
       worklog,
       bullets,
-    };
-  });
-}
-
-/**
- * Resolve the flat ranked list into display rows, labeling each hit from its
- * matching graph node. A hit whose node is missing degrades to its id rather
- * than dropping out of the list.
- */
-export function buildRankedRows(result: SearchResult): RankedRow[] {
-  const sourceLabels = new Map(result.graph.sources.map((source) => [source.id, source.label]));
-  const worklogTitles = new Map(result.graph.worklog.map((entry) => [entry.id, entry.title]));
-  const bulletTexts = new Map(result.graph.bullets.map((bullet) => [bullet.id, bullet.text]));
-
-  return result.ranked.map((hit) => {
-    const label =
-      hit.type === "source"
-        ? sourceLabels.get(hit.id)
-        : hit.type === "worklog"
-          ? worklogTitles.get(hit.id)
-          : bulletTexts.get(hit.id);
-    return {
-      key: `${hit.type}-${hit.id}`,
-      type: hit.type,
-      label: label ?? `#${hit.id}`,
-      score: hit.score,
     };
   });
 }

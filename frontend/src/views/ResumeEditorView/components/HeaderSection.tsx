@@ -1,3 +1,6 @@
+import { FIELD_SHAPE_CLASS } from "@/components/FormInputField";
+import { cn } from "@/lib/utils";
+
 import type { IdentityVariant } from "../types";
 
 interface HeaderSectionProps {
@@ -14,21 +17,28 @@ interface HeaderSectionProps {
  * variant; a finalized resume has an inlined snapshot, so the selector is
  * read-only there.
  */
-export function HeaderSection({ variants, selectedVariantId, isReadOnly, onSelect }: HeaderSectionProps) {
+export function HeaderSection({
+  variants,
+  selectedVariantId,
+  isReadOnly,
+  onSelect,
+}: HeaderSectionProps) {
   const selectedLabel =
     variants.find((variant) => variant.id === selectedVariantId)?.label ?? "None selected";
 
   return (
-    <section className="rounded-md border">
-      <div className="border-b px-3 py-2 font-medium">Header / Identity</div>
+    <section className="bg-card border-border rounded-lg border">
+      <div className="border-border text-foreground border-b px-3 py-2 font-medium">
+        Header / Identity
+      </div>
       <div className="p-3">
         {isReadOnly ? (
           <p className="text-muted-foreground text-sm">Identity: {selectedLabel} (frozen)</p>
         ) : (
           <label className="flex flex-col gap-1.5">
-            <span className="text-muted-foreground text-sm">Identity variant</span>
+            <span className="text-foreground caption">Identity variant</span>
             <select
-              className="border-input bg-background h-9 rounded-md border px-3 text-sm"
+              className={cn(FIELD_SHAPE_CLASS, "h-9 px-3")}
               value={selectedVariantId ?? ""}
               onChange={(event) => onSelect(event.target.value ? Number(event.target.value) : null)}
             >

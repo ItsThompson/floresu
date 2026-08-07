@@ -63,7 +63,7 @@ export function VariantForm({ variant, forceDefault, onSubmit, onCancel }: Varia
     <form
       onSubmit={handleSubmit}
       aria-label={variant ? "Edit variant" : "New variant"}
-      className="border-border flex flex-col gap-3 rounded-lg border p-4"
+      className="border-border bg-card flex flex-col gap-3 rounded-lg border p-4"
     >
       <FormInputField
         label="Label"
@@ -99,16 +99,16 @@ export function VariantForm({ variant, forceDefault, onSubmit, onCancel }: Varia
         onChange={(event) => setValues((prev) => ({ ...prev, location: event.target.value }))}
       />
       <label className="flex flex-col gap-1.5">
-        <span className="text-foreground text-sm font-medium">Links</span>
+        <span className="text-foreground caption">Links</span>
         <textarea
           name="links"
           placeholder="Portfolio | https://example.dev"
           value={values.linksText}
           onChange={(event) => setValues((prev) => ({ ...prev, linksText: event.target.value }))}
-          className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 min-h-16 rounded-md border px-3 py-2 text-sm outline-none focus-visible:ring-[3px]"
+          className="border-input bg-card text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 min-h-16 rounded-md border px-3 py-2 text-sm outline-none focus-visible:ring-[3px]"
         />
       </label>
-      <label className="flex items-center gap-2 text-sm font-medium">
+      <label className="caption flex items-center gap-2">
         <input
           type="checkbox"
           checked={forceDefault ? true : values.isDefault}

@@ -66,10 +66,10 @@ export function NewJobApplicationDialog({
       )}
 
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onClose}>
+        <Button type="button" variant="ghost" size="sm" onClick={onClose}>
           Cancel
         </Button>
-        <Button onClick={() => void submit()} disabled={!canSubmit}>
+        <Button type="button" size="sm" onClick={() => void submit()} disabled={!canSubmit}>
           Add application
         </Button>
       </div>

@@ -67,9 +67,8 @@ class RepoCase[R, A: Arranger]:
 
     ``repo`` is the in-memory fake or the SQLAlchemy binding, ``arrange`` seeds the
     matching backend, and ``lane`` names the lane this parameter runs in. Generic
-    over the arranger as well as the repository (the spec's illustrative
-    ``RepoCase[R]`` omitted the arranger) so a domain's seed methods stay statically
-    typed at the call site under ``mypy --strict``.
+    over the arranger as well as the repository so a domain's seed methods stay
+    statically typed at the call site under ``mypy --strict``.
     """
 
     repo: R

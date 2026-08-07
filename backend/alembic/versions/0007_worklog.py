@@ -8,7 +8,7 @@ a label is reused not duplicated), and the two many-to-many edge tables
 tags). Every edge cascades on either endpoint's delete; the entry and tag rows
 cascade on account deletion.
 
-``worklog_source`` references ``sources(id)``, so this slice chains after 0006.
+``worklog_source`` references ``sources(id)``, so this revision chains after 0006.
 Constraint and index names follow the deterministic convention so the ORM models
 in ``floresu.worklog.models`` autogenerate no diff and the downgrade is reversible.
 

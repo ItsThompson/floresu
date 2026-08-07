@@ -1,8 +1,8 @@
 """Session and cookie configuration for the accounts domain.
 
 Human sessions are HS256-signed JWTs with a dedicated ``SESSION_JWT_SECRET``,
-kept separate from the agent OAuth keypair (a later slice) so the two actors have
-separate blast radii. The cookie carries a short-lived access token plus a
+kept separate from the agent OAuth keypair so the two actors have separate blast
+radii. The cookie carries a short-lived access token plus a
 rotating refresh token; TTLs and cookie attributes live here so the token codec,
 the cookie writer, and tests all read one source.
 """

@@ -3,8 +3,8 @@
 These shapes cross the internal-API hop the worker uses to read a corpus item and
 write its vector back, and back the fast-path that runs the same read/gate/store
 inline. The worker package re-declares the wire shapes it needs (it shares no code
-with the backend); the cross-package contract tests that pin the two mirrors equal
-field-for-field are a Ticket 22 follow-up, not a guard that exists yet.
+with the backend); nothing pins the two mirrors equal field-for-field, because
+``contract/tests/`` covers the MCP-to-backend mirror only.
 """
 
 from __future__ import annotations

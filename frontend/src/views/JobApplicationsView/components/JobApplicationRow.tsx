@@ -21,6 +21,9 @@ interface JobApplicationRowProps {
  * One job application row: company, role, status, the linked resume (a link that
  * opens it, or a fork action when none is linked yet), and the added date. An
  * `added` application offers "Mark submitted", which finalizes the linked resume.
+ *
+ * The row action is a ghost control rather than an outlined one so a table of rows
+ * reads as one calm surface instead of a stack of boxes.
  */
 export function JobApplicationRow({
   application,
@@ -29,7 +32,7 @@ export function JobApplicationRow({
   onSubmit,
 }: JobApplicationRowProps) {
   return (
-    <tr className="border-b last:border-b-0">
+    <tr>
       <td className="py-3 pr-4 font-medium">{application.company}</td>
       <td className="text-muted-foreground py-3 pr-4">{application.role_title}</td>
       <td className="py-3 pr-4">
@@ -39,7 +42,7 @@ export function JobApplicationRow({
         {application.linked_resume_id !== null ? (
           <Link
             to={resumeEditorPath(application.linked_resume_id)}
-            className="text-primary text-sm font-medium underline-offset-4 hover:underline"
+            className="text-primary font-medium underline-offset-4 hover:underline"
           >
             {resumeTitle ?? "Open resume"}
           </Link>
@@ -47,18 +50,18 @@ export function JobApplicationRow({
           <button
             type="button"
             onClick={() => onLinkResume(application)}
-            className="text-primary text-sm font-medium underline-offset-4 hover:underline"
+            className="text-primary font-medium underline-offset-4 hover:underline"
           >
             Create resume
           </button>
         )}
       </td>
-      <td className="text-muted-foreground py-3 pr-4 text-sm whitespace-nowrap">
+      <td className="text-muted-foreground mono-meta py-3 pr-4 whitespace-nowrap">
         {formatDayYear(application.created_at)}
       </td>
       <td className="py-3 text-right">
         {application.status === "added" && (
-          <Button variant="outline" size="sm" onClick={() => onSubmit(application)}>
+          <Button variant="ghost" size="sm" onClick={() => onSubmit(application)}>
             Mark submitted
           </Button>
         )}

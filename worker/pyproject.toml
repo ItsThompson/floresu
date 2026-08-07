@@ -3,11 +3,11 @@ name = "floresu-worker"
 version = "0.0.0"
 description = "Floresu arq worker: incremental embedding jobs."
 requires-python = ">=3.12"
-# Upper-major caps bound an unpinned resolve to the majors this ticket validated
-# against; the committed uv.lock is the source of truth (`uv sync --frozen`). The
+# Upper-major caps bound an unpinned resolve to the validated majors; the
+# committed uv.lock is the source of truth (`uv sync --frozen`). The
 # worker shares NO code with the backend: it is a thin arq worker that reads items
 # and writes vectors back over the internal API (network hop), and re-declares the
-# few wire constants it needs (kept honest by the cross-package contract tests).
+# few wire constants it needs.
 dependencies = [
     "arq>=0.26.0,<1",
     "httpx>=0.27.0,<1",

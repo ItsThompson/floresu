@@ -39,11 +39,7 @@ export function SourceGroupList({
 
   return (
     <div className="flex flex-col gap-1.5">
-      {label && (
-        <span className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-          {label}
-        </span>
-      )}
+      {label && <span className="caption text-muted-foreground">{label}</span>}
       {sources.length === 0 ? (
         <p className="text-muted-foreground text-sm">Nothing here yet.</p>
       ) : (
@@ -59,7 +55,7 @@ export function SourceGroupList({
           ))}
         </ul>
       )}
-      {overflow > 0 && <span className="text-muted-foreground text-xs">+{overflow} more</span>}
+      {overflow > 0 && <span className="mono-meta text-muted-foreground">+{overflow} more</span>}
       <Link
         to={`/profile/sources/new?kind=${kind}`}
         className="text-primary inline-flex items-center gap-1 text-sm font-medium hover:underline"

@@ -3,7 +3,11 @@ import { expect, test, type APIRequestContext, type Locator } from "@playwright/
 import { bodyText, createWorklog, registerAndOnboard } from "../harness/support";
 
 const SHARED_TAG = "backend";
-const OTHER_TAG = "api";
+// The palette in `frontend/src/lib/colorForName/` has ten entries, so two labels
+// can legitimately land on the same one. This pair is chosen to land on different
+// entries, which is what makes the "a different tag differs" assertion below
+// meaningful; changing either label needs that check re-done.
+const OTHER_TAG = "payments";
 
 /** Add one tag label to an entry through the real POST /worklog/{id}/tags add action. */
 async function addTag(request: APIRequestContext, worklogId: number, label: string): Promise<void> {
@@ -21,7 +25,7 @@ async function getJson<T>(request: APIRequestContext, path: string): Promise<T> 
 }
 
 /**
- * C5: worklog tag remove and deterministic color. Two entries share a tag; one
+ * Worklog tag remove and deterministic color. Two entries share a tag; one
  * also carries a second, distinct tag. Removing the shared tag from one entry
  * (through its edit control) drops only that entry's edge: the other entry keeps
  * it and it stays listed globally by GET /worklog/tags. A tag's rendered color is

@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 
+import { SearchResults } from "@/components/SearchResults";
 import { Button } from "@/components/ui/button";
 
 import { BrowseGroups } from "./components/BrowseGroups";
 import { BulletForm } from "./components/BulletForm";
 import { LibraryToolbar } from "./components/LibraryToolbar";
 import { SearchFilters } from "./components/SearchFilters";
-import { SearchResults } from "./components/SearchResults";
 import { StaleBulletDialog } from "./components/StaleBulletDialog";
 import { EMPTY_LIBRARY_MESSAGE, LOAD_ERROR_MESSAGE } from "./constants";
 import { useLibrary } from "./hooks/useLibrary";
@@ -32,7 +32,7 @@ export function LibraryView() {
 
   if (data.status === "loading") {
     return (
-      <section className="mx-auto w-full max-w-[860px] p-8">
+      <section className="reading-width w-full">
         <p className="text-muted-foreground text-sm">Loading your library…</p>
       </section>
     );
@@ -40,7 +40,7 @@ export function LibraryView() {
 
   if (data.status === "error") {
     return (
-      <section className="mx-auto flex w-full max-w-[860px] flex-col items-start gap-3 p-8">
+      <section className="reading-width flex w-full flex-col items-start gap-3">
         <p role="alert" className="text-destructive text-sm">
           {LOAD_ERROR_MESSAGE}
         </p>
@@ -65,7 +65,7 @@ export function LibraryView() {
   const isStale = write.status === "stale";
 
   return (
-    <section className="mx-auto flex w-full max-w-[860px] flex-col gap-6 p-8">
+    <section className="reading-width flex w-full flex-col gap-6">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">Library</h1>
         <p className="text-muted-foreground">
@@ -93,7 +93,9 @@ export function LibraryView() {
 
       {editor && (
         <BulletForm
-          key={editor.mode === "edit" ? `edit-${editor.bullet.id}-${editor.bullet.revision}` : "create"}
+          key={
+            editor.mode === "edit" ? `edit-${editor.bullet.id}-${editor.bullet.revision}` : "create"
+          }
           mode={editor.mode}
           initialValues={editorInitialValues}
           sources={data.sources}

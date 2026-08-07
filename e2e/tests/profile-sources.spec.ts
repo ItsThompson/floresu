@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { bodyText, createWorklog, registerAndOnboard } from "../harness/support";
 
 /**
- * B5: create the three non-role source kinds through the browser. Only `role` is
+ * Create the three non-role source kinds through the browser. Only `role` is
  * exercised elsewhere (initialize.spec.ts); this drives project, education, and
  * certification through `/profile/sources/new?kind=<kind>`, filling each kind's
  * kind-specific fields, and proves each persists as a source of the correct kind

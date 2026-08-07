@@ -185,7 +185,7 @@ async def test_the_three_join_provenance_dag_is_usable_end_to_end(migrated_url: 
     try:
         user_id = await _insert_user(sessionmaker, "lib-dag@example.com")
         source_id = await _create_source(sessionmaker, user_id)
-        # The worklog entry rolls up to the source (worklog_source, from T7).
+        # The worklog entry rolls up to the source (worklog_source).
         worklog_id = await _create_worklog(sessionmaker, user_id, source_ids=[source_id])
         # The bullet frames both the worklog entry and the source directly.
         async with sessionmaker() as session:

@@ -3,9 +3,9 @@
 The worker re-declares the two shapes it exchanges with the backend internal
 embed routes: the item content it reads (:class:`EmbedItemContent`) and the
 write-back payload it posts (:class:`VectorWrite`). The backend owns the
-authoritative definitions in ``floresu.embedding.schemas``; the cross-package
-contract test that pins these mirrors against them field-for-field is a Ticket 22
-follow-up, not a guard that exists yet.
+authoritative definitions in ``floresu.embedding.schemas``; nothing pins these
+mirrors against them field-for-field, because ``contract/tests/`` covers the
+MCP-to-backend mirror only.
 """
 
 from __future__ import annotations

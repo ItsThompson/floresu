@@ -18,7 +18,7 @@ interface JobAppsApiSeed {
 
 /**
  * A stateful in-memory implementation of the job-application + resume backend as
- * MSW handlers. It composes the resume mock (T12/T13/T14/T15) so the two share
+ * MSW handlers. It composes the resume mock in `resumeApiMock.ts` so the two share
  * one resume store: forking with a `job_application_id` links a resume to its
  * application, `GET /job-applications` resolves `linked_resume_id` off that link,
  * and marking an application `submitted` finalizes the linked resume (or is

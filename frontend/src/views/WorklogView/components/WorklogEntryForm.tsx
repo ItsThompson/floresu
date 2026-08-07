@@ -1,10 +1,12 @@
 import { useState } from "react";
 
+import { FormInputField } from "@/components/FormInputField";
+import { TagPill } from "@/components/TagPill";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 import { DATE_REQUIRED_MESSAGE, TITLE_REQUIRED_MESSAGE } from "../constants";
 import type { EntryFormValues, SourceSummary } from "../types";
-import { TagPill } from "./TagPill";
 
 interface WorklogEntryFormProps {
   mode: "create" | "edit";
@@ -16,7 +18,11 @@ interface WorklogEntryFormProps {
   onCancel: () => void;
 }
 
-const FIELD_CLASS = "border-input bg-background rounded-md border px-3 py-2 text-sm";
+// The description and the tag draft cannot use `FormInputField` (a textarea and
+// an aria-labelled inline field), so they repeat its field shape here rather than
+// introducing a second input look.
+const FIELD_CLASS =
+  "border-input bg-card text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 rounded-md border px-3 py-2 text-sm outline-none focus-visible:ring-[3px]";
 
 const INITIAL_VALUES: EntryFormValues = {
   title: "",
@@ -31,6 +37,9 @@ const INITIAL_VALUES: EntryFormValues = {
  * request); description, tags, and source attachment are optional, and zero, one,
  * or many sources may be attached. A failed save keeps the form mounted with its
  * input intact and shows the server error inline.
+ *
+ * A form, so it stays calm: caption labels, the shared field shape, and a single
+ * primary action beside a ghost cancel.
  */
 export function WorklogEntryForm({
   mode,
@@ -80,35 +89,29 @@ export function WorklogEntryForm({
       aria-label={mode === "edit" ? "Edit entry" : "Add entry"}
       className="bg-card flex flex-col gap-4 rounded-lg border p-4"
     >
-      <h2 className="text-lg font-semibold">{mode === "edit" ? "Edit entry" : "Add entry"}</h2>
+      <h2 className="text-lg font-semibold tracking-tight">
+        {mode === "edit" ? "Edit entry" : "Add entry"}
+      </h2>
 
-      <label className="flex flex-col gap-1 text-sm font-medium">
-        Title
-        <input
-          className={FIELD_CLASS}
-          value={values.title}
-          onChange={(event) => setValues((prev) => ({ ...prev, title: event.target.value }))}
-          aria-invalid={Boolean(localErrors.title)}
-        />
-        {localErrors.title && <span className="text-destructive text-xs">{localErrors.title}</span>}
-      </label>
+      <FormInputField
+        label="Title"
+        name="title"
+        value={values.title}
+        onChange={(event) => setValues((prev) => ({ ...prev, title: event.target.value }))}
+        error={localErrors.title}
+      />
 
-      <label className="flex flex-col gap-1 text-sm font-medium">
-        Date
-        <input
-          type="date"
-          className={FIELD_CLASS}
-          value={values.entryDate}
-          onChange={(event) => setValues((prev) => ({ ...prev, entryDate: event.target.value }))}
-          aria-invalid={Boolean(localErrors.entryDate)}
-        />
-        {localErrors.entryDate && (
-          <span className="text-destructive text-xs">{localErrors.entryDate}</span>
-        )}
-      </label>
+      <FormInputField
+        label="Date"
+        name="entryDate"
+        type="date"
+        value={values.entryDate}
+        onChange={(event) => setValues((prev) => ({ ...prev, entryDate: event.target.value }))}
+        error={localErrors.entryDate}
+      />
 
-      <label className="flex flex-col gap-1 text-sm font-medium">
-        Description
+      <label className="flex flex-col gap-1.5">
+        <span className="text-foreground caption">Description</span>
         <textarea
           className={FIELD_CLASS}
           rows={3}
@@ -117,25 +120,27 @@ export function WorklogEntryForm({
         />
       </label>
 
-      <div className="flex flex-col gap-2 text-sm font-medium">
-        Tags
-        <div className="flex flex-wrap items-center gap-2">
-          {values.tags.map((tag) => (
-            <TagPill
-              key={tag}
-              label={tag}
-              onRemove={() =>
-                setValues((prev) => ({
-                  ...prev,
-                  tags: prev.tags.filter((existingTag) => existingTag !== tag),
-                }))
-              }
-            />
-          ))}
-        </div>
+      <div className="flex flex-col gap-2">
+        <span className="text-foreground caption">Tags</span>
+        {values.tags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {values.tags.map((tag) => (
+              <TagPill
+                key={tag}
+                label={tag}
+                onRemove={() =>
+                  setValues((prev) => ({
+                    ...prev,
+                    tags: prev.tags.filter((existingTag) => existingTag !== tag),
+                  }))
+                }
+              />
+            ))}
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <input
-            className={FIELD_CLASS}
+            className={cn(FIELD_CLASS, "flex-1")}
             value={tagDraft}
             aria-label="Add a tag"
             placeholder="Add a tag and press Enter"
@@ -154,11 +159,11 @@ export function WorklogEntryForm({
       </div>
 
       {sources.length > 0 && (
-        <fieldset className="flex flex-col gap-2 text-sm font-medium">
-          <legend>Attach sources</legend>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="text-foreground caption">Attach sources</legend>
           <div className="flex flex-col gap-1">
             {sources.map((source) => (
-              <label key={source.id} className="flex items-center gap-2 font-normal">
+              <label key={source.id} className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
                   checked={values.sourceIds.includes(source.id)}

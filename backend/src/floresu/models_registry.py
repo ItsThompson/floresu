@@ -9,7 +9,7 @@ is not a silent problem: a cross-table foreign key (e.g. ``worklog_entries.user_
 ``NoReferencedTableError`` at query time, so an app that mounts a domain's routes
 must also have that domain's referenced tables registered.
 
-Add a domain's model module here as it lands; ``tests/test_models_registry.py``
+Every domain declares its model module here; ``tests/test_models_registry.py``
 asserts the referenced tables resolve.
 """
 

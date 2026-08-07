@@ -15,5 +15,5 @@ DEFAULT_LIST_LIMIT = 200
 # The structural-violation ``rule`` carried when archiving a variant a living
 # resume still references. The archive is blocked and this signal names the rule
 # plus the referencing resume ids, so the resume-side prompt can offer a
-# replacement. It is the machine-readable contract that later resume slices key on.
+# replacement. It is the machine-readable contract the resume-side prompt keys on.
 REPLACEMENT_REQUIRED_RULE = "identity_variant_replacement_required"

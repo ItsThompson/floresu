@@ -62,7 +62,7 @@ export const mockFeedHistory: FeedEvent[] = [
   buildFeedEvent({ id: 1, action: "create", entity_type: "worklog", entity_id: 12 }),
 ];
 
-// --- Career Profile fixtures (Ticket 26) ---------------------------------
+// --- Career Profile fixtures ---------------------------------------------
 
 /** Build a source list-row (common columns only). Defaults to an ongoing role. */
 export function buildSourceSummary(overrides?: Partial<SourceSummary>): SourceSummary {

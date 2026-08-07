@@ -1,5 +1,10 @@
 import { useDragList } from "../hooks/useDragList";
-import type { BulletpointRecord, IdentityVariant, ResumeEditorActions, ResumeRecord } from "../types";
+import type {
+  BulletpointRecord,
+  IdentityVariant,
+  ResumeEditorActions,
+  ResumeRecord,
+} from "../types";
 import { AddSectionControl } from "./AddSectionControl";
 import { HeaderSection } from "./HeaderSection";
 import { SectionCard } from "./SectionCard";
@@ -32,7 +37,7 @@ export function SectionForm({
   const sectionDrag = useDragList(sectionIds, actions.reorderSections);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       <HeaderSection
         variants={variants}
         selectedVariantId={record.document.header?.identity_variant_id}

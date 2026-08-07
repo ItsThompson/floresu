@@ -2,7 +2,7 @@
 
 Internet-reachable via the Cloudflare tunnel. The composition root that hosts the
 public REST surface for the human web client. Built from the shared factory with
-the external service identity injected; this slice adds the human session
+the external service identity injected, and it adds the human session
 boundary: the ``/auth`` + ``/me`` routers, the real cookie session verifier, the
 inbound-identity strip, and (when configured) credentialed CORS for the SPA.
 """
@@ -75,8 +75,8 @@ def create_external_app() -> FastAPI:
     """
     settings = build_app_settings(service=EXTERNAL_SERVICE, port=EXTERNAL_PORT)
     db = create_database(settings.database_url)
-    # One async Redis client for the app, shared by the feed store. The activity feed
-    # is the first consumer; later slices reuse it for the queue and rate limits.
+    # One async Redis client for the app, shared by the feed store, the embed queue,
+    # and the rate-limit counters.
     redis_client = create_redis_client(settings.redis_url)
     feed_store = RedisFeedStore(redis_client)
     # The arq queue the embed jobs are enqueued onto (worker-drained). Human/web writes

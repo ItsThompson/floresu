@@ -2,8 +2,7 @@
 
 One :class:`~redis.asyncio.Redis` per app, created at the composition root and
 attached to ``app.state`` alongside the DB. Backs the activity-feed pub/sub and
-replay buffer today; later slices reuse the same client for the arq queue and
-rate-limit counters.
+replay buffer, the arq queue, and the rate-limit counters.
 
 ``decode_responses=True`` so pub/sub payloads and sorted-set members come back as
 ``str`` (the feed stores JSON strings), not ``bytes``. Connecting is lazy, so

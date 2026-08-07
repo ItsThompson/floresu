@@ -23,13 +23,15 @@ export function ResumesListView() {
   const [pendingDelete, setPendingDelete] = useState<ResumeSummary | null>(null);
 
   return (
-    <section className="mx-auto flex w-full max-w-[860px] flex-col gap-8 p-8">
+    <section className="reading-width flex w-full flex-col gap-6">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">Resumes</h1>
         <Button onClick={() => setIsCreating(true)}>+ New resume</Button>
       </header>
 
-      {state.status === "loading" && <p className="text-muted-foreground text-sm">Loading resumes…</p>}
+      {state.status === "loading" && (
+        <p className="text-muted-foreground text-sm">Loading resumes…</p>
+      )}
 
       {state.status === "error" && (
         <p role="alert" className="text-destructive text-sm">
@@ -38,7 +40,7 @@ export function ResumesListView() {
       )}
 
       {state.status === "ready" && (
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-6">
           <ResumeGroupSection
             heading="Living (role-targeted)"
             emptyMessage="No living resumes yet. Create one to start shaping a direction."

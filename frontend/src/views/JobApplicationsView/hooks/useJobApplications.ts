@@ -15,8 +15,8 @@ const LOAD_ERROR = "Could not load your job applications.";
 const SUBMIT_FALLBACK = "Could not mark this application submitted. Please try again.";
 
 /**
- * Loads the job applications and the resumes they may link to, and exposes the
- * P0 actions: create an application, fork a living resume into a linked
+ * Loads the job applications and the resumes they may link to, and exposes three
+ * write actions: create an application, fork a living resume into a linked
  * application draft, and mark an application submitted (which finalizes its
  * linked resume on the backend). Every write re-fetches on success so the list
  * reflects the server truth. A submit rejection (e.g. no linked resume) is

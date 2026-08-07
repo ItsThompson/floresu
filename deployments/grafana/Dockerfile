@@ -10,8 +10,8 @@
 # Prometheus datasource and the Floresu overview dashboard already provisioned;
 # nothing lands on the box.
 #
-# Grafana is provisioned but NON-GATING (spec §12): dashboards are optional and
-# never a release gate. The admin password is supplied at runtime via
+# Grafana is provisioned but NON-GATING: dashboards are optional and never a
+# release gate. The admin password is supplied at runtime via
 # GF_SECURITY_ADMIN_PASSWORD (a GitHub secret at deploy; the stock default for
 # local dev).
 # =============================================================================

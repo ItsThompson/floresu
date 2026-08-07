@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Library, Plus } from "lucide-react";
 
+import { FIELD_SHAPE_CLASS } from "@/components/FormInputField";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface AddItemControlsProps {
   /** Open the library picker to reference an existing canonical bullet. */
@@ -27,10 +29,10 @@ export function AddItemControls({ onPullFromLibrary, onAddInline }: AddItemContr
   return (
     <div className="flex flex-col gap-2">
       <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={onPullFromLibrary}>
+        <Button variant="ghost" size="sm" onClick={onPullFromLibrary}>
           <Library aria-hidden /> pull from library
         </Button>
-        <Button variant="outline" size="sm" onClick={() => setDraft("")}>
+        <Button variant="ghost" size="sm" onClick={() => setDraft("")}>
           <Plus aria-hidden /> new
         </Button>
       </div>
@@ -43,7 +45,7 @@ export function AddItemControls({ onPullFromLibrary, onAddInline }: AddItemContr
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => event.key === "Enter" && submit()}
-            className="border-input bg-background h-8 flex-1 rounded-md border px-2 text-sm"
+            className={cn(FIELD_SHAPE_CLASS, "h-8 flex-1 px-2")}
           />
           <Button size="sm" onClick={submit}>
             Add

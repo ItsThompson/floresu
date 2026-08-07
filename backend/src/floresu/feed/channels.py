@@ -7,8 +7,6 @@ the format:
 - a pub/sub channel ``feed:{user_id}`` carrying each event as it is written, and
 - a bounded sorted-set replay buffer ``feed:replay:{user_id}`` scored by the
   monotonic ``audit_log.id``, which a reconnecting client replays the gap from.
-
-The ``feed:{user_id}`` channel format is the provenance-spec contract (section 09).
 """
 
 from __future__ import annotations

@@ -322,7 +322,9 @@ describe("ResumeEditorView", () => {
     authenticate();
     const { handlers, resumes, bullets } = createResumeApiMock({
       resumes: [seedBlankResume()],
-      bullets: [buildBulletpoint({ id: 200, text: "Led the platform migration.", used_in_count: 0 })],
+      bullets: [
+        buildBulletpoint({ id: 200, text: "Led the platform migration.", used_in_count: 0 }),
+      ],
     });
     server.use(...handlers);
     renderApp(["/resumes/1"]);
@@ -626,5 +628,37 @@ describe("ResumeEditorView", () => {
     // exportPdf() resolves to null: no download link appears and the failure shows.
     expect(await screen.findByText(/Export failed/)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Download exported PDF/ })).not.toBeInTheDocument();
+  });
+
+  it("names every item field from a label that is present but not drawn", async () => {
+    authenticate();
+    const { handlers } = createResumeApiMock({
+      resumes: [seedResume()],
+      bullets: [
+        buildBulletpoint({ id: 100, text: "Cut checkout latency by 40%.", used_in_count: 1 }),
+      ],
+    });
+    server.use(...handlers);
+    renderApp(["/resumes/1"]);
+
+    // One drawn label per row would be noise, so the row hides its label instead
+    // of dropping it: the field still has to be reachable by that name.
+    const fields = await screen.findAllByRole("textbox", { name: "Bullet text" });
+    expect(fields).toHaveLength(2);
+    expect(fields[0]).toHaveValue("Cut checkout latency by 40%.");
+  });
+
+  it("marks a shared item with its usage count rather than with color alone", async () => {
+    authenticate();
+    const { handlers } = createResumeApiMock({
+      resumes: [seedResume()],
+      bullets: [
+        buildBulletpoint({ id: 100, text: "Cut checkout latency by 40%.", used_in_count: 3 }),
+      ],
+    });
+    server.use(...handlers);
+    renderApp(["/resumes/1"]);
+
+    expect(await screen.findByText(/used in 3/)).toBeInTheDocument();
   });
 });

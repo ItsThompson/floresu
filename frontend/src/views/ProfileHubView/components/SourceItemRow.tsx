@@ -24,26 +24,23 @@ export function SourceItemRow({ source, handleProps, isDragging, onArchive }: So
   return (
     <li
       {...handleProps}
-      className={`group border-border flex items-center gap-2 rounded-md border px-2 py-1.5 ${
+      className={`group hover:bg-muted flex items-center gap-2 rounded-md px-1.5 py-1 ${
         isDragging ? "opacity-50" : ""
       }`}
     >
-      <GripVertical
-        aria-hidden
-        className="text-muted-foreground size-3.5 shrink-0 cursor-grab"
-      />
+      <GripVertical aria-hidden className="text-muted-foreground size-3.5 shrink-0 cursor-grab" />
       <Link
         to={`/profile/sources/${source.id}`}
-        className="flex min-w-0 flex-1 flex-col hover:underline"
+        className="text-muted-foreground hover:text-foreground flex min-w-0 flex-1 flex-col hover:underline"
       >
         <span className="truncate text-sm font-medium">{source.display_label}</span>
-        {range && <span className="text-muted-foreground text-xs">{range}</span>}
+        {range && <span className="mono-meta">{range}</span>}
       </Link>
       <button
         type="button"
         aria-label={`Archive ${source.display_label}`}
         onClick={() => onArchive(source.id)}
-        className="text-muted-foreground hover:text-destructive rounded p-1 opacity-0 outline-none group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        className="text-muted-foreground hover:text-destructive focus-visible:ring-ring/50 rounded p-1 opacity-0 outline-none group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-[3px]"
       >
         <Archive className="size-3.5" />
       </button>

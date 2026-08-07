@@ -140,16 +140,20 @@ export function HistoryDialog({ isOpen, onClose, resumeId, renderPdf }: HistoryD
                     aria-current={isSelected ? "true" : undefined}
                     className={cn(
                       "flex w-full flex-col items-start gap-0.5 rounded-md border px-3 py-2 text-left text-sm",
-                      isSelected ? "border-primary bg-accent" : "hover:bg-accent",
+                      isSelected
+                        ? "bg-accent text-accent-foreground border-transparent"
+                        : "border-input text-foreground hover:bg-muted",
                     )}
                   >
                     <span className="font-medium">Revision {version.revision_no}</span>
-                    <span className="text-muted-foreground text-xs">
+                    {/* The selected row's tint does not carry muted ink at AA, so
+                        the date inherits the row's own color there. */}
+                    <span className={cn("mono-meta", !isSelected && "text-muted-foreground")}>
                       {formatDayYear(version.created_at)}
                     </span>
                   </button>
                   {isSelected && selection.status === "error" && (
-                    <p role="alert" className="text-destructive mt-1 px-1 text-xs">
+                    <p role="alert" className="text-destructive caption mt-1 px-1">
                       {PDF_UNAVAILABLE}
                     </p>
                   )}
@@ -168,7 +172,7 @@ export function HistoryDialog({ isOpen, onClose, resumeId, renderPdf }: HistoryD
               </p>
             )}
             {selection?.status === "ready" && (
-              <div className="flex max-h-[60vh] justify-center overflow-auto rounded-md border p-2">
+              <div className="border-border flex max-h-[60vh] justify-center overflow-auto rounded-lg border p-2">
                 <canvas ref={canvasRef} aria-label={`Revision ${selection.revisionNo} PDF`} />
               </div>
             )}

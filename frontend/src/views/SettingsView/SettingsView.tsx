@@ -10,7 +10,7 @@ import { SettingsNav } from "./components/SettingsNav";
  */
 export function SettingsView() {
   return (
-    <section className="mx-auto flex w-full max-w-[860px] flex-col gap-6 p-8">
+    <section className="reading-width flex w-full flex-col gap-6">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         <p className="text-muted-foreground">

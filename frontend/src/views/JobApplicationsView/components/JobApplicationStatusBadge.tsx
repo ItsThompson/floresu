@@ -9,17 +9,17 @@ interface JobApplicationStatusBadgeProps {
 }
 
 /**
- * A job application's status badge. `submitted` reads through a check icon and
- * the word together, so meaning never rests on color alone (the accessibility
- * rule). P0 tracks only `added` and `submitted`.
+ * A job application's status badge, `added` or `submitted`. Each state pairs a
+ * token tint with a glyph and the word together, so meaning never rests on color
+ * alone (the accessibility rule).
  */
 export function JobApplicationStatusBadge({ status }: JobApplicationStatusBadgeProps) {
   const isSubmitted = status === "submitted";
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
-        isSubmitted ? "bg-secondary text-secondary-foreground" : "text-muted-foreground",
+        "caption inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5",
+        isSubmitted ? "bg-success-tint text-foreground" : "bg-muted text-muted-foreground",
       )}
     >
       {isSubmitted ? (

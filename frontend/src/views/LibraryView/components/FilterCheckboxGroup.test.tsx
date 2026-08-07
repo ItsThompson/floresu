@@ -34,4 +34,18 @@ describe("FilterCheckboxGroup", () => {
     await user.click(screen.getByRole("checkbox", { name: "Alpha" }));
     expect(onToggle).toHaveBeenCalledWith(1);
   });
+
+  it("fills the checked chip with the accent and leaves the unchecked one neutral", () => {
+    render(
+      <FilterCheckboxGroup
+        legend="Kind"
+        variant="chip"
+        options={options}
+        selected={[2]}
+        onToggle={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Beta")).toHaveClass("bg-accent", "text-accent-foreground");
+    expect(screen.getByText("Alpha")).not.toHaveClass("bg-accent");
+  });
 });

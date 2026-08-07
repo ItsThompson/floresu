@@ -79,20 +79,21 @@ Canonical source: `backend/tests/`.
 
 ## End-to-end scenarios
 
-The Playwright spine drives the full stack. The ten specs live in `e2e/tests/`:
+The Playwright spine drives the full stack. Twenty-three specs live in `e2e/tests/`, grouped by the surface they drive:
 
-| Spec | Covers |
-|------|--------|
-| `initialize` | First-run bring-up and the empty state |
-| `auth` | Human register, login, session |
-| `agent-boundary` | The agent OAuth connect flow and the bearer boundary |
-| `worklog` | Recording and editing worklog entries |
-| `library-search` | Library bullets and hybrid search |
-| `resume-assemble` | Building a resume from library bullets |
-| `resume-history` | Revision history and stored-PDF viewing |
-| `jobhunt` | Job applications and the finalize-on-submit flow |
-| `feed` | The live activity feed (SSE) |
-| `settings` | Account settings, identity variants, and lifecycle |
+| Group | Specs | Covers |
+|-------|-------|--------|
+| First run and auth | `initialize`, `auth` | First-run bring-up and the empty state; human register, login, session resume, logout |
+| Worklog | `worklog`, `worklog-timeline`, `worklog-tags`, `worklog-side-panel` | Recording and editing entries; month grouping and combined filters; tag add and remove with a deterministic color; the source contextual panel |
+| Library and search | `library-search`, `search-filters` | Library bullets and hybrid search; combined filters with results grouped by source |
+| Resumes | `resume-assemble`, `resume-history`, `resume-variant`, `resume-delete` | Building a resume from library bullets; revision history and stored-PDF viewing; the header identity-variant selector; confirm-gated permanent delete with retention |
+| Job hunting | `jobhunt` | Job applications and the finalize-on-submit flow |
+| Career profile | `profile-sources`, `skills`, `identity-archive` | Creating each source kind through the browser; curating skills and the derived usage count; archiving a referenced variant and its replacement prompt |
+| Feed and history | `feed`, `item-history` | The live activity feed (SSE); the per-item history surface |
+| Settings, data, account | `settings`, `data-export`, `account-delete` | Archive restore and web-only permanent delete; the account export archive; confirm-gated account delete |
+| Agents | `agent-boundary`, `agent-revoke` | The agent OAuth connect flow and the bearer boundary; revoking an agent and killing its refresh token |
+
+Three browser-flaky flows stay at the vitest layer by design and this suite does not claim them. See `e2e/README.md` for that boundary and for the sharded CI run.
 
 No E2E run calls OpenAI or real R2: embedding is a local fake and the object store is MinIO.
 

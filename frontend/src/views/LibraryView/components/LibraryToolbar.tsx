@@ -1,8 +1,15 @@
 import type { FormEvent } from "react";
 
+import { Plus } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 
 import type { LibraryToolbarProps } from "../types";
+
+// The search field copies the calm field shape of
+// `frontend/src/components/FormInputField`.
+const SEARCH_FIELD_CLASS =
+  "border-input bg-card text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 h-9 min-w-0 flex-1 rounded-md border px-3 text-sm outline-none focus-visible:ring-[3px]";
 
 /**
  * The Library header controls: the hybrid-search field with its submit, a clear
@@ -33,7 +40,7 @@ export function LibraryToolbar({
           placeholder="Search your worklog and bullets"
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
-          className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-9 min-w-0 flex-1 rounded-md border px-3 text-sm outline-none focus-visible:ring-[3px]"
+          className={SEARCH_FIELD_CLASS}
         />
         <Button type="submit" disabled={isSearching}>
           {isSearching ? "Searching…" : "Search"}
@@ -44,7 +51,8 @@ export function LibraryToolbar({
           </Button>
         )}
       </form>
-      <Button type="button" variant="outline" onClick={onNewBullet}>
+      <Button type="button" variant="ghost" onClick={onNewBullet}>
+        <Plus aria-hidden />
         New bullet
       </Button>
     </div>

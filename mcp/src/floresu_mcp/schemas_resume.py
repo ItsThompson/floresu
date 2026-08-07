@@ -8,7 +8,7 @@ header, template, and ordered sections of library-ref and local items).
 These are read projections: they carry the document shape faithfully but drop the
 backend's write-time structural validators (the stored document is already
 valid), and ignore unrecognized fields so a backend addition never breaks a read.
-The cross-package contract tests (Ticket 22) keep every mirror honest.
+The contract tests in ``contract/tests/`` keep every mirror honest.
 """
 
 from __future__ import annotations

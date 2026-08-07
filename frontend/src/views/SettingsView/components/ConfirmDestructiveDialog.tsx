@@ -23,6 +23,13 @@ interface ConfirmDestructiveDialogProps {
  * shape, not color alone), and it stays disabled until the caller's explicit
  * gate is satisfied, a typed phrase or a checked acknowledgement. Escape and
  * Cancel dismiss without acting.
+ *
+ * It keeps its own chrome rather than rendering through
+ * `frontend/src/components/Modal/Modal.tsx` because it is an `alertdialog`, not a
+ * `dialog`: the role tells assistive technology this interrupts to confirm a
+ * consequence, and it carries `aria-describedby` so the consequence is announced
+ * with the title. It matches that modal's surface exactly: the warm scrim, the one
+ * reserved elevation, and the card fill.
  */
 export function ConfirmDestructiveDialog({
   title,
@@ -58,14 +65,14 @@ export function ConfirmDestructiveDialog({
   const canConfirm = phraseSatisfied && acknowledgeSatisfied && !isBusy;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="bg-espresso/40 fixed inset-0 z-50 flex items-center justify-center p-4 motion-safe:animate-in motion-safe:fade-in">
       <div
         ref={dialogRef}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        className="bg-background border-border flex w-full max-w-md flex-col gap-4 rounded-xl border p-6 shadow-lg"
+        className="bg-card text-card-foreground border-border shadow-floating flex w-full max-w-md flex-col gap-4 rounded-lg border p-6"
       >
         <h2 id={titleId} className="text-lg font-semibold tracking-tight">
           {title}
@@ -75,8 +82,8 @@ export function ConfirmDestructiveDialog({
         </p>
 
         {typePhrase && (
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-muted-foreground">
+          <label className="flex flex-col gap-1.5">
+            <span className="caption text-muted-foreground">
               Type <span className="text-foreground font-medium">{typePhrase}</span> to confirm.
             </span>
             <input
@@ -85,7 +92,7 @@ export function ConfirmDestructiveDialog({
               onChange={(e) => setTyped(e.target.value)}
               aria-label="Confirmation phrase"
               autoComplete="off"
-              className="border-input h-9 rounded-md border px-3 text-sm outline-none"
+              className="border-input bg-card text-foreground focus-visible:border-ring focus-visible:ring-ring/50 h-9 rounded-md border px-3 text-sm outline-none focus-visible:ring-[3px]"
             />
           </label>
         )}
@@ -103,7 +110,7 @@ export function ConfirmDestructiveDialog({
         )}
 
         <div className="flex items-center justify-end gap-3">
-          <Button variant="outline" onClick={onCancel} disabled={isBusy}>
+          <Button variant="ghost" onClick={onCancel} disabled={isBusy}>
             Cancel
           </Button>
           <Button variant="destructive" onClick={onConfirm} disabled={!canConfirm}>

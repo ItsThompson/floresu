@@ -9,7 +9,7 @@ I/O.
 from __future__ import annotations
 
 # Reciprocal Rank Fusion constant: ``score = Σ 1 / (k + rank)``. Model-free and
-# tunable; k = 60 is the value the spec pins (the widely used RRF default).
+# tunable; k = 60 is the widely used RRF default.
 RRF_K = 60
 
 # The result window. A query with no explicit limit returns the default; a caller

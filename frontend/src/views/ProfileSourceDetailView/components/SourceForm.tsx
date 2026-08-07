@@ -45,7 +45,8 @@ export function SourceForm({
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     const missing = fields.reduce<Record<string, string>>((acc, field) => {
-      if (field.required && !values[field.name]?.trim()) acc[field.name] = "This field is required.";
+      if (field.required && !values[field.name]?.trim())
+        acc[field.name] = "This field is required.";
       return acc;
     }, {});
     setLocalErrors(missing);
@@ -61,13 +62,13 @@ export function SourceForm({
       {fields.map((field) =>
         field.type === "textarea" ? (
           <label key={field.name} className="flex flex-col gap-1.5">
-            <span className="text-foreground text-sm font-medium">{field.label}</span>
+            <span className="text-foreground caption">{field.label}</span>
             <textarea
               name={field.name}
               value={values[field.name] ?? ""}
               placeholder={field.placeholder}
               onChange={(event) => setField(field.name, event.target.value)}
-              className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 min-h-20 rounded-md border px-3 py-2 text-sm outline-none focus-visible:ring-[3px]"
+              className="border-input bg-card text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 min-h-20 rounded-md border px-3 py-2 text-sm outline-none focus-visible:ring-[3px]"
             />
           </label>
         ) : (
@@ -92,7 +93,7 @@ export function SourceForm({
       />
 
       <div className="flex flex-col gap-1.5">
-        <label className="flex items-center gap-2 text-sm font-medium">
+        <label className="caption flex items-center gap-2">
           <input
             type="checkbox"
             checked={ongoing}
@@ -112,12 +113,12 @@ export function SourceForm({
       </div>
 
       <label className="flex flex-col gap-1.5">
-        <span className="text-foreground text-sm font-medium">Summary</span>
+        <span className="text-foreground caption">Summary</span>
         <textarea
           name="summary"
           value={values.summary ?? ""}
           onChange={(event) => setField("summary", event.target.value)}
-          className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 min-h-24 rounded-md border px-3 py-2 text-sm outline-none focus-visible:ring-[3px]"
+          className="border-input bg-card text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 min-h-24 rounded-md border px-3 py-2 text-sm outline-none focus-visible:ring-[3px]"
         />
       </label>
 

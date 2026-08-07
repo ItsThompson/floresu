@@ -29,7 +29,7 @@ async function mintRefreshToken(request: APIRequestContext, clientId: string): P
 }
 
 /**
- * B3: connect an agent through the browser consent screen, then revoke it in
+ * Connect an agent through the browser consent screen, then revoke it in
  * Settings and prove the revoke invalidates the client's refresh token
  * immediately. Account-scoped and built on the OAuth harness, so it does not
  * re-implement PKCE or the code exchange.

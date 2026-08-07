@@ -6,9 +6,9 @@ linked job application ``submitted`` (the lifecycle service calls this) and
 finalizing the resume directly. The routine is guarded to application drafts and,
 in one transaction, freezes and stores the frozen artifact:
 
-1. resolve every ``library_ref`` item to inline text (resolved once via T12's
-   :func:`resolve_document`, ``forked_from_bullet_id`` retained), so the document
-   holds zero references;
+1. resolve every ``library_ref`` item to inline text (resolved once via
+   :func:`~floresu.resumes.document.resolve_document`, ``forked_from_bullet_id``
+   retained), so the document holds zero references;
 2. snapshot the header identity variant inline (frozen contact facts);
 3. flip the status to ``finalized`` and drop all ``resume_bullet_ref`` rows, so the
    resume never again contributes to any bullet's "used in N";

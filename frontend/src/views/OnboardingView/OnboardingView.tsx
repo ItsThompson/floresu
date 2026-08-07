@@ -16,9 +16,10 @@ import type { OnboardingStep } from "./types";
 /**
  * The getting-started wizard (chrome-free, full viewport). Composes the state
  * machine, the shared step frame, and the ordered steps. A user who arrives
- * already onboarded never sees it: the view redirects Home, mirroring how
- * `AuthView` redirects an authenticated user. Onboarding status is captured at
- * mount so a completion performed here routes through the completion handler
+ * already onboarded never sees it: the view redirects to the app's Home at
+ * `/home`, mirroring how `AuthView` redirects an authenticated user. `/` is the
+ * public page, so it is never a completion target. Onboarding status is captured
+ * at mount so a completion performed here routes through the completion handler
  * (which chooses Home or the worklog entry form) rather than being preempted by
  * the redirect. The MCP URL is sourced once here and threaded to the connect
  * step; the steps read no environment themselves.
@@ -31,12 +32,12 @@ export function OnboardingView() {
   const arrivedOnboarded = useRef(user?.has_completed_onboarding ?? false);
   const { state, actions } = useOnboarding({
     completeOnboarding,
-    onComplete: () => navigate("/", { replace: true }),
+    onComplete: () => navigate("/home", { replace: true }),
     onCompleteManual: () => navigate(worklogNewEntryPath(), { replace: true }),
   });
 
   if (arrivedOnboarded.current) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/home" replace />;
   }
 
   const mcpUrl = resolveMcpUrl();

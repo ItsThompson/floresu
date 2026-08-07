@@ -1,5 +1,5 @@
 # Prometheus datasource, provisioned at Grafana startup. Points at the in-network
-# Prometheus service on app-net. Non-gating (spec §12): dashboards are optional.
+# Prometheus service on app-net. Non-gating: dashboards are optional.
 apiVersion: 1
 
 datasources:

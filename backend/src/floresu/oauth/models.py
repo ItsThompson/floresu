@@ -15,7 +15,7 @@ Five tables back the AS:
   ``last_active_at`` the last token activity, so the list shows both.
 
 There is no OAuth-specific audit table here: agent-grant provenance flows through
-the shared write-event/audit seam (its own slice), and issuance is observed via
+the shared write-event/audit seam, and issuance is observed via
 structured logs plus the ``oauth_tokens_issued_total`` metric.
 """
 

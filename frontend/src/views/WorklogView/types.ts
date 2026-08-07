@@ -14,8 +14,8 @@ export type TagRead = components["schemas"]["TagRead"];
 export type BulletpointRecord = components["schemas"]["BulletpointRecord"];
 /** The hybrid-search response: flat ranked list, scored graph, and soft notices. */
 export type SearchResult = components["schemas"]["SearchResult"];
-/** One flat ranked hit: kind + id + fused score. */
-export type RankedHit = components["schemas"]["RankedHit"];
+/** The search request body: the free-text query plus the mapped filters. */
+export type SearchQuery = components["schemas"]["SearchQuery"];
 
 /** The timeline's load lifecycle. `ready` covers the empty timeline too. */
 export type WorklogStatus = "loading" | "ready" | "error";
@@ -54,37 +54,22 @@ export type FormMode =
   | { kind: "create" }
   | { kind: "edit"; entryId: number };
 
-/** A ranked hit resolved against the graph so it carries a human label. */
-export interface ResolvedHit {
-  type: RankedHit["type"];
-  id: number;
-  score: number;
-  /** The worklog title, bullet text, or source label. */
-  label: string;
-  /** Secondary line: a worklog date or a source kind; `null` for bullets. */
-  detail: string | null;
-}
-
 /** A bullet framed by an entry, shown in the row's overflow menu. */
 export interface DerivedBullet {
   id: number;
   text: string;
 }
 
-/** A soft search notice, e.g. semantic retrieval degraded to lexical-only. */
-export type SearchNotice = NonNullable<SearchResult["notices"]>[number];
-
 /**
- * The submitted-search lifecycle. Mirrors LibraryView's `SearchState` skeleton
- * but carries worklog's eagerly-resolved payload (`ResolvedHit[]`) and its
- * separate `notices` channel. The `results` arm covers the zero-match case too:
- * an empty `results` array drives the "No matches." branch. The `searching` arm
- * carries no payload, so a re-search shows no stale prior hits.
+ * The submitted-search lifecycle. Mirrors LibraryView's `SearchState`: the
+ * `results` arm carries the raw response, which the shared result view derives
+ * its rows and source groups from, and covers the zero-match case too. The
+ * `searching` arm carries no payload, so a re-search shows no stale prior hits.
  */
 export type WorklogSearchState =
   | { status: "idle" }
   | { status: "searching" }
-  | { status: "results"; results: ResolvedHit[]; notices: SearchNotice[] }
+  | { status: "results"; result: SearchResult }
   | { status: "error"; message: string };
 
 export interface WorklogSearchActions {

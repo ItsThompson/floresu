@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { SWRConfig } from "swr";
 import { describe, expect, it } from "vitest";
+import { EMPTY_SEARCH_MESSAGE } from "@/components/SearchResults";
 import { buildBullet, buildEntry, buildSearchResult, buildSource, buildTag } from "@/mocks/worklogFixtures";
 import { renderWithProviders } from "@/test/renderWithProviders";
 
@@ -83,7 +84,7 @@ describe("WorklogView", () => {
     expect(screen.getByText("No entries match your filters.")).toBeInTheDocument();
   });
 
-  it("runs hybrid search and shows the fused ranked mix", async () => {
+  it("runs hybrid search and shows the fused ranked mix grouped by source", async () => {
     const calls = installWorklogApi({
       entries: [buildEntry({ id: 1, title: "Shipped payments" })],
       sources: [ACME],
@@ -108,18 +109,59 @@ describe("WorklogView", () => {
     await user.type(screen.getByLabelText("Search worklog and bullets"), "payments");
     await user.click(screen.getByRole("button", { name: "Search" }));
 
-    const results = await screen.findByRole("list", { name: "Search results" });
-    const items = within(results).getAllByRole("listitem");
+    const topMatches = await screen.findByRole("region", { name: "Top matches" });
+    const items = within(topMatches).getAllByRole("listitem");
     expect(items).toHaveLength(3);
     expect(items[0]).toHaveTextContent("Shipped payments");
     expect(items[1]).toHaveTextContent("Cut checkout latency 40%");
     expect(items[2]).toHaveTextContent("Acme — Senior Engineer");
     // The bullet result links into the Library, where the bullet lives.
-    expect(within(results).getByRole("link", { name: "Cut checkout latency 40%" })).toHaveAttribute(
+    expect(within(topMatches).getByRole("link", { name: "Cut checkout latency 40%" })).toHaveAttribute(
       "href",
       "/library?bullet=100",
     );
-    expect(calls.searched).toEqual(["payments"]);
+
+    // The same hits also roll up under their source, not only as a flat list.
+    const grouped = screen.getByRole("region", { name: "Grouped by source" });
+    expect(within(grouped).getByRole("heading", { name: /Acme — Senior Engineer/ })).toBeInTheDocument();
+    expect(within(grouped).getByText("Shipped payments")).toBeInTheDocument();
+    expect(within(grouped).getByText("Cut checkout latency 40%")).toBeInTheDocument();
+
+    expect(calls.searched).toEqual([{ query: "payments", filters: { layer: "both" } }]);
+  });
+
+  it("applies the active timeline filters to the search request", async () => {
+    const calls = installWorklogApi({
+      entries: [
+        buildEntry({ id: 1, title: "Shipped payments", entry_date: "2026-07-18", tags: ["backend"], source_ids: [10] }),
+      ],
+      sources: [ACME],
+      tags: [buildTag({ id: 1, label: "backend" })],
+      search: buildSearchResult(),
+    });
+
+    renderWorklog();
+    const user = userEvent.setup();
+    await screen.findByText("Shipped payments");
+
+    await user.selectOptions(screen.getByLabelText("Source"), "10");
+    await user.selectOptions(screen.getByLabelText("Tag"), "backend");
+    fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-07-01" } });
+
+    await user.type(screen.getByLabelText("Search worklog and bullets"), "payments");
+    await user.click(screen.getByRole("button", { name: "Search" }));
+
+    await waitFor(() => expect(calls.searched).toHaveLength(1));
+    // The one filter bar narrows the search corpus, not just the timeline.
+    expect(calls.searched[0]).toEqual({
+      query: "payments",
+      filters: {
+        layer: "both",
+        source_ids: [10],
+        tags: ["backend"],
+        date_range: { from: "2026-07-01", to: null },
+      },
+    });
   });
 
   it("returns nothing for an empty query rather than dumping the corpus", async () => {
@@ -132,10 +174,10 @@ describe("WorklogView", () => {
     await user.click(screen.getByRole("button", { name: "Search" }));
 
     expect(calls.searched).toEqual([]);
-    expect(screen.queryByRole("list", { name: "Search results" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Top matches" })).not.toBeInTheDocument();
   });
 
-  it("shows 'No matches.' when a non-empty search returns zero results", async () => {
+  it("shows the empty-search message when a non-empty search returns zero results", async () => {
     const calls = installWorklogApi({
       entries: [buildEntry({ id: 1, title: "Shipped payments" })],
       sources: [ACME],
@@ -149,9 +191,9 @@ describe("WorklogView", () => {
     await user.type(screen.getByLabelText("Search worklog and bullets"), "nothing matches this");
     await user.click(screen.getByRole("button", { name: "Search" }));
 
-    expect(await screen.findByText("No matches.")).toBeInTheDocument();
-    expect(screen.queryByRole("list", { name: "Search results" })).not.toBeInTheDocument();
-    expect(calls.searched).toEqual(["nothing matches this"]);
+    expect(await screen.findByText(EMPTY_SEARCH_MESSAGE)).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Top matches" })).not.toBeInTheDocument();
+    expect(calls.searched).toEqual([{ query: "nothing matches this", filters: { layer: "both" } }]);
   });
 
   it("adds an entry from just a title and a date; description, tags, and sources are optional", async () => {
@@ -269,10 +311,41 @@ describe("WorklogView", () => {
     await screen.findByText("Shipped payments");
 
     await user.click(screen.getByRole("button", { name: "Actions for Shipped payments" }));
+    // Archive is destructive, so it is confirm-gated: the menu item opens the gate
+    // and the crimson confirm commits it. The gate swaps the button the user just
+    // pressed, so it must hand focus to the confirm rather than dropping it.
     await user.click(screen.getByRole("button", { name: "Archive" }));
+    const confirm = screen.getByRole("button", { name: "Archive entry" });
+    expect(confirm).toHaveFocus();
+    // The gate is a named group, so the focus move is announced rather than silent.
+    expect(screen.getByRole("group", { name: "Archive this entry?" })).toBeInTheDocument();
+    await user.click(confirm);
 
     await waitFor(() => expect(screen.queryByText("Shipped payments")).not.toBeInTheDocument());
     expect(calls.archived).toEqual([1]);
+  });
+
+  it("keeps the entry when the archive confirmation is dismissed", async () => {
+    const calls = installWorklogApi({
+      entries: [buildEntry({ id: 1, title: "Shipped payments" })],
+      sources: [ACME],
+    });
+
+    renderWorklog();
+    const user = userEvent.setup();
+    await screen.findByText("Shipped payments");
+
+    await user.click(screen.getByRole("button", { name: "Actions for Shipped payments" }));
+    await user.click(screen.getByRole("button", { name: "Archive" }));
+    await user.click(screen.getByRole("button", { name: "Keep it" }));
+
+    // Nothing was archived, the gate closed back to the plain menu item, and focus
+    // returned to it rather than falling to the document.
+    expect(calls.archived).toEqual([]);
+    const archiveItem = screen.getByRole("button", { name: "Archive" });
+    expect(archiveItem).toBeInTheDocument();
+    expect(archiveItem).toHaveFocus();
+    expect(screen.getByText("Shipped payments")).toBeInTheDocument();
   });
 
   it("surfaces an inline error when archiving fails", async () => {
@@ -288,6 +361,7 @@ describe("WorklogView", () => {
 
     await user.click(screen.getByRole("button", { name: "Actions for Shipped payments" }));
     await user.click(screen.getByRole("button", { name: "Archive" }));
+    await user.click(screen.getByRole("button", { name: "Archive entry" }));
 
     expect(await screen.findByText(ARCHIVE_ERROR_MESSAGE)).toBeInTheDocument();
     // The entry stays because the archive did not commit.
@@ -458,10 +532,10 @@ describe("WorklogView", () => {
     const searchBox = screen.getByLabelText("Search worklog and bullets");
     await user.type(searchBox, "payments");
     await user.click(screen.getByRole("button", { name: "Search" }));
-    await screen.findByRole("list", { name: "Search results" });
+    await screen.findByRole("region", { name: "Top matches" });
 
     await user.click(screen.getByRole("button", { name: "Clear" }));
-    expect(screen.queryByRole("list", { name: "Search results" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Top matches" })).not.toBeInTheDocument();
     expect(searchBox).toHaveValue("");
   });
 

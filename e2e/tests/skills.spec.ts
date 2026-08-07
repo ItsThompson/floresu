@@ -36,7 +36,7 @@ async function listSkills(request: APIRequestContext): Promise<SkillWire[]> {
 }
 
 /**
- * C4: curate the skills list and prove the derived usage count. The account is
+ * Curate the skills list and prove the derived usage count. The account is
  * seeded with two worklog entries tagged with a skill's name and one tagged with
  * a term left uncurated, plus a library bullet framing the tagged entry. Skills
  * are added, renamed, and archived as genuine browser interactions and verified

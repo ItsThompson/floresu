@@ -8,9 +8,9 @@ freshness hash comes from:
 - **bullet**: the bullet text; the stored ``content_hash`` gates re-embedding.
 - **source**: label + summary + (for a role) company + title. Sources carry no
   stored content hash yet, so the hash is derived from the composed text here;
-  it is stable, so the idempotency gate still holds. Sources do not yet publish a
-  re-embed trigger, so no source job flows in this slice, but the read path is
-  complete for when it does.
+  it is stable, so the idempotency gate still holds. Sources do not publish a
+  re-embed trigger, so no source job flows today, but the read path is
+  complete for when one does.
 
 Reads are scoped to ``user_id`` (a defensive net at the trusted internal hop) and
 go straight to the corpus tables via Core selects, mirroring how the search module

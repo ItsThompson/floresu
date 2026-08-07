@@ -95,7 +95,7 @@ def test_worklog_tag_remove_posts_label_and_action_and_never_deletes() -> None:
 
 def test_worklog_tag_add_existing_label_is_an_idempotent_no_op_success() -> None:
     # The backend answers an add of an already-present label with 200 + the
-    # unchanged entry (Ticket 6 idempotency); the tool surfaces it as a success
+    # unchanged entry (an idempotent add); the tool surfaces it as a success
     # returning the current entry, not an error.
     harness = AgentHarness(lambda _r: httpx.Response(200, json=worklog_record(tags=["backend"])))
     with harness.open() as client:

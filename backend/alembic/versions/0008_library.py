@@ -9,7 +9,7 @@ provenance DAG. Every edge cascades on either endpoint's delete; the bullet row
 cascades on account deletion.
 
 ``bullet_source`` references ``sources(id)`` and ``bullet_worklog`` references
-``worklog_entries(id)``, so this slice chains after 0007. Constraint and index
+``worklog_entries(id)``, so this revision chains after 0007. Constraint and index
 names follow the deterministic convention so the ORM models in
 ``floresu.library.models`` autogenerate no diff and the downgrade is reversible.
 

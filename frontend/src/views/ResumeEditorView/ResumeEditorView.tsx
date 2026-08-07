@@ -22,6 +22,9 @@ import type { PreviewStatus } from "./hooks/useResumePreview";
  * composition only: `useResumeEditor` owns the load and every write (each guarded
  * by the revision), and the preview fetch/render boundaries are built here and
  * injected into `PdfPreview`.
+ *
+ * The view runs the full width the shell gives it rather than a reading column:
+ * the form and the paper it renders to have to sit side by side.
  */
 export function ResumeEditorView() {
   const params = useParams();
@@ -57,7 +60,7 @@ export function ResumeEditorView() {
 
   if (Number.isNaN(resumeId) || state.load.status === "error") {
     return (
-      <section className="mx-auto flex w-full max-w-[860px] flex-col items-start gap-4 p-8">
+      <section className="flex w-full flex-col items-start gap-4">
         <p role="alert" className="text-destructive text-sm">
           {loadError ?? "This resume could not be found."}
         </p>
@@ -74,11 +77,11 @@ export function ResumeEditorView() {
   }
 
   if (state.load.status === "loading" || !state.record) {
-    return <p className="text-muted-foreground p-8 text-sm">Loading resume…</p>;
+    return <p className="text-muted-foreground text-sm">Loading resume…</p>;
   }
 
   return (
-    <section className="flex w-full flex-col gap-4 p-6">
+    <section className="flex w-full flex-col gap-4">
       <Link to={RESUMES_PATH} className="text-muted-foreground text-sm hover:underline">
         ← All resumes
       </Link>

@@ -1,4 +1,4 @@
-"""Doubles and builders for the rendering slice.
+"""Doubles and builders for the render/export path.
 
 The render service is tested sociably: the real render module (over a fake Typst
 compiler, or the real one where the test asserts PDF output) runs against these

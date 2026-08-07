@@ -1,9 +1,9 @@
 """baseline: enable pgvector
 
 Establishes the migration chain root and enables the ``vector`` extension so the
-semantic-search vector column and ANN index in a later slice can be created. The
-dev/prod Postgres image (``pgvector/pgvector:pg17``) bundles the extension. This
-baseline is DB plumbing only; the first domain table lands in the next revision.
+semantic-search vector column and ANN index can be created. The dev/prod Postgres
+image (``pgvector/pgvector:pg17``) bundles the extension. This baseline is DB
+plumbing only; it creates no domain table.
 
 Revision ID: 0001_baseline
 Revises:

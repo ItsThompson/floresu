@@ -1,3 +1,4 @@
+import { Trash2 } from "lucide-react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 
 import { Button } from "@/components/ui/button";
@@ -88,8 +89,14 @@ export function ProfileSourceDetailView() {
       title={title}
       action={
         !isCreate && (
-          <Button type="button" variant="outline" size="sm" onClick={detail.archive}>
-            Archive
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={detail.archive}
+            className="text-destructive hover:bg-destructive-tint hover:text-destructive"
+          >
+            <Trash2 aria-hidden /> Archive
           </Button>
         )
       }

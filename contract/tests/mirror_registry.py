@@ -7,8 +7,7 @@ declared inline. A new MCP wire type that is not classified here fails the
 completeness test, and a divergence not covered by a declared delta fails the
 mirror test, so the mcp<->backend contract cannot drift silently.
 
-The intentional deltas are the ones the T19/T20/T21 changesets flagged as
-deliberate:
+The intentional deltas are:
 
 - lean read projections relax response fields to optional-with-default so a backend
   field addition never breaks a deserialize (``lean_optional``);

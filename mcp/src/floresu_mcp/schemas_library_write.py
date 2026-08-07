@@ -12,7 +12,7 @@ for ``this_resume``.
 receives the web-only ``prompt`` outcome (an omitted scope is a validation error
 before the call), so this mirror carries only the two applied outcomes: an
 ``everywhere`` edit returns the updated canonical bullet, a ``this_resume`` fork
-returns the updated resume. The cross-package contract tests (Ticket 22) keep
+returns the updated resume. The contract tests in ``contract/tests/`` keep
 every mirror honest.
 """
 

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Neutral placeholder, replaced when a real mark exists: a rounded square, no glyph. A static
+       SVG cannot read a CSS custom property, so the coral bloom accent is spelled out here rather
+       than coming from the theme tokens. -->
+  <rect width="32" height="32" rx="8" fill="oklch(0.6799 0.1567 34.71)" />
+</svg>

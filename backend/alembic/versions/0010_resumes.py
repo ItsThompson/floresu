@@ -4,8 +4,7 @@ Adds the Output layer. Ordering matters because ``resumes`` holds the FK to
 ``job_applications`` (a one-directional link, so no circular dependency):
 
 1. the ``job_application_status`` enum and ``job_applications`` (a lightweight
-   relational entity; this slice creates the table and the FK target only, its
-   lifecycle/service lands later);
+   relational entity; this revision creates the table and the FK target only);
 2. the ``resume_kind`` / ``resume_status`` enums and ``resumes`` (the ``document``
    JSONB, the write-derived ``title`` / ``schema_version`` / ``revision`` scalars,
    ``forked_from_resume_id`` self-FK for fork provenance, and ``job_application_id``
@@ -13,9 +12,9 @@ Adds the Output layer. Ordering matters because ``resumes`` holds the FK to
 3. ``resume_bullet_ref`` (write-derived: which canonical bullets a resume
    references, reindexed on every save, indexed by ``bullet_id`` for "used in N");
 4. ``resume_revisions`` (append-only keep-all: a fully resolved snapshot per save,
-   with the ``pdf_object_key`` the rendering slice fills).
+   with the ``pdf_object_key`` the render path fills).
 
-``resume_bullet_ref`` references ``bulletpoints(id)`` (from 0008), so this slice
+``resume_bullet_ref`` references ``bulletpoints(id)`` (from 0008), so this revision
 chains after the library and profile domains. Constraint, index, and enum names
 follow the deterministic convention so the ORM models in ``floresu.resumes.models``
 autogenerate no diff and the downgrade is reversible.

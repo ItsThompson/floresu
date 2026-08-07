@@ -14,9 +14,9 @@ interface FramingRowProps {
 export function FramingRow({ framing }: FramingRowProps) {
   const isShared = framing.used_in_count >= 2;
   return (
-    <li className="border-border flex items-start gap-2 rounded-md border px-3 py-2">
-      <p className="flex-1 text-sm">{framing.text}</p>
-      <span className="text-muted-foreground inline-flex shrink-0 items-center gap-1 text-xs">
+    <li className="border-border bg-card flex items-start gap-2 rounded-md border px-3 py-2">
+      <p className="text-foreground flex-1 text-sm">{framing.text}</p>
+      <span className="text-muted-foreground mono-meta inline-flex shrink-0 items-center gap-1">
         {isShared && <Flag aria-label="Shared across resumes" className="size-3.5" />}
         used in {framing.used_in_count}
       </span>

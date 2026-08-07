@@ -23,7 +23,7 @@ def test_resolve_returns_the_requested_template() -> None:
 
 
 def test_an_unknown_template_id_falls_back_to_the_p0_default() -> None:
-    # The T12 placeholder id "default" (and any unknown id) resolves to the single
+    # The legacy placeholder id "default" (and any unknown id) resolves to the single
     # P0 template rather than erroring, so an old or mistyped id still renders.
     assert resolve_template("default").id == DEFAULT_TEMPLATE_ID
     assert resolve_template("does-not-exist").id == DEFAULT_TEMPLATE_ID

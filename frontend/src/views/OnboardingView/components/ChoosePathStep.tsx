@@ -1,10 +1,24 @@
+import { PenLine, Plug } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+
 import type { ChoosePathStepProps } from "../types";
 
+const CHOICE_CARD =
+  "bg-card text-card-foreground border-border flex flex-col gap-3 rounded-lg border p-6";
+
+const CHOICE_ICON =
+  "bg-accent text-accent-foreground flex size-9 items-center justify-center rounded-full";
+
 /**
- * The cold-start choice: start manually or connect an agent. Either card is an
- * action (one finishes onboarding, the other advances the wizard), not a link to
- * a URL, so both are buttons. The copy states plainly that Floresu parses
- * nothing, and that both paths remain available later.
+ * The cold-start choice: start manually or connect an agent. Either action
+ * finishes onboarding or advances the wizard rather than visiting a URL, so both
+ * are buttons. The copy states plainly that Floresu parses nothing, and that
+ * both paths remain available later.
+ *
+ * This is the one screen where the wizard is loud: the manual path carries the
+ * primary fill because it needs nothing set up and produces the first entry
+ * immediately, while connecting an agent stays a full-strength secondary.
  */
 export function ChoosePathStep({ onChooseManual, onChooseConnect, isBusy }: ChoosePathStepProps) {
   return (
@@ -17,28 +31,34 @@ export function ChoosePathStep({ onChooseManual, onChooseConnect, isBusy }: Choo
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <button
-          type="button"
-          onClick={onChooseManual}
-          disabled={isBusy}
-          className="border-input hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex flex-col gap-2 rounded-lg border p-5 text-left outline-none focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50"
-        >
-          <span className="text-base font-medium">Start manually</span>
-          <span className="text-muted-foreground text-sm">
+        <article className={CHOICE_CARD}>
+          <div className="flex items-center gap-3">
+            <span className={CHOICE_ICON}>
+              <PenLine aria-hidden className="size-4" />
+            </span>
+            <h2 className="font-semibold">You write</h2>
+          </div>
+          <p className="text-muted-foreground flex-1 text-sm">
             Add your first worklog entry or profile fact by hand.
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={onChooseConnect}
-          disabled={isBusy}
-          className="border-input hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex flex-col gap-2 rounded-lg border p-5 text-left outline-none focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50"
-        >
-          <span className="text-base font-medium">Connect your agent</span>
-          <span className="text-muted-foreground text-sm">
+          </p>
+          <Button onClick={onChooseManual} disabled={isBusy}>
+            Start manually
+          </Button>
+        </article>
+        <article className={CHOICE_CARD}>
+          <div className="flex items-center gap-3">
+            <span className={CHOICE_ICON}>
+              <Plug aria-hidden className="size-4" />
+            </span>
+            <h2 className="font-semibold">Your agent writes</h2>
+          </div>
+          <p className="text-muted-foreground flex-1 text-sm">
             Link your AI client over MCP and let it import your history.
-          </span>
-        </button>
+          </p>
+          <Button variant="secondary" onClick={onChooseConnect} disabled={isBusy}>
+            Connect your agent
+          </Button>
+        </article>
       </div>
     </div>
   );

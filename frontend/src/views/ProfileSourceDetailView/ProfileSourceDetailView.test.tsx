@@ -78,6 +78,26 @@ describe("ProfileSourceDetailView", () => {
     expect(await screen.findByRole("heading", { name: "Bullet framings" })).toBeInTheDocument();
   });
 
+  it("blocks the create submit and flags both required fields when they are empty", async () => {
+    authenticate();
+    let postCalled = false;
+    server.use(
+      http.post("*/sources", () => {
+        postCalled = true;
+        return HttpResponse.json(buildSourceRecord({ id: 100 }), { status: 201 });
+      }),
+    );
+    mockDetail({});
+
+    renderApp(["/profile/sources/new?kind=role"]);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Create" }));
+
+    expect(await screen.findAllByText("This field is required.")).toHaveLength(2);
+    expect(postCalled).toBe(false);
+  });
+
   it("renders the three columns with a populated form, framings, and month-grouped worklog", async () => {
     authenticate();
     mockDetail({
@@ -103,7 +123,7 @@ describe("ProfileSourceDetailView", () => {
     expect(within(worklog).getByText("September 2025")).toBeInTheDocument();
     expect(within(worklog).getByText("August 2025")).toBeInTheDocument();
     expect(within(worklog).getByText("Shipped migration")).toBeInTheDocument();
-    expect(within(worklog).getByText("backend")).toBeInTheDocument();
+    expect(within(worklog).getByText("#backend")).toBeInTheDocument();
   });
 
   it("adds a worklog entry from the panel pre-attached to the source", async () => {

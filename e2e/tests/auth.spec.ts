@@ -19,7 +19,7 @@ test("login, resume on reload, and logout", async ({ page }) => {
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL("/");
+  await expect(page).toHaveURL("/home");
   await expect(page.getByRole("heading", { name: "Home", level: 1 })).toBeVisible();
 
   // Reload resumes the session (refresh-token rotation), still authenticated.
