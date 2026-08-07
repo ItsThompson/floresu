@@ -173,7 +173,7 @@ gh secret set FLORESU_OAUTH_PRIVATE_KEY    < oauth_private.pem             # RAW
 gh secret set FLORESU_CLOUDFLARED_CREDENTIALS < ~/.cloudflared/<UUID>.json # RAW credentials.json
 ```
 
-`GITHUB_TOKEN` is not set manually: it is the built-in Actions token. Ensure Actions can write packages (repo/org **Settings -> Actions -> Workflow permissions**), since `cd.yml` requests `packages: write` and logs into GHCR with it.
+`GITHUB_TOKEN` is not set manually: it is the built-in Actions token. `cd.yml` grants it `packages: write` for GHCR image pushes.
 
 ---
 
