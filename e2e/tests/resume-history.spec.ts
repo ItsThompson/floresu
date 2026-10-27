@@ -23,7 +23,7 @@ const APP_BULLET = "Drove the billing platform re-architecture across three team
 
 /**
  * View a published version read-only. Export a living resume twice
- * (each export stores a PDF in R2/MinIO under its revision), then open the editor's
+ * (each export stores a PDF in R2/the local object store under its revision), then open the editor's
  * History control: it lists the published versions newest-first, opens the selected
  * one as a read-only PDF fetched straight from the presigned R2 URL, and never
  * leaks the object key. A later library edit leaves an already-published

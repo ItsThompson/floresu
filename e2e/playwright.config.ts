@@ -6,7 +6,7 @@ import { EXTERNAL_API_URL, FRONTEND_URL, PORTS } from "./harness/env";
 /**
  * Full-stack E2E configuration.
  *
- * Infrastructure (Postgres, Redis, MinIO) is brought up by `tsx harness/infra.ts
+ * Infrastructure (Postgres, Redis, object store) is brought up by `tsx harness/infra.ts
  * up` before this config runs (see the `test` script), so the backend never
  * boots ahead of its database. Playwright owns the three app processes below and
  * tears the infrastructure down afterwards via `globalTeardown`.

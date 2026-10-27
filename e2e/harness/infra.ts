@@ -29,7 +29,7 @@ const ENSURE_BUCKET_PY = [
 ].join("\n");
 
 /**
- * Bring up the E2E infrastructure (Postgres, Redis, MinIO), migrate the database
+ * Bring up the E2E infrastructure (Postgres, Redis, object store), migrate the database
  * to head, and create the object-store bucket. Idempotent. Runs before Playwright
  * starts the app `webServer` processes, so the backend never boots ahead of its
  * database.
