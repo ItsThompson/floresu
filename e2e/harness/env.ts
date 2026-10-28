@@ -1,8 +1,9 @@
 /**
  * Single source of truth for the E2E stack's ports, URLs, and credentials.
  *
- * The infrastructure (Postgres, Redis, MinIO) runs from docker-compose.e2e.yml
- * on non-default host ports so the suite never collides with a local dev stack.
+ * The infrastructure (Postgres, Redis, object store) runs from
+ * docker-compose.e2e.yml on non-default host ports so the suite never collides
+ * with a local dev stack.
  * The app processes (both ASGI apps, the frontend, the fake embedding provider)
  * run as host processes launched by Playwright's `webServer`, so this module also
  * builds the environment those processes inherit.
@@ -11,7 +12,7 @@
 export const PORTS = {
   postgres: 5433,
   redis: 6380,
-  minioApi: 9002,
+  objectStoreApi: 9002,
   fakeEmbeddings: 9010,
   backendExternal: 8000,
   backendInternal: 8001,
@@ -26,9 +27,9 @@ export const MCP_PUBLIC_URL = "http://localhost:9000";
 export const DATABASE_URL = `postgresql+asyncpg://floresu:floresu@localhost:${PORTS.postgres}/floresu`;
 export const REDIS_URL = `redis://localhost:${PORTS.redis}/0`;
 
-/** MinIO stands in for Cloudflare R2 (both speak the S3 API). */
+/** The local S3 emulator stands in for Cloudflare R2 (both speak the S3 API). */
 export const OBJECT_STORE = {
-  endpointUrl: `http://localhost:${PORTS.minioApi}`,
+  endpointUrl: `http://localhost:${PORTS.objectStoreApi}`,
   accessKeyId: "minioadmin",
   secretAccessKey: "minioadmin",
   bucket: "floresu-e2e",
@@ -59,7 +60,7 @@ export const backendEnv: Record<string, string> = {
   // embed path succeeds offline and no run ever calls OpenAI.
   OPENAI_API_KEY: "e2e-fake-key",
   OPENAI_BASE_URL: `http://localhost:${PORTS.fakeEmbeddings}`,
-  // MinIO object store (faked R2). botocore uses path-style addressing for a
+  // Local S3 emulator (faked R2). botocore uses path-style addressing for a
   // localhost endpoint, so the minted presigned URL is reachable on the host.
   R2_ENDPOINT_URL: OBJECT_STORE.endpointUrl,
   R2_ACCESS_KEY_ID: OBJECT_STORE.accessKeyId,

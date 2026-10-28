@@ -223,12 +223,12 @@ jobs:
   # ---------------------------------------------------------------------------
   # e2e: the Playwright full-stack suite, split across parallel shards. Each
   # shard runs on its own runner VM with its own stack: it brings up the E2E
-  # infrastructure (Postgres, Redis, MinIO) from e2e/docker-compose.e2e.yml, then
+  # infrastructure (Postgres, Redis, object store) from e2e/docker-compose.e2e.yml, then
   # Playwright starts the app processes (both ASGI apps, the frontend production
   # build, and the fake embedding provider) and drives its shard of the suite
   # (auth, feed, search, settings, the agent boundary, and the anchor flows)
   # through a real browser. No run calls OpenAI or real R2 (embedding is a local
-  # fake; the object store is MinIO). Fixed host ports never collide because
+  # fake; the object store is a local emulator). Fixed host ports never collide because
   # shards run on separate VMs. Each shard emits a blob report; the e2e-report
   # job below merges them into one HTML report.
   # ---------------------------------------------------------------------------
